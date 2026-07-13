@@ -1,0 +1,12 @@
+{% extends 'admin_layout.html.twig' %}
+
+{% block title %}Pasarelas de Pago - Saldo Banca{% endblock %}
+
+{% block body %}
+<div id="vue-app"></div>
+{% endblock %}
+
+{% block javascripts %}
+{{ parent() }}
+{{ vite_entry_script_tags('payment_gateways') }}
+{% endblock %}

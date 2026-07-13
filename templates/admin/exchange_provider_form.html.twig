@@ -1,0 +1,76 @@
+{% extends 'admin_layout.html.twig' %}
+
+{% block title %}{{ provider is defined and provider ? 'Editar' : 'Crear' }} Proveedor de Tasa - Saldo Banca{% endblock %}
+
+{% block body %}
+<div class="max-w-2xl mx-auto">
+    <div class="flex items-center justify-between mb-6">
+        <h1 class="text-2xl font-bold text-gray-800">{{ provider is defined and provider ? 'Editar' : 'Crear' }} Proveedor de Tasa de Cambio</h1>
+        <a href="{{ path('admin_exchange_providers_page') }}" class="text-gray-500 hover:text-gray-700">
+            ← Volver
+        </a>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+        <form id="provider-form" class="space-y-6">
+            <div class="grid grid-cols-2 gap-6">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Nombre *</label>
+                    <input type="text" name="name" required
+                           value="{{ provider is defined and provider ? provider.name : '' }}"
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                           placeholder="Ej: ExchangeRate-API, Fixer">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Código *</label>
+                    <input type="text" name="code" required
+                           value="{{ provider is defined and provider ? provider.code : '' }}"
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono"
+                           placeholder="Ej: exchangerate_api">
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">URL del API</label>
+                <input type="url" name="apiUrl"
+                       value="{{ provider is defined and provider ? provider.apiUrl|default('') : '' }}"
+                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono"
+                       placeholder="https://api.exchangerate-api.com/v4/latest/USD">
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">API Key / Token</label>
+                <input type="password" name="config[api_key]"
+                       value="{{ provider is defined and provider and provider.config ? provider.config.api_key|default('') : '' }}"
+                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono"
+                       placeholder="Tu API Key (si aplica)">
+            </div>
+
+            <div class="grid grid-cols-2 gap-6">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Estado</label>
+                    <select name="status" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        <option value="active" {{ provider is defined and provider and provider.status == 'active' ? 'selected' : '' }}>Activo</option>
+                        <option value="inactive" {{ provider is defined and provider and provider.status == 'inactive' ? 'selected' : '' }}>Inactivo</option>
+                    </select>
+                </div>
+                <div class="flex items-center">
+                    <input type="checkbox" name="isDefault" id="isDefault"
+                           {{ provider is defined and provider and provider.isDefault ? 'checked' : '' }}
+                           class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                    <label for="isDefault" class="ml-2 text-sm text-gray-700">Por defecto</label>
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-3 pt-4 border-t">
+                <a href="{{ path('admin_exchange_providers_page') }}" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">
+                    Cancelar
+                </a>
+                <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                    Guardar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

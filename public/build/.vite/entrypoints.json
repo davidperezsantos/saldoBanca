@@ -1,0 +1,231 @@
+{
+  "base": "/build/",
+  "entryPoints": {
+    "app": {
+      "css": [
+        "/build/assets/app-8LKO4CX0.css"
+      ],
+      "dynamic": [],
+      "js": [
+        "/build/assets/app-BBLZXeb6.js"
+      ],
+      "legacy": false,
+      "preload": []
+    },
+    "dashboard": {
+      "css": [
+        "/build/assets/app-8LKO4CX0.css"
+      ],
+      "dynamic": [],
+      "js": [
+        "/build/assets/dashboard-CvAe1BZ3.js"
+      ],
+      "legacy": false,
+      "preload": [
+        "/build/assets/app-BBLZXeb6.js",
+        "/build/assets/index-COib4WjZ.js",
+        "/build/assets/index-QgKcpBOH.js"
+      ]
+    },
+    "users": {
+      "css": [
+        "/build/assets/app-8LKO4CX0.css"
+      ],
+      "dynamic": [],
+      "js": [
+        "/build/assets/users-e-mWqJaA.js"
+      ],
+      "legacy": false,
+      "preload": [
+        "/build/assets/app-BBLZXeb6.js",
+        "/build/assets/index-COib4WjZ.js",
+        "/build/assets/index-QgKcpBOH.js"
+      ]
+    },
+    "roles": {
+      "css": [
+        "/build/assets/app-8LKO4CX0.css"
+      ],
+      "dynamic": [],
+      "js": [
+        "/build/assets/roles-DB5D7cjR.js"
+      ],
+      "legacy": false,
+      "preload": [
+        "/build/assets/app-BBLZXeb6.js",
+        "/build/assets/index-QgKcpBOH.js"
+      ]
+    },
+    "accounts": {
+      "css": [
+        "/build/assets/app-8LKO4CX0.css"
+      ],
+      "dynamic": [],
+      "js": [
+        "/build/assets/accounts-B7OErq5B.js"
+      ],
+      "legacy": false,
+      "preload": [
+        "/build/assets/app-BBLZXeb6.js",
+        "/build/assets/index-COib4WjZ.js",
+        "/build/assets/index-QgKcpBOH.js",
+        "/build/assets/index-Bc-3N54Z.js"
+      ]
+    },
+    "recharges": {
+      "css": [
+        "/build/assets/app-8LKO4CX0.css"
+      ],
+      "dynamic": [],
+      "js": [
+        "/build/assets/recharges-CIS1gCTp.js"
+      ],
+      "legacy": false,
+      "preload": [
+        "/build/assets/app-BBLZXeb6.js",
+        "/build/assets/index-COib4WjZ.js",
+        "/build/assets/index-QgKcpBOH.js",
+        "/build/assets/index-1AdYi8Qd.js",
+        "/build/assets/index-Bc-3N54Z.js"
+      ]
+    },
+    "transfers": {
+      "css": [
+        "/build/assets/app-8LKO4CX0.css"
+      ],
+      "dynamic": [],
+      "js": [
+        "/build/assets/transfers-CNL-tVjl.js"
+      ],
+      "legacy": false,
+      "preload": [
+        "/build/assets/app-BBLZXeb6.js",
+        "/build/assets/index-COib4WjZ.js",
+        "/build/assets/index-QgKcpBOH.js",
+        "/build/assets/index-1AdYi8Qd.js",
+        "/build/assets/index-Bc-3N54Z.js"
+      ]
+    },
+    "authorized": {
+      "css": [
+        "/build/assets/app-8LKO4CX0.css"
+      ],
+      "dynamic": [],
+      "js": [
+        "/build/assets/authorized-CepVE4IF.js"
+      ],
+      "legacy": false,
+      "preload": [
+        "/build/assets/app-BBLZXeb6.js",
+        "/build/assets/index-COib4WjZ.js",
+        "/build/assets/index-QgKcpBOH.js",
+        "/build/assets/index-Bc-3N54Z.js"
+      ]
+    },
+    "invoices": {
+      "css": [
+        "/build/assets/app-8LKO4CX0.css"
+      ],
+      "dynamic": [],
+      "js": [
+        "/build/assets/invoices-cxOfafAN.js"
+      ],
+      "legacy": false,
+      "preload": [
+        "/build/assets/app-BBLZXeb6.js",
+        "/build/assets/index-COib4WjZ.js",
+        "/build/assets/index-QgKcpBOH.js",
+        "/build/assets/index-1AdYi8Qd.js",
+        "/build/assets/index-Bc-3N54Z.js"
+      ]
+    },
+    "history": {
+      "css": [
+        "/build/assets/app-8LKO4CX0.css"
+      ],
+      "dynamic": [],
+      "js": [
+        "/build/assets/history-DfcyMiW4.js"
+      ],
+      "legacy": false,
+      "preload": [
+        "/build/assets/app-BBLZXeb6.js",
+        "/build/assets/index-COib4WjZ.js",
+        "/build/assets/index-QgKcpBOH.js"
+      ]
+    },
+    "exchange_rates": {
+      "css": [
+        "/build/assets/app-8LKO4CX0.css"
+      ],
+      "dynamic": [],
+      "js": [
+        "/build/assets/exchange_rates-ku1ps_0Y.js"
+      ],
+      "legacy": false,
+      "preload": [
+        "/build/assets/app-BBLZXeb6.js",
+        "/build/assets/index-COib4WjZ.js",
+        "/build/assets/index-QgKcpBOH.js"
+      ]
+    },
+    "exchange_providers": {
+      "css": [
+        "/build/assets/app-8LKO4CX0.css"
+      ],
+      "dynamic": [],
+      "js": [
+        "/build/assets/exchange_providers-vnPKFOCC.js"
+      ],
+      "legacy": false,
+      "preload": [
+        "/build/assets/app-BBLZXeb6.js",
+        "/build/assets/index-COib4WjZ.js",
+        "/build/assets/index-QgKcpBOH.js",
+        "/build/assets/index-Bc-3N54Z.js"
+      ]
+    },
+    "payment_gateways": {
+      "css": [
+        "/build/assets/app-8LKO4CX0.css"
+      ],
+      "dynamic": [],
+      "js": [
+        "/build/assets/payment_gateways-CP-65WUP.js"
+      ],
+      "legacy": false,
+      "preload": [
+        "/build/assets/app-BBLZXeb6.js",
+        "/build/assets/index-COib4WjZ.js",
+        "/build/assets/index-QgKcpBOH.js",
+        "/build/assets/index-1AdYi8Qd.js",
+        "/build/assets/index-Bc-3N54Z.js"
+      ]
+    },
+    "oauth_clients": {
+      "css": [
+        "/build/assets/app-8LKO4CX0.css"
+      ],
+      "dynamic": [],
+      "js": [
+        "/build/assets/oauth_clients-cxWTrVj4.js"
+      ],
+      "legacy": false,
+      "preload": [
+        "/build/assets/app-BBLZXeb6.js",
+        "/build/assets/index-COib4WjZ.js",
+        "/build/assets/index-QgKcpBOH.js",
+        "/build/assets/index-Bc-3N54Z.js"
+      ]
+    }
+  },
+  "legacy": false,
+  "metadatas": {},
+  "version": [
+    "8.2.4",
+    8,
+    2,
+    4
+  ],
+  "viteServer": null
+}

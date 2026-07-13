@@ -1,0 +1,135 @@
+nelmio_api_doc:
+    documentation:
+        info:
+            title: SaldoBanca API
+            description: |
+                API REST para operaciones bancarias (recargas, transferencias, facturas, etc.)
+
+                ## Autenticación
+
+                ### JWT (usuarios internos/mobile)
+                `POST /api/v1/login` — envía `{username, password}` y obtén un token Bearer.
+                Usa el token en el header: `Authorization: Bearer <token>`
+
+                ### OAuth2 (aplicaciones externas)
+                `POST /oauth/token` — envía `grant_type=client_credentials` con `client_id` y `client_secret`
+                (por HTTP Basic Auth o en el body form-data). Obtén un `access_token` tipo Bearer.
+
+                ### API Key (operaciones seguras)
+                Algunos endpoints requieren el header `X-API-KEY` para operaciones de escritura.
+            version: '1.0.0'
+        tags:
+            - name: Auth
+              description: Autenticación de usuarios
+            - name: Accounts
+              description: Gestión de cuentas bancarias
+            - name: Balance
+              description: Consultas de saldo
+            - name: History
+              description: Historial de movimientos
+            - name: Recharges
+              description: Recargas y depósitos
+            - name: Transfers
+              description: Transferencias entre cuentas
+            - name: Invoices
+              description: Facturas y cobros
+            - name: Authorized
+              description: Usuarios autorizados
+            - name: Payment Gateways
+              description: Pasarelas de pago
+            - name: Exchange Providers
+              description: Proveedores de tipo de cambio
+            - name: Exchange Rates
+              description: Tipos de cambio
+        paths:
+            /oauth/token:
+                post:
+                    tags: [Auth]
+                    summary: Obtener token OAuth2
+                    description: Endpoint para obtener un token de acceso OAuth2 usando client credentials grant. Las credenciales (client_id y client_secret) se envían mediante HTTP Basic Auth o en el body form-data.
+                    requestBody:
+                        required: true
+                        content:
+                            application/x-www-form-urlencoded:
+                                schema:
+                                    type: object
+                                    properties:
+                                        grant_type:
+                                            type: string
+                                            description: Tipo de grant. Usar "client_credentials"
+                                            example: client_credentials
+                                        client_id:
+                                            type: string
+                                            description: ID del cliente (si no se usa Basic Auth)
+                                            example: my_client_id
+                                        client_secret:
+                                            type: string
+                                            description: Secreto del cliente (si no se usa Basic Auth)
+                                            example: my_client_secret
+                                        scope:
+                                            type: string
+                                            description: Scope solicitado (opcional)
+                                            example: api
+                    responses:
+                        '200':
+                            description: Token OAuth2 generado exitosamente
+                            content:
+                                application/json:
+                                    schema:
+                                        type: object
+                                        properties:
+                                            token_type:
+                                                type: string
+                                                example: Bearer
+                                            expires_in:
+                                                type: integer
+                                                example: 3600
+                                            access_token:
+                                                type: string
+                                                example: eyJ0eXAiOiJKV1QiLCJ...
+                        '400':
+                            description: Solicitud inválida (grant_type no soportado, credenciales faltantes)
+                        '401':
+                            description: Credenciales inválidas
+            #/oauth/authorize:
+            #    get:
+            #        tags: [Auth]
+            #        summary: Autorizar aplicación
+            #        description: Endpoint de autorización OAuth2 (para authorization code grant).
+            #        parameters:
+            #            - name: response_type
+            #              in: query
+            #              description: Tipo de respuesta (code)
+            #              required: true
+            #              schema:
+            #                  type: string
+            #                  example: code
+            #            - name: client_id
+            #              in: query
+            #              description: ID del cliente
+            #              required: true
+            #              schema:
+            #                  type: string
+            #            - name: redirect_uri
+            #              in: query
+            #              description: URI de redirección
+            #              required: true
+            #              schema:
+            #                  type: string
+            #            - name: scope
+            #              in: query
+            #              description: Scope solicitado
+            #              schema:
+            #                  type: string
+            #            - name: state
+            #              in: query
+            #              description: Estado para CSRF
+            #              schema:
+            #                  type: string
+            #        responses:
+            #            '302':
+            #                description: Redirección a la URI del cliente con el código de autorización
+    areas:
+        path_patterns:
+            - ^/api/v1
+        host_patterns: []

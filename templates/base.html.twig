@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Saldo Banca{% endblock %}</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💰</text></svg>">
+    {% block stylesheets %}
+        {{ vite_entry_link_tags('app') }}
+    {% endblock %}
+    {% block javascripts %}
+        {{ vite_entry_script_tags('app') }}
+    {% endblock %}
+</head>
+<body class="bg-gray-50 dark:bg-gray-900">
+    <div id="app">
+        {% block body %}{% endblock %}
+    </div>
+    <script>
+        window.__USER__ = {{ app.user ? app.user|json_encode|raw : 'null' }};
+        window.__MENU__ = {{ menu is defined ? menu|json_encode|raw : '[]' }};
+    </script>
+</body>
+</html>

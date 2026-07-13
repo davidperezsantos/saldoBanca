@@ -1,0 +1,209 @@
+menu:
+    dashboard: Panel de Control
+    administration: Administración
+    payment_gateway: Pasarela de Pagos
+    configure_gateways: Configurar Pasarelas
+    oauth_clients: Clientes OAuth2
+    clients: Clientes
+    list_clients: Listado Clientes
+    authorized_users: Usuarios Autorizados
+    businesses: Negocios
+    list_businesses: Listado Negocios
+    authorized_businesses: Autorizados Negocios
+    exchange: Tasas de Cambio
+    exchange_providers: Proveedores de Tasa
+    exchange_history: Historial de Tasas
+    recharges: Recargas
+    transfers: Transferencias
+    invoices: Facturas
+    history: Historial
+    users: Usuarios
+    roles: Roles y Permisos
+    logout: Cerrar Sesión
+
+common:
+    save: Guardar
+    cancel: Cancelar
+    delete: Eliminar
+    edit: Editar
+    view: Ver
+    create: Crear
+    search: Buscar
+    filter: Filtrar
+    export: Exportar
+    loading: Cargando...
+    no_data: No hay datos disponibles
+    confirm_delete: ¿Está seguro de que desea eliminar?
+    success: Éxito
+    error: Error
+    actions: Acciones
+    details: Detalles
+    status: Estado
+    back: Volver
+    select_all: Seleccionar Todos
+    clear: Limpiar
+    active: Activo
+    inactive: Inactivo
+    system: Sistema
+    read_only: Solo lectura
+    notes: Notas
+    reason: Motivo
+    name: Nombre
+    code: Código
+    available: Disponible
+    all: Todos
+    close: Cerrar
+    confirm: Confirmar
+
+dashboard:
+    title: Panel de Control
+    total_accounts: Total de Cuentas
+    active_accounts: Cuentas Activas
+    active: activas
+    total_recharges: Total de Recargas
+    total_transfers: Total de Transferencias
+    pending_invoices: Facturas Pendientes
+    recent_recharges: Recargas Recientes
+    recent_transfers: Transferencias Recientes
+    quick_actions: Acciones Rápidas
+
+accounts:
+    title: Clientes
+    business_title: Negocios
+    create: Nuevo Cliente
+    edit: Editar Cliente
+    account_number: Número de Cuenta
+    business_name: Nombre del Negocio
+    account_type: Tipo de Cuenta
+    document_type: Tipo de Documento
+    document_number: Número de Documento
+    email: Correo Electrónico
+    phone: Teléfono
+    currency: Moneda
+    credit_limit: Límite de Crédito
+    available_balance: Saldo Disponible
+
+authorized:
+    title: Usuarios Autorizados
+    create: Nuevo Autorizado
+    select_account: Seleccionar una cuenta...
+    select_account_first: Seleccione una cuenta para ver sus autorizados
+    user_name: Nombre del Usuario
+    user_email: Correo del Usuario
+    max_amount: Monto Máximo
+    daily_limit: Límite Diario
+    monthly_limit: Límite Mensual
+    verify: Verificar
+
+recharges:
+    title: Recargas
+    create: Nueva Recarga
+    amount: Monto
+    currency: Moneda
+    type: Tipo
+    reference: Referencia
+    payment_method: Método de Pago
+    account_provider: Proveedor de Cuenta
+    client: Cliente
+    who_recharges: Quién Recarga
+    currency_to_recharge: Moneda a Recargar
+    amount_to_recharge: Monto a Recargar
+    final_amount: Importe Final
+    pending: Pendiente
+    completed: Completada
+    failed: Fallida
+    cancelled: Cancelada
+    manual: Manual
+    external: Externa
+    admin: Admin
+    support: Soporte
+    transfer: Transferencia
+    authorized_by: Autorizado Por
+
+transfers:
+    title: Transferencias
+    create: Nueva Transferencia
+    origin_account: Cuenta Origen
+    destination_account: Cuenta Destino
+    fee: Comisión
+    pending: Pendiente
+    completed: Completada
+    failed: Fallida
+    cancelled: Cancelada
+    amount: Monto
+    status: Estado
+
+invoices:
+    title: Facturas
+    create: Nueva Factura
+    invoice_number: Número de Factura
+    invoice_date: Fecha de Factura
+    due_date: Fecha de Vencimiento
+    total_amount: Monto Total
+    tax_amount: Impuesto
+    payment_date: Fecha de Pago
+    pending: Pendiente
+    paid: Pagada
+    cancelled: Cancelada
+    refunded: Reembolsada
+    amount: Monto
+    status: Estado
+
+history:
+    title: Historial de Transacciones
+    movement_type: Tipo de Movimiento
+    credit: Crédito
+    debit: Débito
+    balance_before: Saldo Anterior
+    balance_after: Saldo Posterior
+    date: Fecha
+    description: Descripción
+    amount: Monto
+
+users:
+    title: Usuarios
+    create: Nuevo Usuario
+    username: Username
+    email: Correo Electrónico
+    name: Nombre
+    role: Rol
+    status: Estado
+    last_login: Último Login
+    search: Buscar usuarios...
+    never: Nunca
+    activate: Activar
+    deactivate: Desactivar
+
+roles:
+    title: Roles y Permisos
+    create: Nuevo Rol
+    name: Nombre Interno
+    label: Etiqueta
+    permissions: Permisos
+    internal_name: Nombre Interno
+    visible_name: Nombre Visible
+
+payment_gateways:
+    title: Pasarelas de Pagos
+    create: Nueva Pasarela
+    name: Nombre
+    code: Código
+    auth_type: Tipo Autenticación
+    token: Token
+    api_key: API Key
+    user_pass: Usuario y Contraseña
+    is_default: Por Defecto
+    notes: Notas
+
+exchange_providers:
+    title: Proveedores de Tasa de Cambio
+    create: Nuevo Proveedor
+    api_url: URL del API
+
+exchange_rates:
+    title: Historial de Tasas de Cambio
+    fetch_rates: Actualizar Tasas
+    pair: Par de Monedas
+    rate: Tasa
+    inverse_rate: Tasa Inversa
+    fetched_at: Fecha Obtención

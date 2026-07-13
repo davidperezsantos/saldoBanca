@@ -1,0 +1,15 @@
+{% extends 'admin_layout.html.twig' %}
+
+{% block title %}{{ 'users.title'|trans }} - SaldoGrin{% endblock %}
+
+{% block body %}
+<script>
+    window.__USERS__ = {{ users|json_encode|raw }};
+</script>
+<div id="vue-app"></div>
+{% endblock %}
+
+{% block javascripts %}
+{{ parent() }}
+{{ vite_entry_script_tags('users') }}
+{% endblock %}

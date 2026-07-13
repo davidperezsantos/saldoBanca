@@ -1,0 +1,130 @@
+modules:
+  dashboard:
+    label: Dashboard
+    actions:
+      view: Ver Panel
+
+  administration:
+    label: Administración
+    submodules:
+      users:
+        label: Usuarios
+        actions:
+          view: Ver
+          create: Crear
+          edit: Editar
+          delete: Eliminar
+          status: Cambiar Estado
+      roles:
+        label: Roles
+        actions:
+          view: Ver
+          create: Crear
+          edit: Editar
+          delete: Eliminar
+          assign_permissions: Asignar Permisos
+
+  payment_gateway:
+    label: Pasarela de Pagos
+    actions:
+      view: Ver
+      create: Crear
+      edit: Editar
+      delete: Eliminar
+      configure: Configurar
+
+  clients:
+    label: Clientes
+    actions:
+      view: Ver
+      create: Crear
+      edit: Editar
+      delete: Eliminar
+      details: Ver Detalles
+      status: Cambiar Estado
+      balance: Ver Saldo
+
+  businesses:
+    label: Negocios
+    actions:
+      view: Ver
+      create: Crear
+      edit: Editar
+      delete: Eliminar
+      details: Ver Detalles
+      status: Cambiar Estado
+      balance: Ver Saldo
+
+  authorized:
+    label: Usuarios Autorizados
+    actions:
+      view: Ver
+      create: Crear
+      edit: Editar
+      delete: Eliminar
+      details: Ver Detalles
+      status: Cambiar Estado
+      verify: Verificar
+      transfer: Transferir Saldo
+
+  exchange:
+    label: Tasas de Cambio
+    submodules:
+      providers:
+        label: Proveedores
+        actions:
+          view: Ver
+          create: Crear
+          edit: Editar
+          delete: Eliminar
+      rates:
+        label: Historial de Tasas
+        actions:
+          view: Ver
+          fetch: Obtener Nuevas Tasas
+
+  recharges:
+    label: Recargas
+    actions:
+      view: Ver
+      create: Crear
+      details: Ver Detalles
+      complete: Completar
+      fail: Marcar Fallida
+      cancel: Cancelar
+
+  transfers:
+    label: Transferencias
+    actions:
+      view: Ver
+      create: Crear
+      details: Ver Detalles
+      process: Procesar
+      cancel: Cancelar
+      limits: Ver Límites
+
+  invoices:
+    label: Facturas
+    actions:
+      view: Ver
+      create: Crear
+      details: Ver Detalles
+      pay: Pagar
+      cancel: Cancelar
+      refund: Reembolsar
+      summary: Ver Resumen
+
+  oauth_clients:
+    label: Clientes OAuth2
+    actions:
+      view: Ver
+      create: Crear
+      edit: Editar
+      delete: Eliminar
+      status: Cambiar Estado
+
+  history:
+    label: Historial
+    actions:
+      view: Ver
+      export: Exportar

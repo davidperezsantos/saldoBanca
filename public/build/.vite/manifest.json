@@ -1,0 +1,225 @@
+{
+  "_index-1AdYi8Qd.js": {
+    "file": "assets/index-1AdYi8Qd.js",
+    "name": "index",
+    "imports": [
+      "_index-COib4WjZ.js",
+      "assets/js/admin/app.js",
+      "_index-QgKcpBOH.js"
+    ]
+  },
+  "_index-Bc-3N54Z.js": {
+    "file": "assets/index-Bc-3N54Z.js",
+    "name": "index",
+    "imports": [
+      "assets/js/admin/app.js",
+      "_index-COib4WjZ.js",
+      "_index-QgKcpBOH.js"
+    ]
+  },
+  "_index-COib4WjZ.js": {
+    "file": "assets/index-COib4WjZ.js",
+    "name": "index",
+    "imports": [
+      "assets/js/admin/app.js",
+      "_index-QgKcpBOH.js"
+    ]
+  },
+  "_index-QgKcpBOH.js": {
+    "file": "assets/index-QgKcpBOH.js",
+    "name": "index",
+    "imports": [
+      "assets/js/admin/app.js"
+    ]
+  },
+  "assets/js/admin/app.js": {
+    "file": "assets/app-BBLZXeb6.js",
+    "name": "app",
+    "src": "assets/js/admin/app.js",
+    "isEntry": true,
+    "css": [
+      "assets/app-8LKO4CX0.css"
+    ],
+    "assets": [
+      "assets/primeicons-DMOk5skT.eot",
+      "assets/primeicons-C6QP2o4f.woff2",
+      "assets/primeicons-WjwUDZjB.woff",
+      "assets/primeicons-MpK4pl85.ttf",
+      "assets/primeicons-Dr5RGzOO.svg"
+    ]
+  },
+  "assets/js/admin/entries/accounts.js": {
+    "file": "assets/accounts-B7OErq5B.js",
+    "name": "accounts",
+    "src": "assets/js/admin/entries/accounts.js",
+    "isEntry": true,
+    "imports": [
+      "assets/js/admin/app.js",
+      "_index-COib4WjZ.js",
+      "_index-QgKcpBOH.js",
+      "_index-Bc-3N54Z.js"
+    ]
+  },
+  "assets/js/admin/entries/authorized.js": {
+    "file": "assets/authorized-CepVE4IF.js",
+    "name": "authorized",
+    "src": "assets/js/admin/entries/authorized.js",
+    "isEntry": true,
+    "imports": [
+      "assets/js/admin/app.js",
+      "_index-COib4WjZ.js",
+      "_index-QgKcpBOH.js",
+      "_index-Bc-3N54Z.js"
+    ]
+  },
+  "assets/js/admin/entries/dashboard.js": {
+    "file": "assets/dashboard-CvAe1BZ3.js",
+    "name": "dashboard",
+    "src": "assets/js/admin/entries/dashboard.js",
+    "isEntry": true,
+    "imports": [
+      "assets/js/admin/app.js",
+      "_index-COib4WjZ.js",
+      "_index-QgKcpBOH.js"
+    ]
+  },
+  "assets/js/admin/entries/exchange_providers.js": {
+    "file": "assets/exchange_providers-vnPKFOCC.js",
+    "name": "exchange_providers",
+    "src": "assets/js/admin/entries/exchange_providers.js",
+    "isEntry": true,
+    "imports": [
+      "assets/js/admin/app.js",
+      "_index-COib4WjZ.js",
+      "_index-QgKcpBOH.js",
+      "_index-Bc-3N54Z.js"
+    ]
+  },
+  "assets/js/admin/entries/exchange_rates.js": {
+    "file": "assets/exchange_rates-ku1ps_0Y.js",
+    "name": "exchange_rates",
+    "src": "assets/js/admin/entries/exchange_rates.js",
+    "isEntry": true,
+    "imports": [
+      "assets/js/admin/app.js",
+      "_index-COib4WjZ.js",
+      "_index-QgKcpBOH.js"
+    ]
+  },
+  "assets/js/admin/entries/history.js": {
+    "file": "assets/history-DfcyMiW4.js",
+    "name": "history",
+    "src": "assets/js/admin/entries/history.js",
+    "isEntry": true,
+    "imports": [
+      "assets/js/admin/app.js",
+      "_index-COib4WjZ.js",
+      "_index-QgKcpBOH.js"
+    ]
+  },
+  "assets/js/admin/entries/invoices.js": {
+    "file": "assets/invoices-cxOfafAN.js",
+    "name": "invoices",
+    "src": "assets/js/admin/entries/invoices.js",
+    "isEntry": true,
+    "imports": [
+      "assets/js/admin/app.js",
+      "_index-COib4WjZ.js",
+      "_index-QgKcpBOH.js",
+      "_index-1AdYi8Qd.js",
+      "_index-Bc-3N54Z.js"
+    ]
+  },
+  "assets/js/admin/entries/oauth_clients.js": {
+    "file": "assets/oauth_clients-cxWTrVj4.js",
+    "name": "oauth_clients",
+    "src": "assets/js/admin/entries/oauth_clients.js",
+    "isEntry": true,
+    "imports": [
+      "assets/js/admin/app.js",
+      "_index-COib4WjZ.js",
+      "_index-QgKcpBOH.js",
+      "_index-Bc-3N54Z.js"
+    ]
+  },
+  "assets/js/admin/entries/payment_gateways.js": {
+    "file": "assets/payment_gateways-CP-65WUP.js",
+    "name": "payment_gateways",
+    "src": "assets/js/admin/entries/payment_gateways.js",
+    "isEntry": true,
+    "imports": [
+      "assets/js/admin/app.js",
+      "_index-COib4WjZ.js",
+      "_index-QgKcpBOH.js",
+      "_index-1AdYi8Qd.js",
+      "_index-Bc-3N54Z.js"
+    ]
+  },
+  "assets/js/admin/entries/recharges.js": {
+    "file": "assets/recharges-CIS1gCTp.js",
+    "name": "recharges",
+    "src": "assets/js/admin/entries/recharges.js",
+    "isEntry": true,
+    "imports": [
+      "assets/js/admin/app.js",
+      "_index-COib4WjZ.js",
+      "_index-QgKcpBOH.js",
+      "_index-1AdYi8Qd.js",
+      "_index-Bc-3N54Z.js"
+    ]
+  },
+  "assets/js/admin/entries/roles.js": {
+    "file": "assets/roles-DB5D7cjR.js",
+    "name": "roles",
+    "src": "assets/js/admin/entries/roles.js",
+    "isEntry": true,
+    "imports": [
+      "assets/js/admin/app.js",
+      "_index-QgKcpBOH.js"
+    ]
+  },
+  "assets/js/admin/entries/transfers.js": {
+    "file": "assets/transfers-CNL-tVjl.js",
+    "name": "transfers",
+    "src": "assets/js/admin/entries/transfers.js",
+    "isEntry": true,
+    "imports": [
+      "assets/js/admin/app.js",
+      "_index-COib4WjZ.js",
+      "_index-QgKcpBOH.js",
+      "_index-1AdYi8Qd.js",
+      "_index-Bc-3N54Z.js"
+    ]
+  },
+  "assets/js/admin/entries/users.js": {
+    "file": "assets/users-e-mWqJaA.js",
+    "name": "users",
+    "src": "assets/js/admin/entries/users.js",
+    "isEntry": true,
+    "imports": [
+      "assets/js/admin/app.js",
+      "_index-COib4WjZ.js",
+      "_index-QgKcpBOH.js"
+    ]
+  },
+  "node_modules/primeicons/fonts/primeicons.eot": {
+    "file": "assets/primeicons-DMOk5skT.eot",
+    "src": "node_modules/primeicons/fonts/primeicons.eot"
+  },
+  "node_modules/primeicons/fonts/primeicons.svg": {
+    "file": "assets/primeicons-Dr5RGzOO.svg",
+    "src": "node_modules/primeicons/fonts/primeicons.svg"
+  },
+  "node_modules/primeicons/fonts/primeicons.ttf": {
+    "file": "assets/primeicons-MpK4pl85.ttf",
+    "src": "node_modules/primeicons/fonts/primeicons.ttf"
+  },
+  "node_modules/primeicons/fonts/primeicons.woff": {
+    "file": "assets/primeicons-WjwUDZjB.woff",
+    "src": "node_modules/primeicons/fonts/primeicons.woff"
+  },
+  "node_modules/primeicons/fonts/primeicons.woff2": {
+    "file": "assets/primeicons-C6QP2o4f.woff2",
+    "src": "node_modules/primeicons/fonts/primeicons.woff2"
+  }
+}

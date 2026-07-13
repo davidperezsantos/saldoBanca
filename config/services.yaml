@@ -1,0 +1,55 @@
+# yaml-language-server: $schema=../vendor/symfony/dependency-injection/Loader/schema/services.schema.json
+
+# This file is the entry point to configure your own services.
+# Files in the packages/ subdirectory configure your dependencies.
+# See also https://symfony.com/doc/current/service_container/import.html
+
+# Put parameters here that don't need to change on each machine where the app is deployed
+# https://symfony.com/doc/current/best_practices.html#use-parameters-for-application-configuration
+parameters:
+    app.api_key: '%env(API_KEY_SISTEMA_EXTERNO)%'
+    app.encryption_key: '%env(ENCRYPTION_KEY)%'
+
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+
+    App\:
+        resource: '../src/'
+        exclude:
+            - '../src/DependencyInjection/'
+            - '../src/Entity/'
+            - '../src/Kernel.php'
+
+    App\Controller\:
+        resource: '../src/Controller/'
+        tags: ['controller.service_arguments']
+
+    App\Repository\:
+        resource: '../src/Repository/'
+        tags: ['doctrine.repository_service']
+
+    App\Services\:
+        resource: '../src/Services/'
+        tags: ['service_subscriber']
+
+    App\Services\PermissionService:
+        arguments:
+            $projectDir: '%kernel.project_dir%'
+
+
+
+    App\EventSubscriber\:
+        resource: '../src/EventSubscriber/'
+        tags: ['kernel.event_subscriber']
+
+    App\EventListener\:
+        resource: '../src/EventListener/'
+        tags: ['kernel.event_listener']
+
+    App\Security\:
+        resource: '../src/Security/'
+
+    App\DTO\:
+        resource: '../src/DTO/'

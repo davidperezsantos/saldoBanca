@@ -1,0 +1,12 @@
+{% extends 'admin_layout.html.twig' %}
+
+{% block title %}Recargas - SaldoGrin{% endblock %}
+
+{% block body %}
+<div id="vue-app"></div>
+{% endblock %}
+
+{% block javascripts %}
+{{ parent() }}
+{{ vite_entry_script_tags('recharges') }}
+{% endblock %}

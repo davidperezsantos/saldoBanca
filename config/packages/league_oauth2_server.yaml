@@ -1,0 +1,28 @@
+league_oauth2_server:
+    authorization_server:
+        enable_password_grant: true
+        enable_refresh_token_grant: true
+        private_key: '%env(resolve:OAUTH_PRIVATE_KEY)%'
+        private_key_passphrase: '%env(resolve:OAUTH_PASSPHRASE)%'
+        encryption_key: '%env(resolve:OAUTH_ENCRYPTION_KEY)%'
+        access_token_ttl: 'PT1H'
+        refresh_token_ttl: 'P1D'
+        auth_code_ttl: 'PT10M'
+    resource_server:
+        public_key: '%env(resolve:OAUTH_PUBLIC_KEY)%'
+    scopes:
+        available: ['api', 'profile', 'accounts', 'recharges', 'transfers', 'invoices', 'authorized']
+        default: ['api']
+    persistence:
+        doctrine:
+            # Name of the entity manager that you wish to use for managing clients and tokens.
+            entity_manager: default
+
+    client:
+        # Set a custom client class. Must be a League\Bundle\OAuth2ServerBundle\Model\Client
+        classname: League\Bundle\OAuth2ServerBundle\Model\Client
+
+when@test:
+    league_oauth2_server:
+        persistence:
+            in_memory: null

@@ -1,0 +1,16 @@
+{% extends 'admin_layout.html.twig' %}
+
+{% block title %}{{ 'roles.title'|trans }} - SaldoGrin{% endblock %}
+
+{% block body %}
+<script>
+    window.__ROLES_DATA__ = {{ rolesData|json_encode|raw }};
+    window.__PERM_LABELS__ = {{ permLabels|json_encode|raw }};
+</script>
+<div id="vue-app"></div>
+{% endblock %}
+
+{% block javascripts %}
+{{ parent() }}
+{{ vite_entry_script_tags('roles') }}
+{% endblock %}

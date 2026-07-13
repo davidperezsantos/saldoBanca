@@ -1,0 +1,15 @@
+{% extends 'admin_layout.html.twig' %}
+
+{% block title %}Panel de Control - SaldoGrin{% endblock %}
+
+{% block body %}
+<script>
+    window.__STATS__ = {{ stats|json_encode|raw }};
+</script>
+<div id="vue-app"></div>
+{% endblock %}
+
+{% block javascripts %}
+{{ parent() }}
+{{ vite_entry_script_tags('dashboard') }}
+{% endblock %}

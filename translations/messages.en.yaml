@@ -1,0 +1,209 @@
+menu:
+    dashboard: Dashboard
+    administration: Administration
+    payment_gateway: Payment Gateway
+    configure_gateways: Configure Gateways
+    oauth_clients: OAuth2 Clients
+    clients: Clients
+    list_clients: Client List
+    authorized_users: Authorized Users
+    businesses: Businesses
+    list_businesses: Business List
+    authorized_businesses: Business Authorized
+    exchange: Exchange Rates
+    exchange_providers: Exchange Providers
+    exchange_history: Exchange History
+    recharges: Recharges
+    transfers: Transfers
+    invoices: Invoices
+    history: History
+    users: Users
+    roles: Roles & Permissions
+    logout: Logout
+
+common:
+    save: Save
+    cancel: Cancel
+    delete: Delete
+    edit: Edit
+    view: View
+    create: Create
+    search: Search
+    filter: Filter
+    export: Export
+    loading: Loading...
+    no_data: No data available
+    confirm_delete: Are you sure you want to delete?
+    success: Success
+    error: Error
+    actions: Actions
+    details: Details
+    status: Status
+    back: Back
+    select_all: Select All
+    clear: Clear
+    active: Active
+    inactive: Inactive
+    system: System
+    read_only: Read Only
+    notes: Notes
+    reason: Reason
+    name: Name
+    code: Code
+    available: Available
+    all: All
+    close: Close
+    confirm: Confirm
+
+dashboard:
+    title: Dashboard
+    total_accounts: Total Accounts
+    active_accounts: Active Accounts
+    active: active
+    total_recharges: Total Recharges
+    total_transfers: Total Transfers
+    pending_invoices: Pending Invoices
+    recent_recharges: Recent Recharges
+    recent_transfers: Recent Transfers
+    quick_actions: Quick Actions
+
+accounts:
+    title: Clients
+    business_title: Businesses
+    create: New Client
+    edit: Edit Client
+    account_number: Account Number
+    business_name: Business Name
+    account_type: Account Type
+    document_type: Document Type
+    document_number: Document Number
+    email: Email
+    phone: Phone
+    currency: Currency
+    credit_limit: Credit Limit
+    available_balance: Available Balance
+
+authorized:
+    title: Authorized Users
+    create: New Authorized
+    select_account: Select an account...
+    select_account_first: Select an account to view authorized users
+    user_name: User Name
+    user_email: User Email
+    max_amount: Max Amount
+    daily_limit: Daily Limit
+    monthly_limit: Monthly Limit
+    verify: Verify
+
+recharges:
+    title: Recharges
+    create: New Recharge
+    amount: Amount
+    currency: Currency
+    type: Type
+    reference: Reference
+    payment_method: Payment Method
+    account_provider: Account Provider
+    client: Client
+    who_recharges: Who Recharges
+    currency_to_recharge: Currency to Recharge
+    amount_to_recharge: Amount to Recharge
+    final_amount: Final Amount
+    pending: Pending
+    completed: Completed
+    failed: Failed
+    cancelled: Cancelled
+    manual: Manual
+    external: External
+    admin: Admin
+    support: Support
+    transfer: Transfer
+    authorized_by: Authorized By
+
+transfers:
+    title: Transfers
+    create: New Transfer
+    origin_account: Origin Account
+    destination_account: Destination Account
+    fee: Fee
+    pending: Pending
+    completed: Completed
+    failed: Failed
+    cancelled: Cancelled
+    amount: Amount
+    status: Status
+
+invoices:
+    title: Invoices
+    create: New Invoice
+    invoice_number: Invoice Number
+    invoice_date: Invoice Date
+    due_date: Due Date
+    total_amount: Total Amount
+    tax_amount: Tax Amount
+    payment_date: Payment Date
+    pending: Pending
+    paid: Paid
+    cancelled: Cancelled
+    refunded: Refunded
+    amount: Amount
+    status: Status
+
+history:
+    title: Transaction History
+    movement_type: Movement Type
+    credit: Credit
+    debit: Debit
+    balance_before: Balance Before
+    balance_after: Balance After
+    date: Date
+    description: Description
+    amount: Amount
+
+users:
+    title: Users
+    create: New User
+    username: Username
+    email: Email
+    name: Name
+    role: Role
+    status: Status
+    last_login: Last Login
+    search: Search users...
+    never: Never
+    activate: Activate
+    deactivate: Deactivate
+
+roles:
+    title: Roles & Permissions
+    create: New Role
+    name: Internal Name
+    label: Label
+    permissions: Permissions
+    internal_name: Internal Name
+    visible_name: Visible Name
+
+payment_gateways:
+    title: Payment Gateways
+    create: New Gateway
+    name: Name
+    code: Code
+    auth_type: Auth Type
+    token: Token
+    api_key: API Key
+    user_pass: Username & Password
+    is_default: Default
+    notes: Notes
+
+exchange_providers:
+    title: Exchange Rate Providers
+    create: New Provider
+    api_url: API URL
+
+exchange_rates:
+    title: Exchange Rate History
+    fetch_rates: Fetch Rates
+    pair: Currency Pair
+    rate: Rate
+    inverse_rate: Inverse Rate
+    fetched_at: Fetched At
