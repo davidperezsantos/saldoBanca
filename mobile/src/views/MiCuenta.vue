@@ -47,7 +47,7 @@ onMounted(loadAccountAndBalance);
       <p class="label">Saldo disponible</p>
       <p class="balance">{{ balance?.available ?? '0.00' }} {{ balance?.currency ?? '' }}</p>
     </template>
-    <p v-else>Todavía no tenés una cuenta asociada.</p>
+    <p v-else>Tu usuario no tiene una cuenta de cliente asociada a esta app.</p>
     <button @click="handleLogout">Cerrar sesión</button>
   </div>
 </template>
@@ -67,7 +67,9 @@ onMounted(loadAccountAndBalance);
 h1 {
     margin: 0 0 0.5rem;
     font-size: 1.4rem;
+    font-weight: 700;
     text-align: center;
+    color: var(--primary-dark);
 }
 .label {
     margin: 0.5rem 0 0;
@@ -81,8 +83,8 @@ h1 {
 .balance {
     margin: 0;
     font-size: 1.8rem;
-    font-weight: 600;
-    color: #1a56db;
+    font-weight: 700;
+    color: var(--primary-dark);
 }
 button {
     margin-top: 1.5rem;
@@ -90,6 +92,7 @@ button {
     border: 1px solid #d0d3d8;
     border-radius: 8px;
     background: white;
+    color: #333;
     font-size: 1rem;
     cursor: pointer;
 }

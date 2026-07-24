@@ -29,9 +29,13 @@ function onLoggedOut() {
 </template>
 
 <style>
+:root {
+    --primary: #34d399;
+    --primary-dark: #14b8a6;
+}
 body {
     margin: 0;
-    font-family: system-ui, sans-serif;
+    font-family: 'Inter', system-ui, sans-serif;
     background: #f4f5f7;
 }
 .app {

@@ -4,6 +4,7 @@ namespace App\Controller\Api;
 
 use App\Http\ApiResponse;
 use App\Repository\UserRepository;
+use App\Security\ScopeAuthorizationService;
 use App\Services\LoggableSystemActor;
 use App\Services\PasswordResetService;
 use App\Services\RoleSeedService;
@@ -34,6 +35,7 @@ class AuthController extends AbstractController
         private RateLimiterFactory $passwordResetLimiter,
         private LoggableSystemActor $systemActor,
         private RoleSeedService $roleSeedService,
+        private ScopeAuthorizationService $scopeAuthorizationService,
     ) {
     }
 
@@ -70,6 +72,12 @@ class AuthController extends AbstractController
                         new OA\Property(property: 'name', type: 'string', example: 'Juan Pérez'),
                         new OA\Property(property: 'roles', type: 'array', items: new OA\Items(type: 'string', example: 'ROLE_USER')),
                     ], type: 'object'),
+                    new OA\Property(
+                        property: 'scopes',
+                        description: 'Scopes habilitados para este usuario sobre su propia cuenta (según los permisos de su Role) — para que la app sepa qué mostrar.',
+                        type: 'array',
+                        items: new OA\Items(type: 'string', example: 'balance.read')
+                    ),
                 ], type: 'object'),
             ]
         )
@@ -125,6 +133,7 @@ class AuthController extends AbstractController
                 'name' => $user->getName(),
                 'roles' => $user->getRoles(),
             ],
+            'scopes' => $this->scopeAuthorizationService->getScopesForUser($user),
         ], 'Login successful');
     }
 

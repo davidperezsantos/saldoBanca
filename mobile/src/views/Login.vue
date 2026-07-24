@@ -56,7 +56,9 @@ async function handleSubmit() {
 h1 {
     margin: 0 0 0.5rem;
     font-size: 1.4rem;
+    font-weight: 700;
     text-align: center;
+    color: var(--primary-dark);
 }
 label {
     display: flex;
@@ -70,14 +72,20 @@ input {
     border: 1px solid #d0d3d8;
     border-radius: 8px;
     font-size: 1rem;
+    transition: border-color 150ms;
+}
+input:focus {
+    outline: none;
+    border-color: var(--primary-dark);
 }
 button {
     padding: 0.7rem;
     border: none;
     border-radius: 8px;
-    background: #1a56db;
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
     color: white;
     font-size: 1rem;
+    font-weight: 600;
     cursor: pointer;
 }
 button:disabled {
