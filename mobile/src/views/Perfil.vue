@@ -1,10 +1,12 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { Browser } from '@capacitor/browser';
 import { apiClient } from '../api/client';
 import { useUser, initials } from '../composables/user';
 import { useAccount, loadAccount } from '../composables/account';
 import { hasScope } from '../api/permissions';
+import { checkForUpdate } from '../api/updateCheck';
 
 const { t } = useI18n();
 const emit = defineEmits(['logged-out']);
@@ -13,9 +15,30 @@ const { user } = useUser();
 const { account } = useAccount();
 const canSeeAuthorized = ref(false);
 
+const updateInfo = ref(null);
+const updateError = ref('');
+
 onMounted(async () => {
     canSeeAuthorized.value = await hasScope('authorized.read');
+    try {
+        const info = await checkForUpdate();
+        if (info.available) {
+            updateInfo.value = info;
+        }
+    } catch (e) {
+        // Silencioso a propósito: si falla el chequeo (sin internet, GitHub caído, etc.) la
+        // pantalla sigue funcionando normal, simplemente no muestra el aviso de actualización.
+    }
 });
+
+async function openUpdate() {
+    updateError.value = '';
+    try {
+        await Browser.open({ url: updateInfo.value.downloadUrl });
+    } catch (e) {
+        updateError.value = t('profile.updateError');
+    }
+}
 
 const pinLoading = ref(false);
 const pinMessage = ref('');
@@ -85,6 +108,12 @@ function handleLogout() {
       <p class="name">{{ user?.name || user?.username }}</p>
       <p class="detail">@{{ user?.username }}</p>
       <p class="detail">{{ user?.email }}</p>
+    </div>
+
+    <div v-if="updateInfo" class="card update-card">
+      <p class="update-title">{{ t('profile.updateAvailable', { version: updateInfo.latestVersion }) }}</p>
+      <p v-if="updateError" class="error">{{ updateError }}</p>
+      <button class="update-btn" @click="openUpdate">{{ t('profile.updateButton') }}</button>
     </div>
 
     <div class="card">
@@ -170,6 +199,25 @@ function handleLogout() {
     margin: 0;
     font-size: 0.85rem;
     color: #888;
+}
+.update-card {
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    color: white;
+}
+.update-title {
+    margin: 0 0 0.7rem;
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+.update-btn {
+    width: 100%;
+    padding: 0.6rem;
+    border: none;
+    border-radius: 8px;
+    background: white;
+    color: var(--primary-dark);
+    font-weight: 700;
+    cursor: pointer;
 }
 h2 {
     margin: 0 0 0.9rem;

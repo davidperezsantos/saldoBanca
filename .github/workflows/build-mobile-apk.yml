@@ -7,6 +7,9 @@ on:
       - '.github/workflows/build-mobile-apk.yml'
   workflow_dispatch: {}
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -40,13 +43,44 @@ jobs:
 
       - uses: android-actions/setup-android@v3
 
-      - name: Build debug APK
+      - name: Decode signing keystore
         working-directory: mobile/android
+        run: echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > release.keystore.p12
+
+      - name: Build release APK
+        working-directory: mobile/android
+        env:
+          ANDROID_KEYSTORE_PATH: release.keystore.p12
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug
+          ./gradlew assembleRelease \
+            -PappVersionCode=${{ github.run_number }} \
+            -PappVersionName=1.0.${{ github.run_number }}
+
+      - name: Rename APK for the release asset
+        run: cp android/app/build/outputs/apk/release/app-release.apk saldogrin.apk
+
+      - name: Write version.json (la app lo lee para saber si hay una versión más nueva)
+        run: |
+          cat > version.json <<EOF
+          {"versionCode": ${{ github.run_number }}, "versionName": "1.0.${{ github.run_number }}"}
+          EOF
 
       - uses: actions/upload-artifact@v4
         with:
-          name: saldobanca-debug-apk
-          path: mobile/android/app/build/outputs/apk/debug/app-debug.apk
+          name: saldogrin-apk
+          path: mobile/saldogrin.apk
+
+      - name: Publish/update the "latest" release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: mobile-latest
+          name: SaldoGrin v1.0.${{ github.run_number }}
+          body: Build automático desde ${{ github.sha }}.
+          prerelease: false
+          files: |
+            mobile/saldogrin.apk
+            mobile/version.json

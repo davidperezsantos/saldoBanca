@@ -121,6 +121,9 @@ export default {
     },
     profile: {
         ariaLabel: 'Mi perfil',
+        updateAvailable: 'Hay una versión nueva disponible ({version})',
+        updateButton: 'Actualizar',
+        updateError: 'No se pudo abrir la descarga',
         pinTitle: 'Código de verificación',
         pinHint: 'Generá un código nuevo — te llega por WhatsApp, igual que cuando pagás una factura.',
         pinButton: 'Crear PIN nuevo',

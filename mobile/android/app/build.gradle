@@ -7,8 +7,12 @@ android {
         applicationId "com.saldobanca.mobile"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        // El workflow de CI pasa -PappVersionCode/-PappVersionName (ver
+        // .github/workflows/build-mobile-apk.yml) para que cada build tenga una versión única y
+        // creciente — necesario para que la app pueda detectar "hay una actualización nueva"
+        // comparando contra el release de GitHub. Localmente (sin esas properties) usa 1/"1.0".
+        versionCode project.hasProperty('appVersionCode') ? project.property('appVersionCode').toInteger() : 1
+        versionName project.hasProperty('appVersionName') ? project.property('appVersionName') : "1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -16,10 +20,28 @@ android {
             ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    // Firma estable entre builds (misma keystore siempre) — sin esto, Android trata cada build
+    // como una app distinta y no deja "actualizar" sobre la instalada, pide desinstalar primero.
+    // Solo se activa si el workflow de CI puso las variables de entorno (secrets); en una build
+    // local sin esas variables, release queda sin signingConfig propio (Gradle no la firma, no
+    // hace falta para probar localmente).
+    if (System.getenv('ANDROID_KEYSTORE_PATH') != null) {
+        signingConfigs {
+            release {
+                storeFile file(System.getenv('ANDROID_KEYSTORE_PATH'))
+                storePassword System.getenv('ANDROID_KEYSTORE_PASSWORD')
+                keyAlias System.getenv('ANDROID_KEY_ALIAS')
+                keyPassword System.getenv('ANDROID_KEY_PASSWORD')
+            }
+        }
+    }
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            if (System.getenv('ANDROID_KEYSTORE_PATH') != null) {
+                signingConfig signingConfigs.release
+            }
         }
     }
 }

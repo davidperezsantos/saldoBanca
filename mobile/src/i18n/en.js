@@ -121,6 +121,9 @@ export default {
     },
     profile: {
         ariaLabel: 'My profile',
+        updateAvailable: 'A new version is available ({version})',
+        updateButton: 'Update',
+        updateError: 'Could not open the download',
         pinTitle: 'Verification code',
         pinHint: "Generate a new code — it arrives via WhatsApp, same as when you pay an invoice.",
         pinButton: 'Create new PIN',
