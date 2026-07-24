@@ -85,7 +85,7 @@ onMounted(load);
     <ul v-else class="list">
       <li v-for="item in authorized" :key="item.id" class="item">
         <div class="item-row">
-          <div>
+          <div class="item-info">
             <p class="item-title">{{ item.userName }}</p>
             <p class="item-sub">
               Máx. por operación {{ item.maxAmount ?? '—' }} · Diario {{ item.dailyLimit ?? '—' }} · Mensual {{ item.monthlyLimit ?? '—' }}
@@ -185,6 +185,10 @@ h1 {
     justify-content: space-between;
     gap: 0.5rem;
 }
+.item-info {
+    flex: 1;
+    min-width: 0;
+}
 .item-title {
     margin: 0;
     font-weight: 600;
@@ -193,6 +197,7 @@ h1 {
     margin: 0.15rem 0 0;
     font-size: 0.75rem;
     color: #888;
+    overflow-wrap: break-word;
 }
 .badge {
     flex-shrink: 0;
