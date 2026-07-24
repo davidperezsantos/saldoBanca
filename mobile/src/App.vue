@@ -3,24 +3,31 @@ import { ref, onMounted } from 'vue';
 import { getToken } from './api/client';
 import { logout } from './api/auth';
 import { resetAccount } from './composables/account';
+import { useUser, loadUser, resetUser, initials } from './composables/user';
 import Login from './views/Login.vue';
 import BottomNav from './components/BottomNav.vue';
 
+const { user } = useUser();
 const checkingSession = ref(true);
 const isLoggedIn = ref(false);
 
 onMounted(async () => {
     isLoggedIn.value = !!(await getToken());
+    if (isLoggedIn.value) {
+        await loadUser();
+    }
     checkingSession.value = false;
 });
 
-function onLoggedIn() {
+async function onLoggedIn() {
     isLoggedIn.value = true;
+    await loadUser(true);
 }
 
 async function handleLogout() {
     await logout();
     resetAccount();
+    resetUser();
     isLoggedIn.value = false;
 }
 </script>
@@ -29,16 +36,13 @@ async function handleLogout() {
   <div v-if="!checkingSession" class="app">
     <template v-if="isLoggedIn">
       <header class="topbar">
-        <span class="brand">SaldoBanca</span>
-        <button class="logout" @click="handleLogout" aria-label="Cerrar sesión">
-          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-            <path d="M16 17l5-5-5-5M21 12H9" />
-          </svg>
-        </button>
+        <span class="brand">SaldoGrin</span>
+        <router-link to="/perfil" class="avatar" aria-label="Mi perfil">
+          {{ initials(user?.name) }}
+        </router-link>
       </header>
       <main class="shell">
-        <router-view />
+        <router-view @logged-out="handleLogout" />
       </main>
       <BottomNav />
     </template>
@@ -84,14 +88,19 @@ body {
     font-size: 1.05rem;
     letter-spacing: 0.01em;
 }
-.logout {
-    background: rgba(255, 255, 255, 0.15);
-    border: none;
-    border-radius: 8px;
+.avatar {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.2);
+    border: 1.5px solid rgba(255, 255, 255, 0.6);
     color: white;
-    padding: 0.4rem;
     display: flex;
-    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.8rem;
+    text-decoration: none;
 }
 .shell {
     max-width: 480px;

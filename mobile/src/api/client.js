@@ -3,6 +3,7 @@ import { Preferences } from '@capacitor/preferences';
 
 const TOKEN_KEY = 'saldobanca_token';
 const SCOPES_KEY = 'saldobanca_scopes';
+const USER_KEY = 'saldobanca_user';
 
 export const apiClient = axios.create({
     baseURL: import.meta.env.VITE_API_URL,
@@ -22,6 +23,7 @@ apiClient.interceptors.response.use(
         if (error.response?.status === 401) {
             await clearToken();
             await clearScopes();
+            await clearUser();
         }
         return Promise.reject(error);
     }
@@ -51,4 +53,17 @@ export async function setScopes(scopes) {
 
 export async function clearScopes() {
     await Preferences.remove({ key: SCOPES_KEY });
+}
+
+export async function getUser() {
+    const { value } = await Preferences.get({ key: USER_KEY });
+    return value ? JSON.parse(value) : null;
+}
+
+export async function setUser(user) {
+    await Preferences.set({ key: USER_KEY, value: JSON.stringify(user ?? null) });
+}
+
+export async function clearUser() {
+    await Preferences.remove({ key: USER_KEY });
 }

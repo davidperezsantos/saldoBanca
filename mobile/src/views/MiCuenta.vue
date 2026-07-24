@@ -2,11 +2,17 @@
 import { ref, onMounted } from 'vue';
 import { apiClient } from '../api/client';
 import { useAccount, loadAccount } from '../composables/account';
+import { useUser } from '../composables/user';
 
 const { account } = useAccount();
+const { user } = useUser();
 const loading = ref(true);
 const error = ref('');
 const balance = ref(null);
+
+function firstName(name) {
+    return name ? name.trim().split(/\s+/)[0] : '';
+}
 
 async function load() {
     loading.value = true;
@@ -28,21 +34,36 @@ onMounted(load);
 </script>
 
 <template>
-  <div class="card">
-    <h1>Mi cuenta</h1>
-    <p v-if="loading">Cargando...</p>
-    <p v-else-if="error" class="error">{{ error }}</p>
-    <template v-else-if="account">
-      <p class="label">Cuenta</p>
-      <p class="value">{{ account.accountNumber }}</p>
-      <p class="label">Saldo disponible</p>
-      <p class="balance">{{ balance?.available ?? '0.00' }} {{ balance?.currency ?? '' }}</p>
-    </template>
-    <p v-else>Tu usuario no tiene una cuenta de cliente asociada a esta app.</p>
+  <div class="stack">
+    <p class="greeting">Hola, {{ firstName(user?.name) || user?.username }}</p>
+
+    <div class="card">
+      <h1>Mi cuenta</h1>
+      <p v-if="loading">Cargando...</p>
+      <p v-else-if="error" class="error">{{ error }}</p>
+      <template v-else-if="account">
+        <p class="label">Cuenta</p>
+        <p class="value">{{ account.accountNumber }}</p>
+        <p class="label">Saldo disponible</p>
+        <p class="balance">{{ balance?.available ?? '0.00' }} {{ balance?.currency ?? '' }}</p>
+      </template>
+      <p v-else>Tu usuario no tiene una cuenta de cliente asociada a esta app.</p>
+    </div>
   </div>
 </template>
 
 <style scoped>
+.stack {
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+}
+.greeting {
+    margin: 0 0.2rem;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #333;
+}
 .card {
     background: white;
     border-radius: 12px;

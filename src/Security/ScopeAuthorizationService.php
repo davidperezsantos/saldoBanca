@@ -116,19 +116,25 @@ class ScopeAuthorizationService
      */
     public function getScopesForUser(User $user): array
     {
-        $role = $user->getRole();
-        if ($role === null) {
-            return [];
-        }
-
         $scopes = [];
-        foreach ($role->getFlatPermissions() as $permission) {
-            foreach (self::PERMISSION_TO_SCOPES[$permission] ?? [] as $scope) {
-                $scopes[$scope] = true;
+        $role = $user->getRole();
+        if ($role !== null) {
+            foreach ($role->getFlatPermissions() as $permission) {
+                foreach (self::PERMISSION_TO_SCOPES[$permission] ?? [] as $scope) {
+                    $scopes[$scope] = true;
+                }
             }
         }
 
-        return array_values(array_intersect(array_keys($scopes), self::SELF_SERVICE_SAFE_SCOPES));
+        $granted = array_intersect(array_keys($scopes), self::SELF_SERVICE_SAFE_SCOPES);
+        // Cambiar la propia contraseña no depende del Role ni expone datos de otra cuenta — se
+        // otorga siempre a cualquier usuario final, no solo a "cliente". No es un scope OAuth2
+        // real (no está en config/packages/league_oauth2_server.yaml a propósito): un cliente
+        // OAuth2 de negocio nunca puede tenerlo, porque el servidor OAuth2 solo emite scopes de
+        // ese catálogo.
+        $granted[] = 'profile.update';
+
+        return array_values(array_unique($granted));
     }
 
     /**
