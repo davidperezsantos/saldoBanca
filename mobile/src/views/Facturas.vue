@@ -105,7 +105,7 @@ onMounted(load);
         <li v-for="i in invoices" :key="i.id" class="item">
           <div class="item-row">
             <div class="item-info">
-              <p class="item-title">{{ i.invoiceNumber }}</p>
+              <p class="item-title">{{ t('invoices.number', { number: i.invoiceNumber }) }}</p>
               <p v-if="i.businessAccountName" class="item-sub">{{ t('invoices.issuedBy', { name: i.businessAccountName }) }}</p>
               <p class="item-sub">{{ t('invoices.issuedOn', { date: i.invoiceDate }) }}</p>
               <p v-if="i.dueDate" class="item-sub">{{ t('invoices.dueOn', { date: i.dueDate }) }}</p>

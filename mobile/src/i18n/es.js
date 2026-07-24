@@ -80,6 +80,7 @@ export default {
         title: 'Mis facturas',
         error: 'No se pudieron cargar las facturas',
         empty: 'No tenés facturas.',
+        number: 'Factura N.º {number}',
         issuedBy: 'Emitida por {name}',
         issuedOn: 'Emitida el {date}',
         dueOn: 'Vence el {date}',

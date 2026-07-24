@@ -80,6 +80,7 @@ export default {
         title: 'My invoices',
         error: 'Could not load your invoices',
         empty: "You don't have any invoices.",
+        number: 'Invoice No. {number}',
         issuedBy: 'Issued by {name}',
         issuedOn: 'Issued on {date}',
         dueOn: 'Due on {date}',
