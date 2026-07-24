@@ -190,6 +190,9 @@ class AccountController extends BaseController
             if (!$account) {
                 return $this->error('Account not found', 404);
             }
+            if (!$this->scopeAuthorizationService->selfServiceOwnsAccount($account)) {
+                return $this->error('No podés solicitar un PIN para esta cuenta', 403);
+            }
             $this->accountService->requestPin($account);
             return $this->success(null, 'Código enviado');
         } catch (\Exception $e) {

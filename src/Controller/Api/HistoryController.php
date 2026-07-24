@@ -4,6 +4,7 @@ namespace App\Controller\Api;
 
 use App\Controller\BaseController;
 use App\Security\Attribute\RequireScope;
+use App\Security\ScopeAuthorizationService;
 use App\Services\Balance\BalanceService;
 use OpenApi\Attributes as OA;
 use Symfony\Component\HttpFoundation\Request;
@@ -15,6 +16,7 @@ class HistoryController extends BaseController
 {
     public function __construct(
         private BalanceService $balanceService,
+        private ScopeAuthorizationService $scopeAuthorizationService,
     ) {
     }
 
@@ -63,6 +65,10 @@ class HistoryController extends BaseController
             $accountId = $request->query->get('accountId');
             if (!$accountId) {
                 return $this->error('accountId is required', 400);
+            }
+            $selfServiceUser = $this->scopeAuthorizationService->getSelfServiceUser();
+            if ($selfServiceUser !== null && (string) $selfServiceUser->getAccount()?->getId() !== $accountId) {
+                return $this->error('No podés consultar el historial de esta cuenta', 403);
             }
             $filters = [];
             if ($request->query->has('movementType')) {

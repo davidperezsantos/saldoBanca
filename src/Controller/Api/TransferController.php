@@ -5,6 +5,7 @@ namespace App\Controller\Api;
 use App\Controller\BaseController;
 use App\DTO\Balance\TransferDto;
 use App\Security\Attribute\RequireScope;
+use App\Security\ScopeAuthorizationService;
 use App\Services\Balance\TransferService;
 use OpenApi\Attributes as OA;
 use Symfony\Component\HttpFoundation\Request;
@@ -16,6 +17,7 @@ class TransferController extends BaseController
 {
     public function __construct(
         private TransferService $transferService,
+        private ScopeAuthorizationService $scopeAuthorizationService,
     ) {
     }
 
@@ -61,7 +63,12 @@ class TransferController extends BaseController
             'limit' => $request->query->getInt('limit', 20),
             'offset' => $request->query->getInt('offset', 0),
         ];
-        if ($request->query->has('accountId')) {
+        $selfServiceUser = $this->scopeAuthorizationService->getSelfServiceUser();
+        if ($selfServiceUser !== null) {
+            // Usuario final (JWT): solo las propias (como origen o destino, TransferService ya
+            // cubre ambas) — ignora cualquier accountId que venga en la query.
+            $filters['accountId'] = (string) $selfServiceUser->getAccount()?->getId();
+        } elseif ($request->query->has('accountId')) {
             $filters['accountId'] = $request->query->get('accountId');
         }
         if ($request->query->has('status')) {
@@ -134,6 +141,13 @@ class TransferController extends BaseController
     {
         try {
             $data = $this->getJsonContent($request);
+            $selfServiceUser = $this->scopeAuthorizationService->getSelfServiceUser();
+            if ($selfServiceUser !== null) {
+                // Usuario final (JWT): la cuenta origen siempre es la propia, sin importar qué
+                // mande el payload — si no, cualquiera podría transferir fondos de otra cuenta
+                // (IDOR) con solo cambiar el originAccountId.
+                $data['originAccountId'] = (string) $selfServiceUser->getAccount()?->getId();
+            }
             $dto = TransferDto::fromJson($data);
             $transfer = $this->transferService->createTransfer($dto);
             return $this->success([
@@ -187,6 +201,11 @@ class TransferController extends BaseController
         try {
             $transfer = $this->transferService->getTransfer($id);
             if (!$transfer) {
+                return $this->error('Transfer not found', 404);
+            }
+            if (!$this->scopeAuthorizationService->selfServiceOwnsAccount($transfer->getOriginAccount())
+                && !$this->scopeAuthorizationService->selfServiceOwnsAccount($transfer->getDestinationAccount())
+            ) {
                 return $this->error('Transfer not found', 404);
             }
             return $this->success([
@@ -291,6 +310,12 @@ class TransferController extends BaseController
     public function limits(string $accountId): JsonResponse
     {
         try {
+            $selfServiceUser = $this->scopeAuthorizationService->getSelfServiceUser();
+            if ($selfServiceUser !== null
+                && (string) $selfServiceUser->getAccount()?->getId() !== $accountId
+            ) {
+                return $this->error('No podés consultar los límites de esta cuenta', 403);
+            }
             $limits = $this->transferService->getTransferLimits($accountId);
             return $this->success($limits);
         } catch (\Exception $e) {

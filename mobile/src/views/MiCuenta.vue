@@ -1,22 +1,18 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { apiClient } from '../api/client';
-import { logout } from '../api/auth';
+import { useAccount, loadAccount } from '../composables/account';
 
-const emit = defineEmits(['logged-out']);
-
+const { account } = useAccount();
 const loading = ref(true);
 const error = ref('');
-const account = ref(null);
 const balance = ref(null);
 
-async function loadAccountAndBalance() {
+async function load() {
     loading.value = true;
     error.value = '';
     try {
-        const { data: accountsRes } = await apiClient.get('/accounts');
-        account.value = accountsRes.data[0] ?? null;
-
+        await loadAccount();
         if (account.value) {
             const { data: balanceRes } = await apiClient.get(`/balance/${account.value.id}`);
             balance.value = balanceRes.data;
@@ -28,12 +24,7 @@ async function loadAccountAndBalance() {
     }
 }
 
-async function handleLogout() {
-    await logout();
-    emit('logged-out');
-}
-
-onMounted(loadAccountAndBalance);
+onMounted(load);
 </script>
 
 <template>
@@ -48,7 +39,6 @@ onMounted(loadAccountAndBalance);
       <p class="balance">{{ balance?.available ?? '0.00' }} {{ balance?.currency ?? '' }}</p>
     </template>
     <p v-else>Tu usuario no tiene una cuenta de cliente asociada a esta app.</p>
-    <button @click="handleLogout">Cerrar sesión</button>
   </div>
 </template>
 
@@ -56,9 +46,7 @@ onMounted(loadAccountAndBalance);
 .card {
     background: white;
     border-radius: 12px;
-    padding: 2rem;
-    width: 100%;
-    max-width: 360px;
+    padding: 1.5rem;
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
     display: flex;
     flex-direction: column;
@@ -85,16 +73,6 @@ h1 {
     font-size: 1.8rem;
     font-weight: 700;
     color: var(--primary-dark);
-}
-button {
-    margin-top: 1.5rem;
-    padding: 0.7rem;
-    border: 1px solid #d0d3d8;
-    border-radius: 8px;
-    background: white;
-    color: #333;
-    font-size: 1rem;
-    cursor: pointer;
 }
 .error {
     color: #c0392b;

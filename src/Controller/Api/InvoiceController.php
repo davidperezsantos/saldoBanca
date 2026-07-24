@@ -5,6 +5,7 @@ namespace App\Controller\Api;
 use App\Controller\BaseController;
 use App\DTO\Balance\InvoiceDto;
 use App\Security\Attribute\RequireScope;
+use App\Security\ScopeAuthorizationService;
 use App\Services\Balance\InvoiceService;
 use OpenApi\Attributes as OA;
 use Symfony\Component\HttpFoundation\Request;
@@ -16,6 +17,7 @@ class InvoiceController extends BaseController
 {
     public function __construct(
         private InvoiceService $invoiceService,
+        private ScopeAuthorizationService $scopeAuthorizationService,
     ) {
     }
 
@@ -63,7 +65,10 @@ class InvoiceController extends BaseController
             'limit' => $request->query->getInt('limit', 20),
             'offset' => $request->query->getInt('offset', 0),
         ];
-        if ($request->query->has('accountId')) {
+        $selfServiceUser = $this->scopeAuthorizationService->getSelfServiceUser();
+        if ($selfServiceUser !== null) {
+            $filters['accountId'] = (string) $selfServiceUser->getAccount()?->getId();
+        } elseif ($request->query->has('accountId')) {
             $filters['accountId'] = $request->query->get('accountId');
         }
         if ($request->query->has('status')) {
@@ -173,6 +178,10 @@ class InvoiceController extends BaseController
             if (!$accountId) {
                 return $this->error('accountId is required (invoiceNumber is not globally unique)', 422);
             }
+            $selfServiceUser = $this->scopeAuthorizationService->getSelfServiceUser();
+            if ($selfServiceUser !== null && (string) $selfServiceUser->getAccount()?->getId() !== $accountId) {
+                return $this->error('No podés consultar facturas de esta cuenta', 403);
+            }
 
             $invoice = $this->invoiceService->findByAccountAndNumber($accountId, $number);
             if (!$invoice) {
@@ -214,6 +223,14 @@ class InvoiceController extends BaseController
         }
 
         try {
+            $existing = $this->invoiceService->getInvoice($id);
+            if (!$existing) {
+                return $this->error('Invoice not found', 404);
+            }
+            if (!$this->scopeAuthorizationService->selfServiceOwnsAccount($existing->getAccount())) {
+                return $this->error('Invoice not found', 404);
+            }
+
             $invoice = $this->invoiceService->processPayment($id, $pinCode);
             return $this->success([
                 'id' => $invoice->getId(),
@@ -301,6 +318,12 @@ class InvoiceController extends BaseController
     public function summary(string $accountId): JsonResponse
     {
         try {
+            $selfServiceUser = $this->scopeAuthorizationService->getSelfServiceUser();
+            if ($selfServiceUser !== null
+                && (string) $selfServiceUser->getAccount()?->getId() !== $accountId
+            ) {
+                return $this->error('No podés consultar el resumen de esta cuenta', 403);
+            }
             $summary = $this->invoiceService->getInvoiceSummary($accountId);
             return $this->success($summary);
         } catch (\Exception $e) {

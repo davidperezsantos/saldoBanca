@@ -2,6 +2,7 @@
 
 namespace App\Security;
 
+use App\Entity\Balance\Account;
 use App\Entity\User;
 use League\Bundle\OAuth2ServerBundle\Security\Authentication\Token\OAuth2Token;
 use Symfony\Bundle\SecurityBundle\Security;
@@ -30,7 +31,11 @@ class ScopeAuthorizationService
         'clients:create' => ['accounts.create'],
         'clients:edit' => ['accounts.update'],
         'clients:status' => ['accounts.status'],
-        'clients:balance' => ['balance.read'],
+        // No existe un permiso "clients:request_pin" separado en permissions.yaml todavía —
+        // poder ver el saldo de la propia cuenta ya implica poder pedirle un PIN (que además
+        // queda acotado a la cuenta propia por AccountController::requestPin() y rate-limited).
+        // Si algún día se necesita separar ambos permisos, agregar la acción al catálogo.
+        'clients:balance' => ['balance.read', 'accounts.request_pin'],
         'recharges:view' => ['recharges.read'],
         'recharges:details' => ['recharges.read'],
         'recharges:create' => ['recharges.create'],
@@ -67,7 +72,17 @@ class ScopeAuthorizationService
      *
      * @var list<string>
      */
-    private const SELF_SERVICE_SAFE_SCOPES = ['accounts.read', 'balance.read'];
+    private const SELF_SERVICE_SAFE_SCOPES = [
+        'accounts.read',
+        'accounts.request_pin',
+        'balance.read',
+        'recharges.read',
+        'transfers.read',
+        'transfers.create',
+        'invoices.read',
+        'invoices.pay',
+        'history.read',
+    ];
 
     public function __construct(
         private Security $security,
@@ -129,6 +144,23 @@ class ScopeAuthorizationService
         $user = $this->security->getUser();
 
         return $user instanceof User ? $user : null;
+    }
+
+    /**
+     * true si quien llama NO es self-service (cliente OAuth2 de negocio, sin restricción de
+     * ownership acá) o si $account es justamente la cuenta propia del self-service user. Falso
+     * en cualquier otro caso — usarlo para bloquear con 403 antes de devolver/mutar un recurso
+     * de otra cuenta.
+     */
+    public function selfServiceOwnsAccount(?Account $account): bool
+    {
+        $user = $this->getSelfServiceUser();
+        if ($user === null) {
+            return true;
+        }
+
+        return $account !== null
+            && (string) $user->getAccount()?->getId() === (string) $account->getId();
     }
 
     public function hasScope(string $scope): bool

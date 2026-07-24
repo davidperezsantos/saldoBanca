@@ -4,6 +4,7 @@ namespace App\Controller\Api;
 
 use App\Controller\BaseController;
 use App\Security\Attribute\RequireScope;
+use App\Security\ScopeAuthorizationService;
 use App\Services\Balance\RechargeService;
 use OpenApi\Attributes as OA;
 use Symfony\Component\HttpFoundation\Request;
@@ -15,6 +16,7 @@ class RechargeController extends BaseController
 {
     public function __construct(
         private RechargeService $rechargeService,
+        private ScopeAuthorizationService $scopeAuthorizationService,
     ) {
     }
 
@@ -61,7 +63,12 @@ class RechargeController extends BaseController
             'limit' => $request->query->getInt('limit', 20),
             'offset' => $request->query->getInt('offset', 0),
         ];
-        if ($request->query->has('accountId')) {
+        $selfServiceUser = $this->scopeAuthorizationService->getSelfServiceUser();
+        if ($selfServiceUser !== null) {
+            // Usuario final (JWT): solo sus propias recargas, ignorando cualquier accountId que
+            // venga en la query — mismo criterio que AccountController::list().
+            $filters['accountId'] = (string) $selfServiceUser->getAccount()?->getId();
+        } elseif ($request->query->has('accountId')) {
             $filters['accountId'] = $request->query->get('accountId');
         }
         if ($request->query->has('status')) {
@@ -182,6 +189,9 @@ class RechargeController extends BaseController
         try {
             $recharge = $this->rechargeService->getRecharge($id);
             if (!$recharge) {
+                return $this->error('Recharge not found', 404);
+            }
+            if (!$this->scopeAuthorizationService->selfServiceOwnsAccount($recharge->getAccount())) {
                 return $this->error('Recharge not found', 404);
             }
             return $this->success([
