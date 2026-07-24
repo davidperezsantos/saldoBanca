@@ -10,7 +10,7 @@ lexik_jwt_authentication:
     token_extractors:
         authorization_header:
             enabled: true
-            prefix: 'Bearer '
+            prefix: 'Bearer'
             name: Authorization
         query_parameter:
             enabled: true
