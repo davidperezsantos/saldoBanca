@@ -1,11 +1,38 @@
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 import { apiClient } from '../api/client';
 import { useUser, initials } from '../composables/user';
+import { useAccount, loadAccount } from '../composables/account';
+import { hasScope } from '../api/permissions';
 
 const emit = defineEmits(['logged-out']);
 
 const { user } = useUser();
+const { account } = useAccount();
+const canSeeAuthorized = ref(false);
+
+onMounted(async () => {
+    canSeeAuthorized.value = await hasScope('authorized.read');
+});
+
+const pinLoading = ref(false);
+const pinMessage = ref('');
+const pinError = ref('');
+
+async function requestNewPin() {
+    pinError.value = '';
+    pinMessage.value = '';
+    pinLoading.value = true;
+    try {
+        await loadAccount();
+        await apiClient.post(`/accounts/${account.value.id}/request-pin`);
+        pinMessage.value = 'Listo, te enviamos un código nuevo por WhatsApp.';
+    } catch (e) {
+        pinError.value = e.response?.data?.message || 'No se pudo generar el código';
+    } finally {
+        pinLoading.value = false;
+    }
+}
 
 const currentPassword = ref('');
 const newPassword = ref('');
@@ -57,6 +84,23 @@ function handleLogout() {
       <p class="detail">@{{ user?.username }}</p>
       <p class="detail">{{ user?.email }}</p>
     </div>
+
+    <div class="card">
+      <h2>Código de verificación</h2>
+      <p class="hint">
+        Generá un código nuevo — te llega por WhatsApp, igual que cuando pagás una factura.
+      </p>
+      <p v-if="pinError" class="error">{{ pinError }}</p>
+      <p v-if="pinMessage" class="success">{{ pinMessage }}</p>
+      <button class="secondary-btn" :disabled="pinLoading" @click="requestNewPin">
+        {{ pinLoading ? 'Enviando...' : 'Crear PIN nuevo' }}
+      </button>
+    </div>
+
+    <router-link v-if="canSeeAuthorized" to="/autorizados" class="card link-card">
+      <span>Usuarios autorizados</span>
+      <span class="chevron">›</span>
+    </router-link>
 
     <div class="card">
       <h2>Cambiar contraseña</h2>
@@ -131,6 +175,24 @@ h2 {
     margin: 0 0 0.9rem;
     font-size: 1.05rem;
 }
+.hint {
+    margin: -0.4rem 0 0.9rem;
+    font-size: 0.82rem;
+    color: #777;
+}
+.secondary-btn {
+    width: 100%;
+    padding: 0.65rem;
+    border: 1px solid #d0d3d8;
+    border-radius: 8px;
+    background: white;
+    color: var(--primary-dark);
+    font-weight: 600;
+    cursor: pointer;
+}
+.secondary-btn:disabled {
+    opacity: 0.6;
+}
 .form {
     display: flex;
     flex-direction: column;
@@ -170,6 +232,19 @@ h2 {
     color: #0f9d58;
     font-size: 0.85rem;
     margin: 0;
+}
+.link-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    color: #333;
+    font-weight: 600;
+    font-size: 0.95rem;
+    text-decoration: none;
+}
+.chevron {
+    color: #aaa;
+    font-size: 1.2rem;
 }
 .logout-btn {
     padding: 0.7rem;

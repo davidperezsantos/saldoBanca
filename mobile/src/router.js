@@ -5,6 +5,7 @@ import Transferencias from './views/Transferencias.vue';
 import Facturas from './views/Facturas.vue';
 import Historial from './views/Historial.vue';
 import Perfil from './views/Perfil.vue';
+import Autorizados from './views/Autorizados.vue';
 
 export const router = createRouter({
     history: createWebHashHistory(),
@@ -15,5 +16,6 @@ export const router = createRouter({
         { path: '/facturas', name: 'facturas', component: Facturas },
         { path: '/historial', name: 'historial', component: Historial },
         { path: '/perfil', name: 'perfil', component: Perfil },
+        { path: '/autorizados', name: 'autorizados', component: Autorizados },
     ],
 });

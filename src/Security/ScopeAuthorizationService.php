@@ -75,6 +75,9 @@ class ScopeAuthorizationService
     private const SELF_SERVICE_SAFE_SCOPES = [
         'accounts.read',
         'accounts.request_pin',
+        'authorized.read',
+        'authorized.update',
+        'authorized.status',
         'balance.read',
         'recharges.read',
         'transfers.read',

@@ -5,6 +5,7 @@ namespace App\Controller\Api;
 use App\Controller\BaseController;
 use App\DTO\Balance\AuthorizedDto;
 use App\Security\Attribute\RequireScope;
+use App\Security\ScopeAuthorizationService;
 use App\Services\Balance\AuthorizedService;
 use OpenApi\Attributes as OA;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -18,6 +19,7 @@ class AuthorizedController extends BaseController
 {
     public function __construct(
         private AuthorizedService $authorizedService,
+        private ScopeAuthorizationService $scopeAuthorizationService,
         #[Autowire(service: 'limiter.pin_request')]
         private RateLimiterFactory $pinRequestLimiter,
     ) {
@@ -62,7 +64,11 @@ class AuthorizedController extends BaseController
     public function list(Request $request): JsonResponse
     {
         $filters = [];
-        if ($request->query->has('accountId')) {
+        $selfServiceUser = $this->scopeAuthorizationService->getSelfServiceUser();
+        if ($selfServiceUser !== null) {
+            // Usuario final (JWT): solo los autorizados de SU propia cuenta.
+            $filters['accountId'] = (string) $selfServiceUser->getAccount()?->getId();
+        } elseif ($request->query->has('accountId')) {
             $filters['accountId'] = $request->query->get('accountId');
         }
         if ($request->query->has('status')) {
@@ -173,6 +179,14 @@ class AuthorizedController extends BaseController
     public function update(string $id, Request $request): JsonResponse
     {
         try {
+            $existing = $this->authorizedService->getAuthorized($id);
+            if (!$existing) {
+                return $this->error('Authorized user not found', 404);
+            }
+            if (!$this->scopeAuthorizationService->selfServiceOwnsAccount($existing->getAccount())) {
+                return $this->error('Authorized user not found', 404);
+            }
+
             $data = $this->getJsonContent($request);
             $dto = AuthorizedDto::fromJson($data);
             $authorized = $this->authorizedService->updateAuthorized($id, $dto);
@@ -208,6 +222,14 @@ class AuthorizedController extends BaseController
     public function toggleStatus(string $id, Request $request): JsonResponse
     {
         try {
+            $existing = $this->authorizedService->getAuthorized($id);
+            if (!$existing) {
+                return $this->error('Authorized user not found', 404);
+            }
+            if (!$this->scopeAuthorizationService->selfServiceOwnsAccount($existing->getAccount())) {
+                return $this->error('Authorized user not found', 404);
+            }
+
             $data = $this->getJsonContent($request);
             $status = $data['status'] ?? 'active';
             $authorized = $this->authorizedService->changeStatus($id, $status);
@@ -367,6 +389,9 @@ class AuthorizedController extends BaseController
     {
         $authorized = $this->authorizedService->getAuthorized($id);
         if (!$authorized) {
+            return $this->error('Authorized user not found', 404);
+        }
+        if (!$this->scopeAuthorizationService->selfServiceOwnsAccount($authorized->getAccount())) {
             return $this->error('Authorized user not found', 404);
         }
 
