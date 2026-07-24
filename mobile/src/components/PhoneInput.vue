@@ -37,7 +37,7 @@ watch([dial, local], () => {
 <template>
   <div class="phone-input">
     <select v-model="dial" class="dial-select">
-      <option v-for="c in countries" :key="c.code" :value="c.dial">{{ flagEmoji(c.code) }} {{ c.name }} ({{ c.dial }})</option>
+      <option v-for="c in countries" :key="c.code" :value="c.dial">{{ flagEmoji(c.code) }} {{ c.dial }}</option>
     </select>
     <input v-model="local" type="tel" class="local-input" placeholder="Número" />
   </div>
