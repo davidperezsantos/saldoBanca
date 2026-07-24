@@ -5,6 +5,7 @@ namespace App\Controller\Api;
 use App\Controller\BaseController;
 use App\DTO\Balance\AccountDto;
 use App\Security\Attribute\RequireScope;
+use App\Security\ScopeAuthorizationService;
 use App\Services\Balance\AccountService;
 use OpenApi\Attributes as OA;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -18,6 +19,7 @@ class AccountController extends BaseController
 {
     public function __construct(
         private AccountService $accountService,
+        private ScopeAuthorizationService $scopeAuthorizationService,
         #[Autowire(service: 'limiter.pin_request')]
         private RateLimiterFactory $pinRequestLimiter,
     ) {
@@ -62,21 +64,29 @@ class AccountController extends BaseController
     #[Route('/accounts', name: 'api_account_list', methods: ['GET'])]
     public function list(Request $request): JsonResponse
     {
-        $filters = [
-            'limit' => $request->query->getInt('limit', 20),
-            'offset' => $request->query->getInt('offset', 0),
-        ];
-        if ($request->query->has('accountType')) {
-            $filters['accountType'] = $request->query->get('accountType');
-        }
-        if ($request->query->has('status')) {
-            $filters['status'] = $request->query->get('status');
-        }
-        if ($request->query->has('search')) {
-            $filters['search'] = $request->query->get('search');
-        }
+        // Usuario final (JWT): solo puede ver SU propia cuenta, no el listado completo que sí
+        // ve un cliente OAuth2 de negocio — ver ScopeAuthorizationService::getSelfServiceUser().
+        $selfServiceUser = $this->scopeAuthorizationService->getSelfServiceUser();
+        if ($selfServiceUser !== null) {
+            $account = $selfServiceUser->getAccount();
+            $accounts = $account !== null ? [$account] : [];
+        } else {
+            $filters = [
+                'limit' => $request->query->getInt('limit', 20),
+                'offset' => $request->query->getInt('offset', 0),
+            ];
+            if ($request->query->has('accountType')) {
+                $filters['accountType'] = $request->query->get('accountType');
+            }
+            if ($request->query->has('status')) {
+                $filters['status'] = $request->query->get('status');
+            }
+            if ($request->query->has('search')) {
+                $filters['search'] = $request->query->get('search');
+            }
 
-        $accounts = $this->accountService->listAccounts($filters);
+            $accounts = $this->accountService->listAccounts($filters);
+        }
         $data = array_map(fn($a) => [
             'id' => $a->getId(),
             'accountNumber' => $a->getAccountNumber(),

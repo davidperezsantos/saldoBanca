@@ -2,6 +2,7 @@
 
 namespace App\Security;
 
+use App\Entity\User;
 use League\Bundle\OAuth2ServerBundle\Security\Authentication\Token\OAuth2Token;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\Security\Core\Exception\AccessDeniedException;
@@ -13,6 +14,17 @@ use Symfony\Component\Security\Core\Exception\AccessDeniedException;
  */
 class ScopeAuthorizationService
 {
+    /**
+     * Scopes que un usuario final autenticado por JWT (no un cliente OAuth2 de negocio) tiene
+     * habilitados sobre SU PROPIO recurso — el filtro de ownership vive en cada controlador
+     * (ver AccountController::list, BalanceController::show/check), esto solo decide qué
+     * endpoints puede llegar a pisar. Acotado a propósito a lo que la app móvil necesita hoy;
+     * sumar un scope aquí sin el chequeo de ownership correspondiente sería un IDOR.
+     *
+     * @var list<string>
+     */
+    private const SELF_SERVICE_SCOPES = ['accounts.read', 'balance.read'];
+
     public function __construct(
         private Security $security,
     ) {
@@ -24,11 +36,30 @@ class ScopeAuthorizationService
     public function getScopes(): array
     {
         $token = $this->security->getToken();
-        if (!$token instanceof OAuth2Token) {
-            return [];
+        if ($token instanceof OAuth2Token) {
+            return $token->getScopes();
         }
 
-        return $token->getScopes();
+        if ($this->getSelfServiceUser() !== null) {
+            return self::SELF_SERVICE_SCOPES;
+        }
+
+        return [];
+    }
+
+    /**
+     * Usuario final autenticado por JWT (Lexik) contra el firewall /api — null si quien llama
+     * es un cliente OAuth2 de negocio (OAuth2Token) o si no hay usuario autenticado.
+     */
+    public function getSelfServiceUser(): ?User
+    {
+        if ($this->security->getToken() instanceof OAuth2Token) {
+            return null;
+        }
+
+        $user = $this->security->getUser();
+
+        return $user instanceof User ? $user : null;
     }
 
     public function hasScope(string $scope): bool
