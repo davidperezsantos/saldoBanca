@@ -4,6 +4,9 @@ import { apiClient } from '../api/client';
 import { useAccount, loadAccount } from '../composables/account';
 import { useUser } from '../composables/user';
 import Sparkline from '../components/Sparkline.vue';
+import Barcode from '../components/Barcode.vue';
+
+const BARCODE_PREFIX = 'SG-';
 
 const { account } = useAccount();
 const { user } = useUser();
@@ -28,6 +31,10 @@ function categoryLabel(referenceType) {
 }
 
 const sparklineValues = computed(() => movements.value.map((m) => parseFloat(m.balanceAfter)));
+
+const barcodeValue = computed(() =>
+    account.value ? BARCODE_PREFIX + account.value.accountNumber : ''
+);
 
 const balanceDelta = computed(() => {
     if (!movements.value.length || !balance.value) return null;
@@ -119,6 +126,11 @@ onMounted(load);
           <span class="bar-amount">{{ item.total.toFixed(2) }}</span>
         </li>
       </ul>
+    </div>
+
+    <div v-if="account" class="card barcode-card">
+      <Barcode :value="barcodeValue" />
+      <p class="barcode-number">{{ account.accountNumber }}</p>
     </div>
   </div>
 </template>
@@ -232,5 +244,16 @@ h2 {
     font-weight: 700;
     color: #333;
     white-space: nowrap;
+}
+.barcode-card {
+    align-items: center;
+    padding: 1.25rem 1.5rem;
+}
+.barcode-number {
+    margin: 0.4rem 0 0;
+    font-size: 0.85rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    color: #555;
 }
 </style>
