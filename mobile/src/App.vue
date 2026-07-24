@@ -1,5 +1,6 @@
 <script setup>
 import { ref, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
 import { getToken } from './api/client';
 import { logout } from './api/auth';
 import { resetAccount } from './composables/account';
@@ -7,6 +8,7 @@ import { useUser, loadUser, resetUser, initials } from './composables/user';
 import Login from './views/Login.vue';
 import BottomNav from './components/BottomNav.vue';
 
+const router = useRouter();
 const { user } = useUser();
 const checkingSession = ref(true);
 const isLoggedIn = ref(false);
@@ -22,6 +24,7 @@ onMounted(async () => {
 async function onLoggedIn() {
     isLoggedIn.value = true;
     await loadUser(true);
+    router.push('/');
 }
 
 async function handleLogout() {
@@ -29,6 +32,7 @@ async function handleLogout() {
     resetAccount();
     resetUser();
     isLoggedIn.value = false;
+    router.push('/');
 }
 </script>
 
@@ -36,6 +40,10 @@ async function handleLogout() {
     <div v-if="!checkingSession" class="app">
         <template v-if="isLoggedIn">
             <header class="topbar">
+                <div class="logo">
+                    <div class="icon">G</div>
+                    <h1>SaldoGrin</h1>
+                </div>
                 <router-link to="/perfil" class="avatar" aria-label="Mi perfil">
                     {{ initials(user?.name) }}
                 </router-link>
