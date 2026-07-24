@@ -7,6 +7,17 @@ const props = defineProps({
 });
 const emit = defineEmits(['update:modelValue']);
 
+// Un <select> nativo no puede renderizar un <img> por opción como hace el Select de PrimeVue
+// en el panel web (flagcdn.com) — un <option> solo acepta texto. La bandera como emoji Unicode
+// (par de "Regional Indicator Symbols" a partir del código ISO de 2 letras) sí se puede meter
+// como texto, y Android la dibuja con su fuente de emoji nativa sin depender de una imagen
+// externa — mejor además para uso sin conexión.
+function flagEmoji(isoCode) {
+    return isoCode
+        .toUpperCase()
+        .replace(/./g, (char) => String.fromCodePoint(char.charCodeAt(0) + 127397));
+}
+
 function splitPhone(value) {
     const raw = value || '';
     const country = countries.find((c) => raw.startsWith(c.dial)) ?? countries.find((c) => c.code === 'cu');
@@ -26,7 +37,7 @@ watch([dial, local], () => {
 <template>
   <div class="phone-input">
     <select v-model="dial" class="dial-select">
-      <option v-for="c in countries" :key="c.code" :value="c.dial">{{ c.name }} ({{ c.dial }})</option>
+      <option v-for="c in countries" :key="c.code" :value="c.dial">{{ flagEmoji(c.code) }} {{ c.name }} ({{ c.dial }})</option>
     </select>
     <input v-model="local" type="tel" class="local-input" placeholder="Número" />
   </div>
