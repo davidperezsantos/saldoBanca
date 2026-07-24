@@ -3,6 +3,7 @@ import { ref, onMounted, reactive } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { apiClient } from '../api/client';
 import PhoneInput from '../components/PhoneInput.vue';
+import documentTypes from '../data/documentTypes.json';
 
 const { t } = useI18n();
 const loading = ref(true);
@@ -12,6 +13,50 @@ const editingId = ref(null);
 const forms = reactive({});
 const saving = ref(false);
 const saveError = ref('');
+
+const showCreateForm = ref(false);
+const createSaving = ref(false);
+const createError = ref('');
+const createForm = ref({
+    userName: '',
+    userEmail: '',
+    userPhone: '',
+    documentType: documentTypes[0].value,
+    documentNumber: '',
+});
+
+function resetCreateForm() {
+    createForm.value = {
+        userName: '',
+        userEmail: '',
+        userPhone: '',
+        documentType: documentTypes[0].value,
+        documentNumber: '',
+    };
+}
+
+function toggleCreateForm() {
+    showCreateForm.value = !showCreateForm.value;
+    createError.value = '';
+    if (!showCreateForm.value) {
+        resetCreateForm();
+    }
+}
+
+async function submitCreate() {
+    createError.value = '';
+    createSaving.value = true;
+    try {
+        await apiClient.post('/authorized', createForm.value);
+        showCreateForm.value = false;
+        resetCreateForm();
+        await load();
+    } catch (e) {
+        createError.value = e.response?.data?.message || t('authorized.saveError');
+    } finally {
+        createSaving.value = false;
+    }
+}
 
 async function load() {
     loading.value = true;
@@ -81,8 +126,42 @@ onMounted(load);
 
 <template>
   <div class="card">
-    <h1>{{ t('authorized.title') }}</h1>
+    <div class="header-row">
+      <h1>{{ t('authorized.title') }}</h1>
+      <button class="link-btn" @click="toggleCreateForm">
+        {{ showCreateForm ? t('common.cancel') : t('authorized.newBtn') }}
+      </button>
+    </div>
     <p class="hint">{{ t('authorized.hint') }}</p>
+
+    <form v-if="showCreateForm" class="edit-form create-form" @submit.prevent="submitCreate">
+      <label>
+        {{ t('authorized.nameLabel') }}
+        <input v-model="createForm.userName" type="text" required />
+      </label>
+      <label>
+        {{ t('authorized.emailLabel') }}
+        <input v-model="createForm.userEmail" type="email" required />
+      </label>
+      <label>
+        {{ t('authorized.phoneLabel') }}
+        <PhoneInput v-model="createForm.userPhone" />
+      </label>
+      <label>
+        {{ t('authorized.docTypeLabel') }}
+        <select v-model="createForm.documentType">
+          <option v-for="d in documentTypes" :key="d.value" :value="d.value">{{ d.label }}</option>
+        </select>
+      </label>
+      <label>
+        {{ t('authorized.docNumberLabel') }}
+        <input v-model="createForm.documentNumber" type="text" required />
+      </label>
+      <p v-if="createError" class="error">{{ createError }}</p>
+      <button type="submit" :disabled="createSaving">
+        {{ createSaving ? t('common.saving') : t('common.save') }}
+      </button>
+    </form>
 
     <p v-if="loading">{{ t('common.loading') }}</p>
     <p v-else-if="error" class="error">{{ error }}</p>
@@ -168,10 +247,52 @@ h1 {
     font-weight: 700;
     color: var(--primary-dark);
 }
+.header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+.link-btn {
+    background: none;
+    border: none;
+    color: var(--primary-dark);
+    font-weight: 600;
+    font-size: 0.85rem;
+    cursor: pointer;
+    padding: 0;
+    white-space: nowrap;
+}
 .hint {
     margin: 0 0 0.5rem;
     font-size: 0.82rem;
     color: #777;
+}
+.create-form {
+    padding: 0.9rem;
+    background: #f7f9fa;
+    border-radius: 8px;
+    margin-bottom: 0.5rem;
+}
+.create-form select {
+    padding: 0.5rem 0.6rem;
+    border: 1px solid #d0d3d8;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    background: white;
+    color: #333;
+}
+.create-form button[type='submit'] {
+    padding: 0.6rem;
+    border: none;
+    border-radius: 8px;
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    color: white;
+    font-weight: 600;
+    cursor: pointer;
+}
+.create-form button:disabled {
+    opacity: 0.6;
 }
 .empty {
     color: #888;

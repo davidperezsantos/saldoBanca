@@ -76,6 +76,7 @@ class ScopeAuthorizationService
         'accounts.read',
         'accounts.request_pin',
         'authorized.read',
+        'authorized.create',
         'authorized.update',
         'authorized.status',
         'balance.read',

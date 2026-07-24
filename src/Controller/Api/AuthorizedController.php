@@ -140,6 +140,14 @@ class AuthorizedController extends BaseController
     {
         try {
             $data = $this->getJsonContent($request);
+            $selfServiceUser = $this->scopeAuthorizationService->getSelfServiceUser();
+            if ($selfServiceUser !== null) {
+                // Usuario final (JWT): el autorizado siempre se crea sobre SU PROPIA cuenta, sin
+                // importar qué accountId venga en el payload — si no, podría autorizar gente
+                // sobre la cuenta de otro cliente (IDOR), igual que ya se resolvió en
+                // TransferController::create().
+                $data['accountId'] = (string) $selfServiceUser->getAccount()?->getId();
+            }
             $dto = AuthorizedDto::fromJson($data);
             $authorized = $this->authorizedService->createAuthorized($dto);
             return $this->success([
