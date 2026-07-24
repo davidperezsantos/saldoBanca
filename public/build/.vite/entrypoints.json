@@ -3,219 +3,287 @@
   "entryPoints": {
     "app": {
       "css": [
-        "/build/assets/app-8LKO4CX0.css"
+        "/build/assets/app-CKPp9MSb.css"
       ],
       "dynamic": [],
       "js": [
-        "/build/assets/app-BBLZXeb6.js"
+        "/build/assets/app-BYOaoGdU.js"
       ],
       "legacy": false,
       "preload": []
     },
     "dashboard": {
       "css": [
-        "/build/assets/app-8LKO4CX0.css"
+        "/build/assets/app-CKPp9MSb.css"
       ],
       "dynamic": [],
       "js": [
-        "/build/assets/dashboard-CvAe1BZ3.js"
+        "/build/assets/dashboard-R_5jUAmz.js"
       ],
       "legacy": false,
       "preload": [
-        "/build/assets/app-BBLZXeb6.js",
-        "/build/assets/index-COib4WjZ.js",
-        "/build/assets/index-QgKcpBOH.js"
+        "/build/assets/app-BYOaoGdU.js"
       ]
     },
     "users": {
       "css": [
-        "/build/assets/app-8LKO4CX0.css"
+        "/build/assets/app-CKPp9MSb.css"
       ],
       "dynamic": [],
       "js": [
-        "/build/assets/users-e-mWqJaA.js"
+        "/build/assets/users-BgouTGsY.js"
       ],
       "legacy": false,
       "preload": [
-        "/build/assets/app-BBLZXeb6.js",
-        "/build/assets/index-COib4WjZ.js",
-        "/build/assets/index-QgKcpBOH.js"
+        "/build/assets/app-BYOaoGdU.js",
+        "/build/assets/index-BV0KoOcH.js",
+        "/build/assets/index-BSJrh1Q0.js",
+        "/build/assets/common-Bw8FMCS-.js"
       ]
     },
     "roles": {
       "css": [
-        "/build/assets/app-8LKO4CX0.css"
+        "/build/assets/app-CKPp9MSb.css"
       ],
       "dynamic": [],
       "js": [
-        "/build/assets/roles-DB5D7cjR.js"
+        "/build/assets/roles-wbpzle89.js"
       ],
       "legacy": false,
       "preload": [
-        "/build/assets/app-BBLZXeb6.js",
-        "/build/assets/index-QgKcpBOH.js"
+        "/build/assets/app-BYOaoGdU.js",
+        "/build/assets/common-Bw8FMCS-.js"
       ]
     },
     "accounts": {
       "css": [
-        "/build/assets/app-8LKO4CX0.css"
+        "/build/assets/app-CKPp9MSb.css"
       ],
       "dynamic": [],
       "js": [
-        "/build/assets/accounts-B7OErq5B.js"
+        "/build/assets/accounts-YlrGv2nH.js"
       ],
       "legacy": false,
       "preload": [
-        "/build/assets/app-BBLZXeb6.js",
-        "/build/assets/index-COib4WjZ.js",
-        "/build/assets/index-QgKcpBOH.js",
-        "/build/assets/index-Bc-3N54Z.js"
+        "/build/assets/app-BYOaoGdU.js",
+        "/build/assets/index-BV0KoOcH.js",
+        "/build/assets/index-BSJrh1Q0.js",
+        "/build/assets/common-Bw8FMCS-.js",
+        "/build/assets/type_document-5uEDDZZV.js"
       ]
     },
     "recharges": {
       "css": [
-        "/build/assets/app-8LKO4CX0.css"
+        "/build/assets/app-CKPp9MSb.css"
       ],
       "dynamic": [],
       "js": [
-        "/build/assets/recharges-CIS1gCTp.js"
+        "/build/assets/recharges-DkD_hv_8.js"
       ],
       "legacy": false,
       "preload": [
-        "/build/assets/app-BBLZXeb6.js",
-        "/build/assets/index-COib4WjZ.js",
-        "/build/assets/index-QgKcpBOH.js",
-        "/build/assets/index-1AdYi8Qd.js",
-        "/build/assets/index-Bc-3N54Z.js"
+        "/build/assets/app-BYOaoGdU.js",
+        "/build/assets/index-BV0KoOcH.js",
+        "/build/assets/index-BSJrh1Q0.js",
+        "/build/assets/common-Bw8FMCS-.js",
+        "/build/assets/index-I3tMkf9R.js"
       ]
     },
     "transfers": {
       "css": [
-        "/build/assets/app-8LKO4CX0.css"
+        "/build/assets/app-CKPp9MSb.css"
       ],
       "dynamic": [],
       "js": [
-        "/build/assets/transfers-CNL-tVjl.js"
+        "/build/assets/transfers-C_mLkXqR.js"
       ],
       "legacy": false,
       "preload": [
-        "/build/assets/app-BBLZXeb6.js",
-        "/build/assets/index-COib4WjZ.js",
-        "/build/assets/index-QgKcpBOH.js",
-        "/build/assets/index-1AdYi8Qd.js",
-        "/build/assets/index-Bc-3N54Z.js"
+        "/build/assets/app-BYOaoGdU.js",
+        "/build/assets/index-BV0KoOcH.js",
+        "/build/assets/index-BSJrh1Q0.js",
+        "/build/assets/common-Bw8FMCS-.js",
+        "/build/assets/index-I3tMkf9R.js"
       ]
     },
     "authorized": {
       "css": [
-        "/build/assets/app-8LKO4CX0.css"
+        "/build/assets/app-CKPp9MSb.css"
       ],
       "dynamic": [],
       "js": [
-        "/build/assets/authorized-CepVE4IF.js"
+        "/build/assets/authorized-BxuQScaf.js"
       ],
       "legacy": false,
       "preload": [
-        "/build/assets/app-BBLZXeb6.js",
-        "/build/assets/index-COib4WjZ.js",
-        "/build/assets/index-QgKcpBOH.js",
-        "/build/assets/index-Bc-3N54Z.js"
+        "/build/assets/app-BYOaoGdU.js",
+        "/build/assets/index-BV0KoOcH.js",
+        "/build/assets/index-BSJrh1Q0.js",
+        "/build/assets/common-Bw8FMCS-.js",
+        "/build/assets/type_document-5uEDDZZV.js"
       ]
     },
     "invoices": {
       "css": [
-        "/build/assets/app-8LKO4CX0.css"
+        "/build/assets/app-CKPp9MSb.css"
       ],
       "dynamic": [],
       "js": [
-        "/build/assets/invoices-cxOfafAN.js"
+        "/build/assets/invoices-Bd68LyNG.js"
       ],
       "legacy": false,
       "preload": [
-        "/build/assets/app-BBLZXeb6.js",
-        "/build/assets/index-COib4WjZ.js",
-        "/build/assets/index-QgKcpBOH.js",
-        "/build/assets/index-1AdYi8Qd.js",
-        "/build/assets/index-Bc-3N54Z.js"
+        "/build/assets/app-BYOaoGdU.js",
+        "/build/assets/index-BV0KoOcH.js",
+        "/build/assets/index-BSJrh1Q0.js",
+        "/build/assets/common-Bw8FMCS-.js",
+        "/build/assets/index-I3tMkf9R.js"
+      ]
+    },
+    "reconciliations": {
+      "css": [
+        "/build/assets/app-CKPp9MSb.css"
+      ],
+      "dynamic": [],
+      "js": [
+        "/build/assets/reconciliations-1Vjfbn6b.js"
+      ],
+      "legacy": false,
+      "preload": [
+        "/build/assets/app-BYOaoGdU.js",
+        "/build/assets/index-BV0KoOcH.js",
+        "/build/assets/index-BSJrh1Q0.js",
+        "/build/assets/common-Bw8FMCS-.js",
+        "/build/assets/index-I3tMkf9R.js"
+      ]
+    },
+    "reconciliation_report": {
+      "css": [
+        "/build/assets/app-CKPp9MSb.css"
+      ],
+      "dynamic": [],
+      "js": [
+        "/build/assets/reconciliation_report-yi1bq15j.js"
+      ],
+      "legacy": false,
+      "preload": [
+        "/build/assets/app-BYOaoGdU.js",
+        "/build/assets/common-Bw8FMCS-.js",
+        "/build/assets/index-BSJrh1Q0.js"
       ]
     },
     "history": {
       "css": [
-        "/build/assets/app-8LKO4CX0.css"
+        "/build/assets/app-CKPp9MSb.css"
       ],
       "dynamic": [],
       "js": [
-        "/build/assets/history-DfcyMiW4.js"
+        "/build/assets/history-4_elP0vR.js"
       ],
       "legacy": false,
       "preload": [
-        "/build/assets/app-BBLZXeb6.js",
-        "/build/assets/index-COib4WjZ.js",
-        "/build/assets/index-QgKcpBOH.js"
+        "/build/assets/app-BYOaoGdU.js",
+        "/build/assets/index-BV0KoOcH.js",
+        "/build/assets/index-BSJrh1Q0.js",
+        "/build/assets/common-Bw8FMCS-.js"
       ]
     },
     "exchange_rates": {
       "css": [
-        "/build/assets/app-8LKO4CX0.css"
+        "/build/assets/app-CKPp9MSb.css"
       ],
       "dynamic": [],
       "js": [
-        "/build/assets/exchange_rates-ku1ps_0Y.js"
+        "/build/assets/exchange_rates-BIox1ySe.js"
       ],
       "legacy": false,
       "preload": [
-        "/build/assets/app-BBLZXeb6.js",
-        "/build/assets/index-COib4WjZ.js",
-        "/build/assets/index-QgKcpBOH.js"
+        "/build/assets/app-BYOaoGdU.js",
+        "/build/assets/index-BV0KoOcH.js",
+        "/build/assets/index-BSJrh1Q0.js",
+        "/build/assets/common-Bw8FMCS-.js"
       ]
     },
     "exchange_providers": {
       "css": [
-        "/build/assets/app-8LKO4CX0.css"
+        "/build/assets/app-CKPp9MSb.css"
       ],
       "dynamic": [],
       "js": [
-        "/build/assets/exchange_providers-vnPKFOCC.js"
+        "/build/assets/exchange_providers-B3e_yLQB.js"
       ],
       "legacy": false,
       "preload": [
-        "/build/assets/app-BBLZXeb6.js",
-        "/build/assets/index-COib4WjZ.js",
-        "/build/assets/index-QgKcpBOH.js",
-        "/build/assets/index-Bc-3N54Z.js"
+        "/build/assets/app-BYOaoGdU.js",
+        "/build/assets/common-Bw8FMCS-.js",
+        "/build/assets/index-BV0KoOcH.js",
+        "/build/assets/index-BSJrh1Q0.js"
       ]
     },
     "payment_gateways": {
       "css": [
-        "/build/assets/app-8LKO4CX0.css"
+        "/build/assets/app-CKPp9MSb.css"
       ],
       "dynamic": [],
       "js": [
-        "/build/assets/payment_gateways-CP-65WUP.js"
+        "/build/assets/payment_gateways-DyQZWUQz.js"
       ],
       "legacy": false,
       "preload": [
-        "/build/assets/app-BBLZXeb6.js",
-        "/build/assets/index-COib4WjZ.js",
-        "/build/assets/index-QgKcpBOH.js",
-        "/build/assets/index-1AdYi8Qd.js",
-        "/build/assets/index-Bc-3N54Z.js"
+        "/build/assets/app-BYOaoGdU.js",
+        "/build/assets/index-BV0KoOcH.js",
+        "/build/assets/index-BSJrh1Q0.js",
+        "/build/assets/common-Bw8FMCS-.js",
+        "/build/assets/index-I3tMkf9R.js"
       ]
     },
     "oauth_clients": {
       "css": [
-        "/build/assets/app-8LKO4CX0.css"
+        "/build/assets/app-CKPp9MSb.css"
       ],
       "dynamic": [],
       "js": [
-        "/build/assets/oauth_clients-cxWTrVj4.js"
+        "/build/assets/oauth_clients-oXEX4hWG.js"
       ],
       "legacy": false,
       "preload": [
-        "/build/assets/app-BBLZXeb6.js",
-        "/build/assets/index-COib4WjZ.js",
-        "/build/assets/index-QgKcpBOH.js",
-        "/build/assets/index-Bc-3N54Z.js"
+        "/build/assets/app-BYOaoGdU.js",
+        "/build/assets/index-BV0KoOcH.js",
+        "/build/assets/index-BSJrh1Q0.js",
+        "/build/assets/common-Bw8FMCS-.js"
+      ]
+    },
+    "currencies": {
+      "css": [
+        "/build/assets/app-CKPp9MSb.css"
+      ],
+      "dynamic": [],
+      "js": [
+        "/build/assets/currencies-CaIm_6oY.js"
+      ],
+      "legacy": false,
+      "preload": [
+        "/build/assets/app-BYOaoGdU.js",
+        "/build/assets/index-BV0KoOcH.js",
+        "/build/assets/index-BSJrh1Q0.js",
+        "/build/assets/common-Bw8FMCS-.js"
+      ]
+    },
+    "commission_settlements": {
+      "css": [
+        "/build/assets/app-CKPp9MSb.css"
+      ],
+      "dynamic": [],
+      "js": [
+        "/build/assets/commission_settlements-bad7Bgb_.js"
+      ],
+      "legacy": false,
+      "preload": [
+        "/build/assets/app-BYOaoGdU.js",
+        "/build/assets/index-BV0KoOcH.js",
+        "/build/assets/index-BSJrh1Q0.js",
+        "/build/assets/common-Bw8FMCS-.js",
+        "/build/assets/index-I3tMkf9R.js"
       ]
     }
   },

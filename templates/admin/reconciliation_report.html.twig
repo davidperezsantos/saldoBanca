@@ -1,0 +1,16 @@
+{% extends 'admin_layout.html.twig' %}
+
+{% block title %}Reporte de Conciliaciones - SaldoGrin{% endblock %}
+
+{% block body %}
+<div id="vue-app"
+    data-accounts-list-url="{{ path('admin_account_index') }}"
+    data-data-url="{{ path('admin_reconciliation_report_data') }}"
+    data-pdf-url="{{ path('admin_reconciliation_report_pdf') }}"
+></div>
+{% endblock %}
+
+{% block javascripts %}
+{{ parent() }}
+{{ vite_entry_script_tags('reconciliation_report') }}
+{% endblock %}

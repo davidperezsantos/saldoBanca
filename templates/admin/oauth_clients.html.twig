@@ -3,7 +3,13 @@
 {% block title %}Clientes OAuth2 - Saldo Banca{% endblock %}
 
 {% block body %}
-<div id="vue-app"></div>
+<div id="vue-app"
+    data-list-url="{{ path('admin_oauth_client_index') }}"
+    data-create-url="{{ path('admin_oauth_client_create') }}"
+    data-detail-url="{{ path('admin_oauth_client_update', {identifier: '__ID__'}) }}"
+    data-status-url="{{ path('admin_oauth_client_status', {identifier: '__ID__'}) }}"
+    data-secret-url="{{ path('admin_oauth_client_secret', {identifier: '__ID__'}) }}"
+></div>
 {% endblock %}
 
 {% block javascripts %}

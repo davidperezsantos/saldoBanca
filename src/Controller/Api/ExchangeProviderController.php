@@ -4,6 +4,7 @@ namespace App\Controller\Api;
 
 use App\Controller\BaseController;
 use App\Entity\Balance\ExchangeRateProvider;
+use App\Security\Attribute\RequireScope;
 use Doctrine\ORM\EntityManagerInterface;
 use OpenApi\Attributes as OA;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -43,6 +44,7 @@ class ExchangeProviderController extends BaseController
             ]
         )
     )]
+    #[RequireScope('exchange_providers.read')]
     #[Route('/exchange-providers', name: 'api_exchange_provider_list', methods: ['GET'])]
     public function list(): JsonResponse
     {

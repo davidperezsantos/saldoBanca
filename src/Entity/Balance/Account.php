@@ -8,11 +8,12 @@ use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 use App\Repository\Balance\AccountRepository;
+use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 
 #[ORM\Entity(repositoryClass: AccountRepository::class)]
 #[ORM\Table(name: 'balance_account')]
 #[ORM\HasLifecycleCallbacks]
-class Account extends BaseEntity
+class Account extends BaseEntity implements PasswordAuthenticatedUserInterface
 {
     #[ORM\Column(length: 20, unique: true)]
     private ?string $accountNumber = null;
@@ -49,6 +50,35 @@ class Account extends BaseEntity
 
     #[ORM\Column(type: 'boolean')]
     private bool $allowAuthorizedUsers = true;
+
+    #[ORM\Column(type: 'decimal', precision: 18, scale: 2, nullable: true)]
+    private ?string $maxPerTransfer = null;
+
+    #[ORM\Column(type: 'decimal', precision: 18, scale: 2, nullable: true)]
+    private ?string $maxDaily = null;
+
+    #[ORM\Column(type: 'decimal', precision: 18, scale: 2, nullable: true)]
+    private ?string $maxMonthly = null;
+
+    #[ORM\Column(type: 'decimal', precision: 5, scale: 2, nullable: true)]
+    private ?string $payoutCurrencyPercent = null;
+
+    #[ORM\Column(type: 'decimal', precision: 5, scale: 2, nullable: true)]
+    private ?string $payoutSecondaryCurrencyPercent = null;
+
+    /**
+     * PIN de un solo uso para que el titular (cliente o negocio) pague sus propias facturas —
+     * mismo mecanismo que AuthorizedUser::pinCode, hasheado, rota tras cada uso.
+     */
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $pinCode = null;
+
+    /**
+     * Cooldown de 60s entre pedidos de código (AccountService::requestPin()) — evita que se
+     * spamee WhatsApp con reenvíos.
+     */
+    #[ORM\Column(type: 'datetime_immutable', nullable: true)]
+    private ?\DateTimeImmutable $pinRequestedAt = null;
 
     #[ORM\OneToOne(targetEntity: User::class, inversedBy: 'account')]
     #[ORM\JoinColumn(name: 'user_id', referencedColumnName: 'id', nullable: true, onDelete: 'SET NULL')]
@@ -205,6 +235,92 @@ class Account extends BaseEntity
     {
         $this->allowAuthorizedUsers = $allowAuthorizedUsers;
         return $this;
+    }
+
+    public function getMaxPerTransfer(): ?string
+    {
+        return $this->maxPerTransfer;
+    }
+
+    public function setMaxPerTransfer(?string $maxPerTransfer): static
+    {
+        $this->maxPerTransfer = $maxPerTransfer;
+        return $this;
+    }
+
+    public function getMaxDaily(): ?string
+    {
+        return $this->maxDaily;
+    }
+
+    public function setMaxDaily(?string $maxDaily): static
+    {
+        $this->maxDaily = $maxDaily;
+        return $this;
+    }
+
+    public function getMaxMonthly(): ?string
+    {
+        return $this->maxMonthly;
+    }
+
+    public function setMaxMonthly(?string $maxMonthly): static
+    {
+        $this->maxMonthly = $maxMonthly;
+        return $this;
+    }
+
+    public function getPayoutCurrencyPercent(): ?string
+    {
+        return $this->payoutCurrencyPercent;
+    }
+
+    public function setPayoutCurrencyPercent(?string $payoutCurrencyPercent): static
+    {
+        $this->payoutCurrencyPercent = $payoutCurrencyPercent;
+        return $this;
+    }
+
+    public function getPayoutSecondaryCurrencyPercent(): ?string
+    {
+        return $this->payoutSecondaryCurrencyPercent;
+    }
+
+    public function setPayoutSecondaryCurrencyPercent(?string $payoutSecondaryCurrencyPercent): static
+    {
+        $this->payoutSecondaryCurrencyPercent = $payoutSecondaryCurrencyPercent;
+        return $this;
+    }
+
+    public function getPinCode(): ?string
+    {
+        return $this->pinCode;
+    }
+
+    public function setPinCode(?string $pinCode): static
+    {
+        $this->pinCode = $pinCode;
+        return $this;
+    }
+
+    public function getPinRequestedAt(): ?\DateTimeImmutable
+    {
+        return $this->pinRequestedAt;
+    }
+
+    public function setPinRequestedAt(?\DateTimeImmutable $pinRequestedAt): static
+    {
+        $this->pinRequestedAt = $pinRequestedAt;
+        return $this;
+    }
+
+    /**
+     * Puente hacia UserPasswordHasherInterface (mismo mecanismo que AuthorizedUser::pinCode) — no
+     * es una contraseña de login, es el hash del PIN vigente para pagar facturas propias.
+     */
+    public function getPassword(): ?string
+    {
+        return $this->pinCode;
     }
 
     public function getUser(): ?User

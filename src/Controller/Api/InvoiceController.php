@@ -4,6 +4,7 @@ namespace App\Controller\Api;
 
 use App\Controller\BaseController;
 use App\DTO\Balance\InvoiceDto;
+use App\Security\Attribute\RequireScope;
 use App\Services\Balance\InvoiceService;
 use OpenApi\Attributes as OA;
 use Symfony\Component\HttpFoundation\Request;
@@ -54,6 +55,7 @@ class InvoiceController extends BaseController
             ]
         )
     )]
+    #[RequireScope('invoices.read')]
     #[Route('/invoices', name: 'api_invoice_list', methods: ['GET'])]
     public function list(Request $request): JsonResponse
     {
@@ -69,23 +71,7 @@ class InvoiceController extends BaseController
         }
 
         $invoices = $this->invoiceService->listInvoices($filters);
-        $data = array_map(fn($i) => [
-            'id' => $i->getId(),
-            'accountId' => $i->getAccount()->getId(),
-            'accountNumber' => $i->getAccount()->getAccountNumber(),
-            'invoiceNumber' => $i->getInvoiceNumber(),
-            'invoiceDate' => $i->getInvoiceDate()->format('Y-m-d'),
-            'dueDate' => $i->getDueDate()?->format('Y-m-d'),
-            'amount' => $i->getAmount(),
-            'taxAmount' => $i->getTaxAmount(),
-            'totalAmount' => $i->getTotalAmount(),
-            'currency' => $i->getCurrency(),
-            'status' => $i->getStatus(),
-            'paymentDate' => $i->getPaymentDate()?->format('Y-m-d'),
-            'customerCode' => $i->getCustomerCode(),
-            'customerName' => $i->getCustomerName(),
-            'createdAt' => $i->getCreatedAt()?->format('Y-m-d H:i:s'),
-        ], $invoices);
+        $data = array_map(fn($i) => $this->invoiceService->serializeForDisplay($i), $invoices);
 
         return $this->success($data);
     }
@@ -129,24 +115,23 @@ class InvoiceController extends BaseController
         )
     )]
     #[OA\Response(response: 400, description: 'Error de validación')]
-    #[OA\Response(response: 401, description: 'Invalid API key')]
+    #[OA\Response(response: 401, description: 'Token OAuth2 inválido o ausente')]
+    #[OA\Response(response: 403, description: 'Scope insuficiente (requiere "invoices")')]
+    #[RequireScope('invoices.create')]
     #[Route('/invoices/payment', name: 'api_invoice_payment', methods: ['POST'])]
     public function create(Request $request): JsonResponse
     {
-        if (!$this->checkApiKey($request)) {
-            return $this->error('Invalid API key', 401);
-        }
         try {
             $data = $this->getJsonContent($request);
             $dto = InvoiceDto::fromJson($data);
             $invoice = $this->invoiceService->createInvoice($dto);
-            return $this->success([
-                'id' => $invoice->getId(),
-                'invoiceNumber' => $invoice->getInvoiceNumber(),
-                'status' => $invoice->getStatus(),
-            ], 'Invoice created', 201);
+            return $this->success(
+                $this->invoiceService->serializeForDisplay($invoice),
+                'Invoice created',
+                201
+            );
         } catch (\Exception $e) {
-            return $this->error($e->getMessage(), 400);
+            return $this->handleException($e);
         }
     }
 
@@ -157,6 +142,7 @@ class InvoiceController extends BaseController
         tags: ['Invoices'],
     )]
     #[OA\Parameter(name: 'number', in: 'path', description: 'Número de factura', required: true, schema: new OA\Schema(type: 'string'))]
+    #[OA\Parameter(name: 'accountId', in: 'query', description: 'ID de la cuenta (obligatorio: el número de factura lo asigna el sistema externo y no es único a nivel global)', required: true, schema: new OA\Schema(type: 'string'))]
     #[OA\Response(
         response: 200,
         description: 'Detalle de la factura',
@@ -172,30 +158,30 @@ class InvoiceController extends BaseController
         )
     )]
     #[OA\Response(response: 404, description: 'Invoice not found')]
+    #[RequireScope('invoices.read')]
     #[Route('/invoices/{number}', name: 'api_invoice_show', methods: ['GET'])]
-    public function show(string $number): JsonResponse
+    public function show(string $number, Request $request): JsonResponse
     {
         try {
-            $invoices = $this->invoiceService->listInvoices(['limit' => 1]);
-            $invoice = null;
-            foreach ($invoices as $inv) {
-                if ($inv->getInvoiceNumber() === $number) {
-                    $invoice = $inv;
-                    break;
-                }
+            // El número de factura lo asigna el sistema externo y no es único a nivel global
+            // (dos cuentas distintas pueden usar el mismo número) — hay que acotar por cuenta,
+            // igual que ya hace InvoiceService::findByAccountAndNumber() en el resto del sistema
+            // (ej. AuthorizedService::spend()). Antes este endpoint buscaba sin acotar por cuenta
+            // (listInvoices(['limit' => 1]) + comparar en PHP), lo que solo encontraba la factura
+            // correcta por coincidencia si era la última creada en todo el sistema.
+            $accountId = $request->query->get('accountId');
+            if (!$accountId) {
+                return $this->error('accountId is required (invoiceNumber is not globally unique)', 422);
             }
+
+            $invoice = $this->invoiceService->findByAccountAndNumber($accountId, $number);
             if (!$invoice) {
                 return $this->error('Invoice not found', 404);
             }
-            return $this->success([
-                'id' => $invoice->getId(),
-                'invoiceNumber' => $invoice->getInvoiceNumber(),
-                'totalAmount' => $invoice->getTotalAmount(),
-                'status' => $invoice->getStatus(),
-                'paymentDate' => $invoice->getPaymentDate()?->format('Y-m-d'),
-            ]);
+
+            return $this->success($this->invoiceService->serializeForDisplay($invoice, detailed: true));
         } catch (\Exception $e) {
-            return $this->error($e->getMessage(), 400);
+            return $this->handleException($e);
         }
     }
 
@@ -206,20 +192,36 @@ class InvoiceController extends BaseController
         tags: ['Invoices'],
     )]
     #[OA\Parameter(name: 'id', in: 'path', description: 'ID de la factura', required: true, schema: new OA\Schema(type: 'string'))]
+    #[OA\RequestBody(
+        required: true,
+        content: new OA\JsonContent(
+            required: ['pinCode'],
+            properties: [
+                new OA\Property(property: 'pinCode', description: 'PIN vigente de la cuenta que paga', type: 'string', example: '4821'),
+            ]
+        )
+    )]
     #[OA\Response(response: 200, description: 'Invoice paid')]
-    #[OA\Response(response: 400, description: 'Error al pagar factura')]
+    #[OA\Response(response: 400, description: 'Error al pagar factura, PIN inválido, etc.')]
+    #[RequireScope('invoices.pay')]
     #[Route('/invoices/{id}/pay', name: 'api_invoice_pay', methods: ['PUT'])]
-    public function pay(string $id): JsonResponse
+    public function pay(string $id, Request $request): JsonResponse
     {
+        $data = $this->getJsonContent($request);
+        $pinCode = $data['pinCode'] ?? null;
+        if (!$pinCode) {
+            return $this->error('pinCode is required', 400);
+        }
+
         try {
-            $invoice = $this->invoiceService->processPayment($id);
+            $invoice = $this->invoiceService->processPayment($id, $pinCode);
             return $this->success([
                 'id' => $invoice->getId(),
                 'status' => $invoice->getStatus(),
                 'paymentDate' => $invoice->getPaymentDate()?->format('Y-m-d'),
             ], 'Invoice paid');
         } catch (\Exception $e) {
-            return $this->error($e->getMessage(), 400);
+            return $this->handleException($e);
         }
     }
 
@@ -232,6 +234,7 @@ class InvoiceController extends BaseController
     #[OA\Parameter(name: 'id', in: 'path', description: 'ID de la factura', required: true, schema: new OA\Schema(type: 'string'))]
     #[OA\Response(response: 200, description: 'Invoice cancelled')]
     #[OA\Response(response: 400, description: 'Error al cancelar factura')]
+    #[RequireScope('invoices.cancel')]
     #[Route('/invoices/{id}/cancel', name: 'api_invoice_cancel', methods: ['PUT'])]
     public function cancel(string $id): JsonResponse
     {
@@ -242,7 +245,7 @@ class InvoiceController extends BaseController
                 'status' => $invoice->getStatus(),
             ], 'Invoice cancelled');
         } catch (\Exception $e) {
-            return $this->error($e->getMessage(), 400);
+            return $this->handleException($e);
         }
     }
 
@@ -255,6 +258,7 @@ class InvoiceController extends BaseController
     #[OA\Parameter(name: 'id', in: 'path', description: 'ID de la factura', required: true, schema: new OA\Schema(type: 'string'))]
     #[OA\Response(response: 200, description: 'Invoice refunded')]
     #[OA\Response(response: 400, description: 'Error al reembolsar factura')]
+    #[RequireScope('invoices.refund')]
     #[Route('/invoices/{id}/refund', name: 'api_invoice_refund', methods: ['PUT'])]
     public function refund(string $id): JsonResponse
     {
@@ -265,7 +269,7 @@ class InvoiceController extends BaseController
                 'status' => $invoice->getStatus(),
             ], 'Invoice refunded');
         } catch (\Exception $e) {
-            return $this->error($e->getMessage(), 400);
+            return $this->handleException($e);
         }
     }
 
@@ -292,6 +296,7 @@ class InvoiceController extends BaseController
             ]
         )
     )]
+    #[RequireScope('invoices.read')]
     #[Route('/invoices/summary/{accountId}', name: 'api_invoice_summary', methods: ['GET'])]
     public function summary(string $accountId): JsonResponse
     {
@@ -299,7 +304,7 @@ class InvoiceController extends BaseController
             $summary = $this->invoiceService->getInvoiceSummary($accountId);
             return $this->success($summary);
         } catch (\Exception $e) {
-            return $this->error($e->getMessage(), 400);
+            return $this->handleException($e);
         }
     }
 }

@@ -5,6 +5,7 @@ namespace App\Controller\Admin;
 use App\Controller\BaseController;
 use App\DTO\Balance\RechargeDto;
 use App\Services\Balance\RechargeService;
+use App\Services\ExchangeRate\APIExchangeRate;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
@@ -14,11 +15,38 @@ use Symfony\Component\Routing\Attribute\Route;
 class RechargeController extends BaseController
 {
     public function __construct(
-        private RechargeService $rechargeService
+        private RechargeService $rechargeService,
+        private APIExchangeRate $apiExchangeRate,
     ) {
     }
 
-    #[Route('', name: 'admin_recharges_page')]
+    /**
+     * Convertidor de moneda para el formulario de creación de recarga del panel Admin — antes el
+     * frontend llamaba directo a /api/v1/exchange-rate/convert (un endpoint público protegido por
+     * scope OAuth2, pensado para sistemas externos, no para el propio panel autenticado por
+     * sesión). Declarado antes de la ruta '/{id}' para que Symfony no intente resolver "convert"
+     * como un id de recarga.
+     */
+    #[Route('/convert', name: 'admin_recharge_convert', methods: ['GET'])]
+    public function convert(Request $request): JsonResponse
+    {
+        $this->denyAccessUnlessGranted('recharges:create');
+
+        try {
+            $amount = $request->query->get('amount');
+            $currency = strtoupper($request->query->get('currency', ''));
+
+            if (!$amount || !$currency) {
+                return $this->error('amount y currency son requeridos');
+            }
+
+            return $this->success($this->apiExchangeRate->convertToBase((string) $amount, $currency));
+        } catch (\Exception $e) {
+            return $this->handleException($e);
+        }
+    }
+
+    #[Route('', name: 'admin_recharges_page', methods: ['GET'])]
     public function rechargesPage(): Response
     {
         $this->denyAccessUnlessGranted('recharges:view');
@@ -53,6 +81,7 @@ class RechargeController extends BaseController
         $data = array_map(function ($recharge) {
             return [
                 'id' => $recharge->getId(),
+                'receiptNumber' => $recharge->getReceiptNumber(),
                 'accountId' => $recharge->getAccount()->getId(),
                 'accountNumber' => $recharge->getAccount()->getAccountNumber(),
                 'amount' => $recharge->getAmount(),
@@ -78,18 +107,20 @@ class RechargeController extends BaseController
         $this->denyAccessUnlessGranted('recharges:create');
 
         try {
+            $this->validateCsrfToken();
             $data = $this->getJsonContent($request);
             $dto = RechargeDto::fromJson($data);
-            $recharge = $this->rechargeService->createRecharge($dto);
+            $recharge = $this->rechargeService->createRecharge($dto, $this->getUser()?->getUserIdentifier());
 
             return $this->success([
                 'id' => $recharge->getId(),
+                'receiptNumber' => $recharge->getReceiptNumber(),
                 'amount' => $recharge->getAmount(),
                 'currency' => $recharge->getCurrency(),
                 'status' => $recharge->getStatus(),
             ], 'Recharge created successfully', 201);
         } catch (\Exception $e) {
-            return $this->error($e->getMessage(), 400);
+            return $this->handleException($e);
         }
     }
 
@@ -106,6 +137,7 @@ class RechargeController extends BaseController
 
         return $this->success([
             'id' => $recharge->getId(),
+            'receiptNumber' => $recharge->getReceiptNumber(),
             'accountId' => $recharge->getAccount()->getId(),
             'accountNumber' => $recharge->getAccount()->getAccountNumber(),
             'amount' => $recharge->getAmount(),
@@ -131,14 +163,15 @@ class RechargeController extends BaseController
         $this->denyAccessUnlessGranted('recharges:complete');
 
         try {
-            $recharge = $this->rechargeService->completeRecharge($id);
+            $this->validateCsrfToken();
+            $recharge = $this->rechargeService->completeRecharge($id, $this->getUser()?->getUserIdentifier());
 
             return $this->success([
                 'id' => $recharge->getId(),
                 'status' => $recharge->getStatus(),
             ], 'Recharge completed successfully');
         } catch (\Exception $e) {
-            return $this->error($e->getMessage(), 400);
+            return $this->handleException($e);
         }
     }
 
@@ -148,17 +181,18 @@ class RechargeController extends BaseController
         $this->denyAccessUnlessGranted('recharges:fail');
 
         try {
+            $this->validateCsrfToken();
             $data = $this->getJsonContent($request);
             $reason = $data['reason'] ?? 'Failed';
 
-            $recharge = $this->rechargeService->failRecharge($id, $reason);
+            $recharge = $this->rechargeService->failRecharge($id, $reason, $this->getUser()?->getUserIdentifier());
 
             return $this->success([
                 'id' => $recharge->getId(),
                 'status' => $recharge->getStatus(),
             ], 'Recharge marked as failed');
         } catch (\Exception $e) {
-            return $this->error($e->getMessage(), 400);
+            return $this->handleException($e);
         }
     }
 
@@ -168,14 +202,15 @@ class RechargeController extends BaseController
         $this->denyAccessUnlessGranted('recharges:cancel');
 
         try {
-            $recharge = $this->rechargeService->cancelRecharge($id);
+            $this->validateCsrfToken();
+            $recharge = $this->rechargeService->cancelRecharge($id, $this->getUser()?->getUserIdentifier());
 
             return $this->success([
                 'id' => $recharge->getId(),
                 'status' => $recharge->getStatus(),
             ], 'Recharge cancelled successfully');
         } catch (\Exception $e) {
-            return $this->error($e->getMessage(), 400);
+            return $this->handleException($e);
         }
     }
 

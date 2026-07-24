@@ -3,7 +3,14 @@
 {% block title %}Usuarios Autorizados - SaldoGrin{% endblock %}
 
 {% block body %}
-<div id="vue-app"></div>
+<div id="vue-app"
+    data-accounts-list-url="{{ path('admin_account_index') }}"
+    data-list-url="{{ path('admin_authorized_index') }}"
+    data-create-url="{{ path('admin_authorized_create') }}"
+    data-detail-url="{{ path('admin_authorized_update', {id: '__ID__'}) }}"
+    data-status-url="{{ path('admin_authorized_status', {id: '__ID__'}) }}"
+    data-reset-password-url="{{ path('admin_authorized_reset_password', {id: '__ID__'}) }}"
+></div>
 {% endblock %}
 
 {% block javascripts %}

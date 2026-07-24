@@ -9,34 +9,16 @@
         <div class="card mb-6">
             <div class="flex flex-wrap gap-4 items-center justify-between">
                 <div class="flex gap-2">
-                    <Select
-                        v-model="filterStatus"
-                        :options="statusOptions"
-                        optionLabel="label"
-                        optionValue="value"
-                        :placeholder="$t('saldo.common.filter')"
-                        class="w-48"
-                    />
-                    <Button
-                        :label="$t('saldo.common.filter')"
-                        @click="loadRecharges"
-                    />
+                    <Select v-model="filterStatus" :options="statusOptions" optionLabel="label" optionValue="value"
+                        :placeholder="$t('saldo.common.filter')" class="w-48" />
+                    <Button :label="$t('saldo.common.filter')" @click="loadRecharges" />
                 </div>
-                <Button
-                    :label="$t('saldo.recharges.create')"
-                    icon="pi pi-plus"
-                    @click="openCreateModal"
-                />
+                <Button :label="$t('saldo.recharges.create')" icon="pi pi-plus" @click="openCreateModal" />
             </div>
         </div>
 
         <div class="card">
-            <DataTable
-                :value="recharges"
-                :loading="loading"
-                stripedRows
-                responsiveLayout="scroll"
-            >
+            <DataTable :value="recharges" :loading="loading" stripedRows responsiveLayout="scroll">
                 <Column field="accountNumber" :header="$t('saldo.accounts.accountNumber')" />
                 <Column field="amount" :header="$t('saldo.recharges.amount')" />
                 <Column field="currency" :header="$t('saldo.recharges.currency')" />
@@ -52,30 +34,19 @@
                 <Column :header="$t('saldo.common.actions')">
                     <template #body="{ data }">
                         <div class="flex gap-2">
-                            <Button
-                                v-if="data.status === 'pending'"
-                                icon="pi pi-check"
+                            <Button v-if="data.status === 'pending'" icon="pi pi-check"
                                 class="p-button-rounded p-button-success p-button-text"
-                                @click="completeRecharge(data)"
-                            />
-                            <Button
-                                v-if="data.status === 'pending'"
-                                icon="pi pi-times"
-                                class="p-button-rounded p-button-danger p-button-text"
-                                @click="cancelRecharge(data)"
-                            />
+                                @click="completeRecharge(data)" />
+                            <Button v-if="data.status === 'pending'" icon="pi pi-times"
+                                class="p-button-rounded p-button-danger p-button-text" @click="cancelRecharge(data)" />
                         </div>
                     </template>
                 </Column>
             </DataTable>
         </div>
 
-        <Dialog
-            v-model:visible="showModal"
-            :header="$t('saldo.recharges.create')"
-            :modal="true"
-            :style="{ width: '500px' }"
-        >
+        <Dialog v-model:visible="showModal" :header="$t('saldo.recharges.create')" :modal="true"
+            :style="{ width: '500px' }">
             <div class="flex flex-col gap-4">
                 <div class="form-group">
                     <label class="form-label">{{ $t('saldo.accounts.accountNumber') }}</label>
@@ -87,23 +58,13 @@
                 </div>
                 <div class="form-group">
                     <label class="form-label">{{ $t('saldo.recharges.currency') }}</label>
-                    <Select
-                        v-model="formData.currency"
-                        :options="currencies"
-                        optionLabel="label"
-                        optionValue="value"
-                        class="w-full"
-                    />
+                    <Select v-model="formData.currency" :options="currencies" optionLabel="label" optionValue="value"
+                        class="w-full" />
                 </div>
                 <div class="form-group">
                     <label class="form-label">{{ $t('saldo.recharges.paymentMethod') }}</label>
-                    <Select
-                        v-model="formData.paymentMethod"
-                        :options="paymentMethods"
-                        optionLabel="label"
-                        optionValue="value"
-                        class="w-full"
-                    />
+                    <Select v-model="formData.paymentMethod" :options="paymentMethods" optionLabel="label"
+                        optionValue="value" class="w-full" />
                 </div>
                 <div class="form-group">
                     <label class="form-label">{{ $t('saldo.recharges.reference') }}</label>
@@ -111,16 +72,8 @@
                 </div>
             </div>
             <template #footer>
-                <Button
-                    :label="$t('saldo.common.cancel')"
-                    class="p-button-text"
-                    @click="closeModal"
-                />
-                <Button
-                    :label="$t('saldo.common.save')"
-                    @click="saveRecharge"
-                    :loading="saving"
-                />
+                <Button :label="$t('saldo.common.cancel')" class="p-button-text" @click="closeModal" />
+                <Button :label="$t('saldo.common.save')" @click="saveRecharge" :loading="saving" />
             </template>
         </Dialog>
     </div>

@@ -8,6 +8,18 @@ framework:
     #esi: true
     #fragments: true
 
+    # Si el servidor real queda detrás de un reverse proxy (nginx delante de PHP-FPM en la misma
+    # máquina, load balancer, etc.), sin esto Symfony ve la IP del proxy en vez de la del cliente
+    # real (rompe logs/decisiones por IP) y puede no confiar en X-Forwarded-Proto, afectando si la
+    # cookie de sesión se marca Secure correctamente detrás de un proxy que termina el TLS.
+    #
+    # "REMOTE_ADDR" es el valor especial documentado por Symfony para "confiar en quien sea que
+    # esté hablando con PHP directamente" — funciona out-of-the-box para el caso típico (nginx en
+    # el mismo host que PHP-FPM) sin tener que fijar una IP concreta. Si el proxy real está en otra
+    # máquina/IP fija, cambiar TRUSTED_PROXIES por esa IP (o rango) en vez de dejar REMOTE_ADDR.
+    trusted_proxies: '%env(TRUSTED_PROXIES)%'
+    trusted_headers: ['x-forwarded-for', 'x-forwarded-host', 'x-forwarded-proto', 'x-forwarded-port']
+
 when@test:
     framework:
         test: true

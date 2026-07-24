@@ -62,6 +62,7 @@ class ExchangeProviderController extends BaseController
         $this->denyAccessUnlessGranted('exchange.providers:create');
 
         try {
+            $this->validateCsrfToken();
             $data = json_decode($request->getContent(), true);
 
             if (isset($data['isActive']) && $data['isActive']) {
@@ -86,6 +87,7 @@ class ExchangeProviderController extends BaseController
         $this->denyAccessUnlessGranted('exchange.providers:edit');
 
         try {
+            $this->validateCsrfToken();
             $provider = $this->providerRepository->find($id);
             if (!$provider) {
                 return $this->error('Provider not found', 404);
@@ -113,6 +115,7 @@ class ExchangeProviderController extends BaseController
         $this->denyAccessUnlessGranted('exchange.providers:edit');
 
         try {
+            $this->validateCsrfToken();
             $provider = $this->providerRepository->find($id);
             if (!$provider) {
                 return $this->error('Provider not found', 404);

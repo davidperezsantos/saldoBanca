@@ -14,9 +14,7 @@ nelmio_api_doc:
                 ### OAuth2 (aplicaciones externas)
                 `POST /oauth/token` — envía `grant_type=client_credentials` con `client_id` y `client_secret`
                 (por HTTP Basic Auth o en el body form-data). Obtén un `access_token` tipo Bearer.
-
-                ### API Key (operaciones seguras)
-                Algunos endpoints requieren el header `X-API-KEY` para operaciones de escritura.
+                
             version: '1.0.0'
         tags:
             - name: Auth

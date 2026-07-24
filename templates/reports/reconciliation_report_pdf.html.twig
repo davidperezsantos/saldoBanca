@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        * { font-family: Helvetica, Arial, sans-serif; }
+        body { font-size: 11px; color: #1f2937; }
+        h1 { font-size: 18px; margin-bottom: 4px; }
+        .subtitle { font-size: 12px; color: #6b7280; margin-bottom: 18px; }
+        h2 { font-size: 14px; margin-top: 22px; margin-bottom: 6px; border-bottom: 2px solid #14b8a6; padding-bottom: 4px; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 6px; }
+        th, td { border: 1px solid #d1d5db; padding: 4px 6px; text-align: right; }
+        th { background: #f0fdfa; text-align: right; }
+        th.left, td.left { text-align: left; }
+        tfoot td { font-weight: bold; background: #f9fafb; }
+        .grand-total { margin-top: 26px; }
+        .grand-total table { width: 60%; }
+        .empty { color: #9ca3af; font-style: italic; margin-top: 12px; }
+    </style>
+</head>
+<body>
+    <h1>Reporte de conciliaciones</h1>
+    <p class="subtitle">Período: {{ report.periodStart }} al {{ report.periodEnd }}</p>
+
+    {% if report.businesses is empty %}
+        <p class="empty">No hay conciliaciones liquidadas en ese rango de fechas.</p>
+    {% endif %}
+
+    {% for business in report.businesses %}
+        <h2>{{ business.businessName }} <small>(moneda configurada: {{ business.defaultCurrency }})</small></h2>
+        {% set statusLabels = {
+            'pending_business': 'Pendiente de aprobación del negocio',
+            'approved_business': 'Aprobada por el negocio',
+            'approved_admin': 'Aprobada por el administrador',
+            'settled': 'Liquidada',
+            'rejected_business': 'Rechazada por el negocio',
+            'rejected_admin': 'Rechazada por el administrador',
+        } %}
+        {% if business.accounts is not empty %}
+            <table>
+                <thead>
+                    <tr>
+                        <th class="left">Cuenta de pago</th>
+                        <th class="left">No. de cuenta</th>
+                        <th class="left">Moneda</th>
+                        <th>Cantidad</th>
+                        <th>Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for acc in business.accounts %}
+                        <tr>
+                            <td class="left">{{ acc.alias ?? 'Sin cuenta asignada aún' }}{% if acc.bankName %} ({{ acc.bankName }}){% endif %}</td>
+                            <td class="left">{{ acc.accountNumber ?? '—' }}</td>
+                            <td class="left">{{ acc.currency }}</td>
+                            <td>{{ acc.reconciliationCount }}</td>
+                            <td>{{ acc.amountTotal }} {{ acc.currency }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% endif %}
+        <table>
+            <thead>
+                <tr>
+                    <th class="left">Código</th>
+                    <th class="left">Período</th>
+                    <th class="left">Estado</th>
+                    <th>Subtotal</th>
+                    <th>Comisión del sistema</th>
+                    <th>Total</th>
+                    <th>{{ report.baseCurrency }}</th>
+                    <th>Equiv. {{ business.defaultCurrency }}</th>
+                    <th>{{ report.secondaryCurrency }}</th>
+                    <th>Equiv. {{ business.defaultCurrency }}</th>
+                    <th>Tasa</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in business.rows %}
+                    <tr>
+                        <td class="left">{{ row.reconciliationNumber }}</td>
+                        <td class="left">{{ row.periodStart }} — {{ row.periodEnd }}</td>
+                        <td class="left">{{ statusLabels[row.status] ?? row.status }}</td>
+                        <td>{{ row.subtotal }} {{ row.currency }}</td>
+                        <td>{% if row.taxAmount %}{{ row.taxAmount }} {{ row.currency }} ({{ row.taxPercent }}%){% else %}—{% endif %}</td>
+                        <td>{{ row.netAmount ?? '—' }}</td>
+                        <td>{% if row.baseAmount %}{{ row.baseAmount }} {{ row.baseCurrency }} ({{ row.basePercent }}%){% else %}—{% endif %}</td>
+                        <td>{{ row.baseAmountInDefaultCurrency ?? '—' }}</td>
+                        <td>{% if row.secondaryAmount %}{{ row.secondaryAmount }} {{ row.secondaryCurrency }} ({{ row.secondaryPercent }}%){% else %}—{% endif %}</td>
+                        <td>{{ row.secondaryAmountInDefaultCurrency ?? '—' }}</td>
+                        <td>{{ row.exchangeRate ?? '—' }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr>
+                    <td class="left" colspan="3">Total {{ business.businessName }}</td>
+                    <td>{{ business.subtotalTotal }}</td>
+                    <td>{{ business.taxTotal }}</td>
+                    <td>{{ business.netTotal }}</td>
+                    <td>{{ business.baseAmountTotal }} {{ report.baseCurrency }}</td>
+                    <td>{{ business.defaultCurrencyBaseTotal }}</td>
+                    <td>{{ business.secondaryAmountTotal }} {{ report.secondaryCurrency }}</td>
+                    <td>{{ business.defaultCurrencySecondaryTotal }}</td>
+                    <td></td>
+                </tr>
+            </tfoot>
+        </table>
+    {% endfor %}
+
+    {% if report.businesses is not empty %}
+        <div class="grand-total">
+            <h2>Gran total</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th class="left">Concepto</th>
+                        <th>Monto</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td class="left">Subtotal</td><td>{{ report.grandTotal.subtotal }}</td></tr>
+                    <tr><td class="left">Comisión del sistema</td><td>{{ report.grandTotal.taxAmount }}</td></tr>
+                    <tr><td class="left">Total pagado en {{ report.baseCurrency }}</td><td>{{ report.grandTotal.baseAmount }}</td></tr>
+                    <tr><td class="left">Total pagado en {{ report.secondaryCurrency }}</td><td>{{ report.grandTotal.secondaryAmount }}</td></tr>
+                </tbody>
+            </table>
+        </div>
+    {% endif %}
+</body>
+</html>

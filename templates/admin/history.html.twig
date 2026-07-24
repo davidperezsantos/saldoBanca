@@ -3,7 +3,10 @@
 {% block title %}Historial - SaldoGrin{% endblock %}
 
 {% block body %}
-<div id="vue-app"></div>
+<div id="vue-app"
+    data-list-url="{{ path('admin_history_list') }}"
+    data-timeline-url="{{ path('admin_history_timeline') }}"
+></div>
 {% endblock %}
 
 {% block javascripts %}

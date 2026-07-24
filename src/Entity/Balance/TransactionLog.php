@@ -12,7 +12,7 @@ use App\Repository\Balance\TransactionLogRepository;
 class TransactionLog extends BaseEntity
 {
     #[ORM\ManyToOne(targetEntity: Account::class)]
-    #[ORM\JoinColumn(nullable: false)]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
     private ?Account $account = null;
 
     #[ORM\Column(length: 50)]
@@ -99,7 +99,7 @@ class TransactionLog extends BaseEntity
         return $this->requestData;
     }
 
-    public function setrequestData(?array $requestData): static
+    public function setRequestData(?array $requestData): static
     {
         $this->requestData = $requestData;
         return $this;

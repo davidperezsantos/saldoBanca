@@ -16,27 +16,40 @@ security:
             pattern: ^/oauth/
             stateless: true
             security: false
+        api_public:
+            pattern: ^/api/v1/(login|register|password-reset)
+            stateless: true
+            security: false
         api:
             pattern: ^/api
             stateless: true
-            security: false
+            oauth2: true
         main:
             lazy: true
             provider: app_user_provider
             form_login:
                 login_path: app_login
                 check_path: app_login
-                default_target_path: admin_dashboard
-                enable_csrf: false
+                default_target_path: admin_dashboard_page
+                enable_csrf: true
             logout:
                 path: app_logout
-                target: app_login
+            # Frena fuerza bruta contra /login: máximo 5 intentos fallidos por minuto para el
+            # mismo usuario+IP, y 50/hora agregado por IP (protege aunque roten el usuario).
+            login_throttling:
+                max_attempts: 5
+                interval: '1 minute'
 
     access_control:
         - { path: ^/oauth/, roles: PUBLIC_ACCESS }
-        - { path: ^/api, roles: PUBLIC_ACCESS }
+        - { path: ^/api/v1/(login|register|password-reset), roles: PUBLIC_ACCESS }
+        - { path: ^/api/docs, roles: PUBLIC_ACCESS }
+        - { path: ^/api/v1/webhooks/, roles: PUBLIC_ACCESS }
+        - { path: ^/api, roles: IS_AUTHENTICATED_FULLY }
         - { path: ^/login$, roles: PUBLIC_ACCESS }
         - { path: ^/logout, roles: PUBLIC_ACCESS }
+        - { path: ^/reset-password, roles: PUBLIC_ACCESS }
+        - { path: ^/conciliacion, roles: PUBLIC_ACCESS }
         - { path: ^/, roles: ROLE_USER }
 
 when@test:

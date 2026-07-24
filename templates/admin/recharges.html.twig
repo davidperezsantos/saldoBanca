@@ -3,7 +3,16 @@
 {% block title %}Recargas - SaldoGrin{% endblock %}
 
 {% block body %}
-<div id="vue-app"></div>
+<div id="vue-app"
+    data-accounts-list-url="{{ path('admin_account_index') }}"
+    data-currencies-list-url="{{ path('admin_currency_list') }}"
+    data-list-url="{{ path('admin_recharge_index') }}"
+    data-convert-url="{{ path('admin_recharge_convert') }}"
+    data-create-url="{{ path('admin_recharge_create') }}"
+    data-complete-url="{{ path('admin_recharge_complete', {id: '__ID__'}) }}"
+    data-fail-url="{{ path('admin_recharge_fail', {id: '__ID__'}) }}"
+    data-cancel-url="{{ path('admin_recharge_cancel', {id: '__ID__'}) }}"
+></div>
 {% endblock %}
 
 {% block javascripts %}

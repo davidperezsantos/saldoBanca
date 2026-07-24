@@ -5,6 +5,7 @@ namespace App\Controller\Admin;
 use App\Controller\BaseController;
 use App\DTO\Balance\InvoiceDto;
 use App\Services\Balance\InvoiceService;
+use App\Services\ExchangeRate\APIExchangeRate;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
@@ -14,16 +15,40 @@ use Symfony\Component\Routing\Attribute\Route;
 class InvoiceController extends BaseController
 {
     public function __construct(
-        private InvoiceService $invoiceService
+        private InvoiceService $invoiceService,
+        private APIExchangeRate $apiExchangeRate,
     ) {
     }
 
-    #[Route('', name: 'admin_invoices_page')]
+    #[Route('', name: 'admin_invoices_page', methods: ['GET'])]
     public function invoicesPage(): Response
     {
         $this->denyAccessUnlessGranted('invoices:view');
 
         return $this->render('admin/invoices.html.twig');
+    }
+
+    /**
+     * Convertidor de moneda para el formulario de creación de factura — las facturas pueden
+     * pedirse en una moneda distinta a la base del sistema, igual que recargas/transferencias.
+     */
+    #[Route('/convert', name: 'admin_invoice_convert', methods: ['GET'])]
+    public function convert(Request $request): JsonResponse
+    {
+        $this->denyAccessUnlessGranted('invoices:create');
+
+        try {
+            $amount = $request->query->get('amount');
+            $currency = strtoupper($request->query->get('currency', ''));
+
+            if (!$amount || !$currency) {
+                return $this->error('amount y currency son requeridos');
+            }
+
+            return $this->success($this->apiExchangeRate->convertToBase((string) $amount, $currency));
+        } catch (\Exception $e) {
+            return $this->handleException($e);
+        }
     }
 
     #[Route('/list', name: 'admin_invoice_index', methods: ['GET'])]
@@ -45,26 +70,7 @@ class InvoiceController extends BaseController
         }
 
         $invoices = $this->invoiceService->listInvoices($filters);
-
-        $data = array_map(function ($invoice) {
-            return [
-                'id' => $invoice->getId(),
-                'accountId' => $invoice->getAccount()->getId(),
-                'accountNumber' => $invoice->getAccount()->getAccountNumber(),
-                'invoiceNumber' => $invoice->getInvoiceNumber(),
-                'invoiceDate' => $invoice->getInvoiceDate()->format('Y-m-d'),
-                'dueDate' => $invoice->getDueDate()?->format('Y-m-d'),
-                'amount' => $invoice->getAmount(),
-                'taxAmount' => $invoice->getTaxAmount(),
-                'totalAmount' => $invoice->getTotalAmount(),
-                'currency' => $invoice->getCurrency(),
-                'status' => $invoice->getStatus(),
-                'paymentDate' => $invoice->getPaymentDate()?->format('Y-m-d'),
-                'customerCode' => $invoice->getCustomerCode(),
-                'customerName' => $invoice->getCustomerName(),
-                'createdAt' => $invoice->getCreatedAt()?->format('Y-m-d H:i:s'),
-            ];
-        }, $invoices);
+        $data = array_map(fn($invoice) => $this->invoiceService->serializeForDisplay($invoice), $invoices);
 
         return $this->success($data);
     }
@@ -75,18 +81,18 @@ class InvoiceController extends BaseController
         $this->denyAccessUnlessGranted('invoices:create');
 
         try {
+            $this->validateCsrfToken();
             $data = $this->getJsonContent($request);
             $dto = InvoiceDto::fromJson($data);
-            $invoice = $this->invoiceService->createInvoice($dto);
+            $invoice = $this->invoiceService->createInvoice($dto, $this->getUser()?->getUserIdentifier());
 
-            return $this->success([
-                'id' => $invoice->getId(),
-                'invoiceNumber' => $invoice->getInvoiceNumber(),
-                'totalAmount' => $invoice->getTotalAmount(),
-                'status' => $invoice->getStatus(),
-            ], 'Invoice created successfully', 201);
+            return $this->success(
+                $this->invoiceService->serializeForDisplay($invoice),
+                'Invoice created successfully',
+                201
+            );
         } catch (\Exception $e) {
-            return $this->error($e->getMessage(), 400);
+            return $this->handleException($e);
         }
     }
 
@@ -101,35 +107,23 @@ class InvoiceController extends BaseController
             return $this->error('Invoice not found', 404);
         }
 
-        return $this->success([
-            'id' => $invoice->getId(),
-            'accountId' => $invoice->getAccount()->getId(),
-            'accountNumber' => $invoice->getAccount()->getAccountNumber(),
-            'invoiceNumber' => $invoice->getInvoiceNumber(),
-            'invoiceDate' => $invoice->getInvoiceDate()->format('Y-m-d'),
-            'dueDate' => $invoice->getDueDate()?->format('Y-m-d'),
-            'amount' => $invoice->getAmount(),
-            'taxAmount' => $invoice->getTaxAmount(),
-            'totalAmount' => $invoice->getTotalAmount(),
-            'currency' => $invoice->getCurrency(),
-            'status' => $invoice->getStatus(),
-            'paymentDate' => $invoice->getPaymentDate()?->format('Y-m-d'),
-            'externalRef' => $invoice->getExternalRef(),
-            'externalSystem' => $invoice->getExternalSystem(),
-            'customerCode' => $invoice->getCustomerCode(),
-            'customerName' => $invoice->getCustomerName(),
-            'notes' => $invoice->getNotes(),
-            'createdAt' => $invoice->getCreatedAt()?->format('Y-m-d H:i:s'),
-        ]);
+        return $this->success($this->invoiceService->serializeForDisplay($invoice, detailed: true));
     }
 
     #[Route('/{id}/pay', name: 'admin_invoice_pay', methods: ['PUT'])]
-    public function pay(string $id): JsonResponse
+    public function pay(string $id, Request $request): JsonResponse
     {
         $this->denyAccessUnlessGranted('invoices:pay');
 
+        $data = $this->getJsonContent($request);
+        $pinCode = $data['pinCode'] ?? null;
+        if (!$pinCode) {
+            return $this->error('pinCode is required', 400);
+        }
+
         try {
-            $invoice = $this->invoiceService->processPayment($id);
+            $this->validateCsrfToken();
+            $invoice = $this->invoiceService->processPayment($id, $pinCode, $this->getUser()?->getUserIdentifier());
 
             return $this->success([
                 'id' => $invoice->getId(),
@@ -137,7 +131,7 @@ class InvoiceController extends BaseController
                 'paymentDate' => $invoice->getPaymentDate()?->format('Y-m-d'),
             ], 'Invoice paid successfully');
         } catch (\Exception $e) {
-            return $this->error($e->getMessage(), 400);
+            return $this->handleException($e);
         }
     }
 
@@ -147,14 +141,15 @@ class InvoiceController extends BaseController
         $this->denyAccessUnlessGranted('invoices:cancel');
 
         try {
-            $invoice = $this->invoiceService->cancelPayment($id);
+            $this->validateCsrfToken();
+            $invoice = $this->invoiceService->cancelPayment($id, $this->getUser()?->getUserIdentifier());
 
             return $this->success([
                 'id' => $invoice->getId(),
                 'status' => $invoice->getStatus(),
             ], 'Invoice cancelled successfully');
         } catch (\Exception $e) {
-            return $this->error($e->getMessage(), 400);
+            return $this->handleException($e);
         }
     }
 
@@ -164,14 +159,15 @@ class InvoiceController extends BaseController
         $this->denyAccessUnlessGranted('invoices:refund');
 
         try {
-            $invoice = $this->invoiceService->refundPayment($id);
+            $this->validateCsrfToken();
+            $invoice = $this->invoiceService->refundPayment($id, $this->getUser()?->getUserIdentifier());
 
             return $this->success([
                 'id' => $invoice->getId(),
                 'status' => $invoice->getStatus(),
             ], 'Invoice refunded successfully');
         } catch (\Exception $e) {
-            return $this->error($e->getMessage(), 400);
+            return $this->handleException($e);
         }
     }
 
@@ -185,7 +181,7 @@ class InvoiceController extends BaseController
 
             return $this->success($summary);
         } catch (\Exception $e) {
-            return $this->error($e->getMessage(), 400);
+            return $this->handleException($e);
         }
     }
 

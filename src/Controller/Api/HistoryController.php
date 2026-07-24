@@ -3,6 +3,7 @@
 namespace App\Controller\Api;
 
 use App\Controller\BaseController;
+use App\Security\Attribute\RequireScope;
 use App\Services\Balance\BalanceService;
 use OpenApi\Attributes as OA;
 use Symfony\Component\HttpFoundation\Request;
@@ -54,6 +55,7 @@ class HistoryController extends BaseController
         )
     )]
     #[OA\Response(response: 400, description: 'accountId is required')]
+    #[RequireScope('history.read')]
     #[Route('/history', name: 'api_history_list', methods: ['GET'])]
     public function list(Request $request): JsonResponse
     {
@@ -92,7 +94,7 @@ class HistoryController extends BaseController
 
             return $this->success($data);
         } catch (\Exception $e) {
-            return $this->error($e->getMessage(), 400);
+            return $this->handleException($e);
         }
     }
 }

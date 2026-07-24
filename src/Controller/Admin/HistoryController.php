@@ -4,6 +4,8 @@ namespace App\Controller\Admin;
 
 use App\Controller\BaseController;
 use App\Entity\Balance\BalanceMovement;
+use App\Entity\Balance\OperationEvent;
+use App\Services\Balance\OperationEventService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -14,11 +16,12 @@ use Symfony\Component\Routing\Attribute\Route;
 class HistoryController extends BaseController
 {
     public function __construct(
-        private EntityManagerInterface $entityManager
+        private EntityManagerInterface $entityManager,
+        private OperationEventService $operationEventService,
     ) {
     }
 
-    #[Route('', name: 'admin_history_page')]
+    #[Route('', name: 'admin_history_page', methods: ['GET'])]
     public function index(): Response
     {
         $this->denyAccessUnlessGranted('history:view');
@@ -97,6 +100,36 @@ class HistoryController extends BaseController
                 'createdAt' => $m->getCreatedAt()?->format('Y-m-d H:i:s'),
             ];
         }, $movements);
+
+        return $this->success($data);
+    }
+
+    /**
+     * Línea de tiempo de estados de un registro puntual (factura/recarga/transferencia/consumo de
+     * autorizado), para el diálogo que se abre al hacer clic en una fila del Historial. Si el
+     * registro solo tuvo un paso, devuelve un solo elemento.
+     */
+    #[Route('/timeline', name: 'admin_history_timeline', methods: ['GET'])]
+    public function timeline(Request $request): JsonResponse
+    {
+        $this->denyAccessUnlessGranted('history:view');
+
+        $entityType = $request->query->get('entityType');
+        $entityId = $request->query->get('entityId');
+
+        if (!$entityType || !$entityId) {
+            return $this->error('entityType y entityId son requeridos');
+        }
+
+        $events = $this->operationEventService->getTimeline($entityType, $entityId);
+
+        $data = array_map(fn(OperationEvent $e) => [
+            'id' => $e->getId(),
+            'status' => $e->getStatus(),
+            'performedBy' => $e->getPerformedBy(),
+            'notes' => $e->getNotes(),
+            'createdAt' => $e->getCreatedAt()?->format('Y-m-d H:i:s'),
+        ], $events);
 
         return $this->success($data);
     }

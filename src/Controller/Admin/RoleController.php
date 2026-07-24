@@ -2,19 +2,19 @@
 
 namespace App\Controller\Admin;
 
+use App\Controller\BaseController;
 use App\Entity\Role;
 use App\Services\PermissionService;
 use Doctrine\ORM\EntityManagerInterface;
-use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 
-class RoleController extends AbstractController
+class RoleController extends BaseController
 {
     public function __construct(
         private EntityManagerInterface $entityManager,
-        private PermissionService $permissionService
+        private PermissionService $permissionService,
     ) {
     }
 
@@ -33,8 +33,7 @@ class RoleController extends AbstractController
 
         $rolesData = [];
         foreach ($roles as $role) {
-            $flat = [];
-            $this->flattenPermissions($role->getPermissions(), '', $flat);
+            $flat = $role->getFlatPermissions();
             $rolesData[] = [
                 'role' => [
                     'id' => $role->getId()->toRfc4122(),
@@ -51,26 +50,6 @@ class RoleController extends AbstractController
             'rolesData' => $rolesData,
             'permLabels' => $permLabels,
         ]);
-    }
-
-    private function flattenPermissions(array $perms, string $prefix, array &$result): void
-    {
-        foreach ($perms as $key => $value) {
-            if (is_array($value)) {
-                // Check if it's a list of actions (like ['view', 'create'])
-                // or nested submodules (like ['users' => ['view', 'create']])
-                $isListOfActions = !empty($value) && array_is_list($value);
-                if ($isListOfActions) {
-                    foreach ($value as $action) {
-                        $result[] = $prefix . $key . ':' . $action;
-                    }
-                } else {
-                    $this->flattenPermissions($value, $prefix . $key . '.', $result);
-                }
-            } else {
-                $result[] = $prefix . $key . ':' . $value;
-            }
-        }
     }
 
     #[Route('/admin/roles/create', name: 'admin_role_create_page')]
@@ -99,8 +78,7 @@ class RoleController extends AbstractController
 
         $permissions = $this->permissionService->getPermissionsForForm();
 
-        $flatPerms = [];
-        $this->flattenPermissions($role->getPermissions(), '', $flatPerms);
+        $flatPerms = $role->getFlatPermissions();
 
         return $this->render('admin/role_form.html.twig', [
             'permissions' => $permissions,
@@ -113,6 +91,12 @@ class RoleController extends AbstractController
     public function store(Request $request): Response
     {
         $this->denyAccessUnlessGranted('administration.roles:create');
+
+        try {
+            $this->validateCsrfToken();
+        } catch (\RuntimeException $e) {
+            return $this->json(['error' => $e->getMessage()], 400);
+        }
 
         $data = json_decode($request->getContent(), true);
 
@@ -143,6 +127,12 @@ class RoleController extends AbstractController
     {
         $this->denyAccessUnlessGranted('administration.roles:edit');
 
+        try {
+            $this->validateCsrfToken();
+        } catch (\RuntimeException $e) {
+            return $this->json(['error' => $e->getMessage()], 400);
+        }
+
         $role = $this->entityManager->getRepository(Role::class)->find($id);
 
         if (!$role) {
@@ -167,6 +157,12 @@ class RoleController extends AbstractController
     public function delete(string $id): Response
     {
         $this->denyAccessUnlessGranted('administration.roles:delete');
+
+        try {
+            $this->validateCsrfToken();
+        } catch (\RuntimeException $e) {
+            return $this->json(['error' => $e->getMessage()], 400);
+        }
 
         $role = $this->entityManager->getRepository(Role::class)->find($id);
 

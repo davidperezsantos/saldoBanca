@@ -9,31 +9,16 @@
         <div class="card mb-6">
             <div class="flex flex-wrap gap-4 items-center justify-between">
                 <div class="flex gap-2">
-                    <InputText
-                        v-model="search"
-                        :placeholder="$t('saldo.common.search')"
-                        @keyup.enter="loadAuthorized"
-                    />
-                    <Button
-                        :label="$t('saldo.common.search')"
-                        @click="loadAuthorized"
-                    />
+                    <InputText v-model="search" :placeholder="$t('saldo.common.search')"
+                        @keyup.enter="loadAuthorized" />
+                    <Button :label="$t('saldo.common.search')" @click="loadAuthorized" />
                 </div>
-                <Button
-                    :label="$t('saldo.authorized.create')"
-                    icon="pi pi-plus"
-                    @click="openCreateModal"
-                />
+                <Button :label="$t('saldo.authorized.create')" icon="pi pi-plus" @click="openCreateModal" />
             </div>
         </div>
 
         <div class="card">
-            <DataTable
-                :value="authorizedUsers"
-                :loading="loading"
-                stripedRows
-                responsiveLayout="scroll"
-            >
+            <DataTable :value="authorizedUsers" :loading="loading" stripedRows responsiveLayout="scroll">
                 <Column field="accountNumber" :header="$t('saldo.accounts.accountNumber')" />
                 <Column field="userName" :header="$t('saldo.authorized.userName')" />
                 <Column field="documentNumber" :header="$t('saldo.authorized.documentNumber')" />
@@ -49,35 +34,20 @@
                 <Column :header="$t('saldo.common.actions')">
                     <template #body="{ data }">
                         <div class="flex gap-2">
-                            <Button
-                                icon="pi pi-pencil"
-                                class="p-button-rounded p-button-warning p-button-text"
-                                @click="editAuthorized(data)"
-                            />
-                            <Button
-                                v-if="data.status === 'active'"
-                                icon="pi pi-ban"
+                            <Button icon="pi pi-pencil" class="p-button-rounded p-button-warning p-button-text"
+                                @click="editAuthorized(data)" />
+                            <Button v-if="data.status === 'active'" icon="pi pi-ban"
                                 class="p-button-rounded p-button-danger p-button-text"
-                                @click="suspendAuthorized(data)"
-                            />
-                            <Button
-                                v-else
-                                icon="pi pi-check"
-                                class="p-button-rounded p-button-success p-button-text"
-                                @click="activateAuthorized(data)"
-                            />
+                                @click="suspendAuthorized(data)" />
+                            <Button v-else icon="pi pi-check" class="p-button-rounded p-button-success p-button-text"
+                                @click="activateAuthorized(data)" />
                         </div>
                     </template>
                 </Column>
             </DataTable>
         </div>
 
-        <Dialog
-            v-model:visible="showModal"
-            :header="modalTitle"
-            :modal="true"
-            :style="{ width: '500px' }"
-        >
+        <Dialog v-model:visible="showModal" :header="modalTitle" :modal="true" :style="{ width: '500px' }">
             <div class="flex flex-col gap-4">
                 <div class="form-group">
                     <label class="form-label">{{ $t('saldo.accounts.accountNumber') }}</label>
@@ -109,16 +79,8 @@
                 </div>
             </div>
             <template #footer>
-                <Button
-                    :label="$t('saldo.common.cancel')"
-                    class="p-button-text"
-                    @click="closeModal"
-                />
-                <Button
-                    :label="$t('saldo.common.save')"
-                    @click="saveAuthorized"
-                    :loading="saving"
-                />
+                <Button :label="$t('saldo.common.cancel')" class="p-button-text" @click="closeModal" />
+                <Button :label="$t('saldo.common.save')" @click="saveAuthorized" :loading="saving" />
             </template>
         </Dialog>
     </div>

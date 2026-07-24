@@ -7,7 +7,6 @@
 # Put parameters here that don't need to change on each machine where the app is deployed
 # https://symfony.com/doc/current/best_practices.html#use-parameters-for-application-configuration
 parameters:
-    app.api_key: '%env(API_KEY_SISTEMA_EXTERNO)%'
     app.encryption_key: '%env(ENCRYPTION_KEY)%'
 
 services:
@@ -34,6 +33,12 @@ services:
         resource: '../src/Services/'
         tags: ['service_subscriber']
 
+    App\Services\Notifications\OpenWaService:
+        arguments:
+            $apikey: '%env(OPENWA_APIKEY)%'
+            $baseUrl: '%env(OPENWA_URL)%'
+            $sessionId: '%env(OPENWA_SESSIONS)%'
+
     App\Services\PermissionService:
         arguments:
             $projectDir: '%kernel.project_dir%'
@@ -46,7 +51,23 @@ services:
 
     App\EventListener\:
         resource: '../src/EventListener/'
+        exclude:
+            - '../src/EventListener/ApiTransactionLogListener.php'
+            - '../src/EventListener/RequireScopeListener.php'
+            - '../src/EventListener/ApiExceptionListener.php'
         tags: ['kernel.event_listener']
+
+    App\EventListener\ApiTransactionLogListener:
+        tags:
+            - { name: kernel.event_listener, event: kernel.response, method: onKernelResponse }
+
+    App\EventListener\RequireScopeListener:
+        tags:
+            - { name: kernel.event_listener, event: kernel.controller, method: onKernelController }
+
+    App\EventListener\ApiExceptionListener:
+        tags:
+            - { name: kernel.event_listener, event: kernel.exception, method: onKernelException, priority: 32 }
 
     App\Security\:
         resource: '../src/Security/'

@@ -18,7 +18,7 @@ class PaymentGatewayController extends BaseController
     ) {
     }
 
-    #[Route('', name: 'admin_payment_gateways_page')]
+    #[Route('', name: 'admin_payment_gateways_page', methods: ['GET'])]
     public function index(): Response
     {
         $this->denyAccessUnlessGranted('payment_gateway:view');
@@ -56,6 +56,7 @@ class PaymentGatewayController extends BaseController
         $this->denyAccessUnlessGranted('payment_gateway:create');
 
         try {
+            $this->validateCsrfToken();
             $data = json_decode($request->getContent(), true);
 
             $gateway = new PaymentGateway();
@@ -82,6 +83,7 @@ class PaymentGatewayController extends BaseController
         $this->denyAccessUnlessGranted('payment_gateway:edit');
 
         try {
+            $this->validateCsrfToken();
             $gateway = $this->entityManager->getRepository(PaymentGateway::class)->find($id);
             if (!$gateway) {
                 return $this->error('Gateway not found', 404);
@@ -111,6 +113,7 @@ class PaymentGatewayController extends BaseController
         $this->denyAccessUnlessGranted('payment_gateway:edit');
 
         try {
+            $this->validateCsrfToken();
             $gateway = $this->entityManager->getRepository(PaymentGateway::class)->find($id);
             if (!$gateway) {
                 return $this->error('Gateway not found', 404);

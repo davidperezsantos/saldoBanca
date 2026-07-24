@@ -9,34 +9,16 @@
         <div class="card mb-6">
             <div class="flex flex-wrap gap-4 items-center justify-between">
                 <div class="flex gap-2">
-                    <Select
-                        v-model="filterStatus"
-                        :options="statusOptions"
-                        optionLabel="label"
-                        optionValue="value"
-                        :placeholder="$t('saldo.common.filter')"
-                        class="w-48"
-                    />
-                    <Button
-                        :label="$t('saldo.common.filter')"
-                        @click="loadInvoices"
-                    />
+                    <Select v-model="filterStatus" :options="statusOptions" optionLabel="label" optionValue="value"
+                        :placeholder="$t('saldo.common.filter')" class="w-48" />
+                    <Button :label="$t('saldo.common.filter')" @click="loadInvoices" />
                 </div>
-                <Button
-                    :label="$t('saldo.invoices.create')"
-                    icon="pi pi-plus"
-                    @click="openCreateModal"
-                />
+                <Button :label="$t('saldo.invoices.create')" icon="pi pi-plus" @click="openCreateModal" />
             </div>
         </div>
 
         <div class="card">
-            <DataTable
-                :value="invoices"
-                :loading="loading"
-                stripedRows
-                responsiveLayout="scroll"
-            >
+            <DataTable :value="invoices" :loading="loading" stripedRows responsiveLayout="scroll">
                 <Column field="invoiceNumber" :header="$t('saldo.invoices.invoiceNumber')" />
                 <Column field="accountNumber" :header="$t('saldo.accounts.accountNumber')" />
                 <Column field="totalAmount" :header="$t('saldo.invoices.totalAmount')" />
@@ -52,36 +34,20 @@
                 <Column :header="$t('saldo.common.actions')">
                     <template #body="{ data }">
                         <div class="flex gap-2">
-                            <Button
-                                v-if="data.status === 'pending'"
-                                icon="pi pi-check"
-                                class="p-button-rounded p-button-success p-button-text"
-                                @click="payInvoice(data)"
-                            />
-                            <Button
-                                v-if="data.status === 'pending'"
-                                icon="pi pi-times"
-                                class="p-button-rounded p-button-danger p-button-text"
-                                @click="cancelInvoice(data)"
-                            />
-                            <Button
-                                v-if="data.status === 'paid'"
-                                icon="pi pi-replay"
-                                class="p-button-rounded p-button-warning p-button-text"
-                                @click="refundInvoice(data)"
-                            />
+                            <Button v-if="data.status === 'pending'" icon="pi pi-check"
+                                class="p-button-rounded p-button-success p-button-text" @click="payInvoice(data)" />
+                            <Button v-if="data.status === 'pending'" icon="pi pi-times"
+                                class="p-button-rounded p-button-danger p-button-text" @click="cancelInvoice(data)" />
+                            <Button v-if="data.status === 'paid'" icon="pi pi-replay"
+                                class="p-button-rounded p-button-warning p-button-text" @click="refundInvoice(data)" />
                         </div>
                     </template>
                 </Column>
             </DataTable>
         </div>
 
-        <Dialog
-            v-model:visible="showModal"
-            :header="$t('saldo.invoices.create')"
-            :modal="true"
-            :style="{ width: '500px' }"
-        >
+        <Dialog v-model:visible="showModal" :header="$t('saldo.invoices.create')" :modal="true"
+            :style="{ width: '500px' }">
             <div class="flex flex-col gap-4">
                 <div class="form-group">
                     <label class="form-label">{{ $t('saldo.accounts.accountNumber') }}</label>
@@ -109,26 +75,13 @@
                 </div>
                 <div class="form-group">
                     <label class="form-label">{{ $t('saldo.recharges.currency') }}</label>
-                    <Select
-                        v-model="formData.currency"
-                        :options="currencies"
-                        optionLabel="label"
-                        optionValue="value"
-                        class="w-full"
-                    />
+                    <Select v-model="formData.currency" :options="currencies" optionLabel="label" optionValue="value"
+                        class="w-full" />
                 </div>
             </div>
             <template #footer>
-                <Button
-                    :label="$t('saldo.common.cancel')"
-                    class="p-button-text"
-                    @click="closeModal"
-                />
-                <Button
-                    :label="$t('saldo.common.save')"
-                    @click="saveInvoice"
-                    :loading="saving"
-                />
+                <Button :label="$t('saldo.common.cancel')" class="p-button-text" @click="closeModal" />
+                <Button :label="$t('saldo.common.save')" @click="saveInvoice" :loading="saving" />
             </template>
         </Dialog>
     </div>

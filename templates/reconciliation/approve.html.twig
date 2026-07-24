@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conciliación de Facturas - SaldoGrin</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💚</text></svg>">
+    <style>
+        @font-face { font-family: 'Inter'; font-style: normal; font-weight: 400; font-display: swap; src: url('/fonts/inter/inter-latin-400-normal.woff2') format('woff2'); }
+        @font-face { font-family: 'Inter'; font-style: normal; font-weight: 500; font-display: swap; src: url('/fonts/inter/inter-latin-500-normal.woff2') format('woff2'); }
+        @font-face { font-family: 'Inter'; font-style: normal; font-weight: 600; font-display: swap; src: url('/fonts/inter/inter-latin-600-normal.woff2') format('woff2'); }
+        @font-face { font-family: 'Inter'; font-style: normal; font-weight: 700; font-display: swap; src: url('/fonts/inter/inter-latin-700-normal.woff2') format('woff2'); }
+        * { font-family: 'Inter', sans-serif; margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #f8fafc; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
+        .card { background: white; border-radius: 16px; box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08); padding: 48px; width: 100%; max-width: 640px; border: 1px solid #e5e7eb; }
+        .logo { display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 32px; }
+        .logo .icon { width: 48px; height: 48px; background: linear-gradient(135deg, #34d399 0%, #14b8a6 100%); border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 24px; color: white; font-weight: bold; box-shadow: 0 8px 16px rgba(52, 211, 153, 0.3); }
+        .logo h1 { font-size: 28px; font-weight: 700; color: #0f172a; }
+        .flash { padding: 14px; border-radius: 12px; margin-bottom: 20px; font-size: 14px; text-align: center; }
+        .flash-error { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+        .flash-success { background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; }
+        .badge { display: inline-block; padding: 4px 12px; border-radius: 999px; font-size: 13px; font-weight: 600; }
+        .badge-pending { background: #fef3c7; color: #92400e; }
+        .badge-approved { background: #f0fdf4; color: #16a34a; }
+        .badge-rejected { background: #fef2f2; color: #dc2626; }
+        table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 14px; }
+        th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid #e5e7eb; }
+        th { color: #6b7280; font-weight: 600; font-size: 12px; text-transform: uppercase; }
+        tfoot td { font-weight: 700; border-bottom: none; padding-top: 14px; }
+        .form-group { margin-bottom: 16px; }
+        .form-label { display: block; font-size: 14px; font-weight: 500; color: #374151; margin-bottom: 8px; }
+        .form-input { width: 100%; padding: 12px 14px; border: 2px solid #e5e7eb; border-radius: 12px; font-size: 15px; outline: none; }
+        .form-input:focus { border-color: #34d399; box-shadow: 0 0 0 4px rgba(52, 211, 153, 0.1); }
+        .btn-row { display: flex; gap: 12px; margin-top: 24px; }
+        .btn { flex: 1; padding: 14px; border: none; border-radius: 12px; font-size: 15px; font-weight: 600; cursor: pointer; }
+        .btn-approve { background: linear-gradient(135deg, #34d399 0%, #14b8a6 100%); color: white; }
+        .btn-reject { background: white; color: #dc2626; border: 2px solid #fecaca; }
+        .footer { text-align: center; margin-top: 24px; color: #9ca3af; font-size: 13px; }
+        details { margin-top: 8px; }
+        details summary { cursor: pointer; color: #6b7280; font-size: 14px; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="logo">
+            <div class="icon">G</div>
+            <h1>SaldoGrin</h1>
+        </div>
+
+        {% for label, messages in app.flashes %}
+            {% for message in messages %}
+                <div class="flash flash-{{ label == 'error' ? 'error' : 'success' }}">{{ message }}</div>
+            {% endfor %}
+        {% endfor %}
+
+        <h2 style="font-size: 20px; font-weight: 600; color: #0f172a; margin-bottom: 8px;">Conciliación de Facturas</h2>
+        <p style="color: #6b7280; font-size: 14px;">
+            Negocio: <strong>{{ reconciliation.businessAccount.businessName }}</strong><br>
+            Período: <strong>{{ reconciliation.periodStart|date('d/m/Y') }} - {{ reconciliation.periodEnd|date('d/m/Y') }}</strong><br>
+            Estado:
+            {% if reconciliation.status == 'pending_business' %}
+                <span class="badge badge-pending">Pendiente de tu aprobación</span>
+            {% elseif reconciliation.status in ['approved_business', 'approved_admin', 'settled'] %}
+                <span class="badge badge-approved">Aprobada</span>
+            {% else %}
+                <span class="badge badge-rejected">Rechazada</span>
+            {% endif %}
+        </p>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Factura</th>
+                    <th>Referencia</th>
+                    <th style="text-align:right">Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for invoice in reconciliation.invoices %}
+                    <tr>
+                        <td>{{ invoice.invoiceNumber }}</td>
+                        <td>{{ invoice.externalRef ?: '-' }}</td>
+                        <td style="text-align:right">{{ invoice.totalAmount }} {{ invoice.currency }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr>
+                    <td colspan="2">Subtotal</td>
+                    <td style="text-align:right">{{ reconciliation.totalAmount }} {{ reconciliation.currency }}</td>
+                </tr>
+                {% if reconciliation.netAmount %}
+                    <tr>
+                        <td colspan="2">Comisión del sistema ({{ reconciliation.taxPercent }}%)</td>
+                        <td style="text-align:right">{{ reconciliation.taxAmount }} {{ reconciliation.currency }}</td>
+                    </tr>
+                    <tr style="font-weight:700">
+                        <td colspan="2">Total</td>
+                        <td style="text-align:right">{{ reconciliation.netAmount }} {{ reconciliation.currency }}</td>
+                    </tr>
+                {% endif %}
+            </tfoot>
+        </table>
+
+        {% if reconciliation.settlementBaseAmount %}
+            <p style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:12px; padding:12px; font-size:14px; color:#166534; margin-bottom:16px;">
+                {% if reconciliation.status == 'settled' %}
+                    Se te pagó <strong>{{ reconciliation.settlementBaseAmount }} {{ reconciliation.settlementBaseCurrency }}</strong> ({{ reconciliation.settlementBasePercent }}%)
+                    + <strong>{{ reconciliation.settlementSecondaryAmount }} {{ reconciliation.settlementSecondaryCurrency }}</strong> ({{ reconciliation.settlementSecondaryPercent }}%).
+                {% else %}
+                    Se te pagará <strong>{{ reconciliation.settlementBaseAmount }} {{ reconciliation.settlementBaseCurrency }}</strong> ({{ reconciliation.settlementBasePercent }}%)
+                    + <strong>{{ reconciliation.settlementSecondaryAmount }} {{ reconciliation.settlementSecondaryCurrency }}</strong> ({{ reconciliation.settlementSecondaryPercent }}%)
+                    (tasa fijada al crear la conciliación: {{ reconciliation.settlementExchangeRate }}).
+                {% endif %}
+            </p>
+        {% endif %}
+
+        {% if reconciliation.status == 'pending_business' %}
+            {% if needsPinRequest %}
+                <p style="color: #6b7280; font-size: 14px; margin-bottom: 16px;">
+                    Para aprobar o rechazar esta conciliación primero debes verificar tu identidad. Te enviaremos un código de un solo uso por WhatsApp al teléfono registrado del negocio.
+                </p>
+                <form method="post" action="{{ path('reconciliation_public_request_pin', {token: token}) }}">
+                    <div class="btn-row">
+                        <button type="submit" class="btn btn-approve">Solicitar código de verificación</button>
+                    </div>
+                </form>
+            {% elseif needsPinVerification %}
+                <form method="post" action="{{ path('reconciliation_public_verify_pin', {token: token}) }}" style="margin-bottom: 8px;">
+                    <div class="form-group">
+                        <label class="form-label" for="pin">Código recibido por WhatsApp</label>
+                        <input type="text" id="pin" name="pin" class="form-input" required inputmode="numeric" pattern="[0-9]{6}" maxlength="6" placeholder="000000">
+                    </div>
+                    <div class="btn-row">
+                        <button type="submit" class="btn btn-approve">Verificar código</button>
+                    </div>
+                </form>
+                <form method="post" action="{{ path('reconciliation_public_request_pin', {token: token}) }}">
+                    <button type="submit" style="background: none; border: none; color: #6b7280; font-size: 13px; cursor: pointer; text-decoration: underline;">Reenviar código</button>
+                </form>
+            {% elseif canAct %}
+                <form method="post" action="{{ path('reconciliation_public_approve', {token: token}) }}" style="margin-bottom: 8px;">
+                    <div class="form-group">
+                        <label class="form-label" for="approverName">Tu nombre</label>
+                        <input type="text" id="approverName" name="approverName" class="form-input" required placeholder="Nombre de quien aprueba">
+                    </div>
+                    {% if payoutAccounts %}
+                        <div class="form-group">
+                            <label class="form-label" for="payoutAccountBaseId">
+                                Cuenta para recibir el pago en {{ payoutAccounts.base.currency }}
+                            </label>
+                            {% if payoutAccounts.base.accounts is empty %}
+                                <p style="color:#dc2626; font-size:13px;">No tienes cuentas registradas en {{ payoutAccounts.base.currency }}. Contacta al administrador.</p>
+                            {% else %}
+                                <select id="payoutAccountBaseId" name="payoutAccountBaseId" class="form-input" required>
+                                    <option value="">Selecciona una cuenta</option>
+                                    {% for acc in payoutAccounts.base.accounts %}
+                                        <option value="{{ acc.id }}">{{ acc.alias }} - {{ acc.accountNumber }}{{ acc.bankName ? ' (' ~ acc.bankName ~ ')' : '' }}</option>
+                                    {% endfor %}
+                                </select>
+                            {% endif %}
+                        </div>
+                        {% if payoutAccounts.hasSplit %}
+                            <div class="form-group">
+                                <label class="form-label" for="payoutAccountSecondaryId">
+                                    Cuenta para recibir el pago en {{ payoutAccounts.secondary.currency }}
+                                </label>
+                                {% if payoutAccounts.secondary.accounts is empty %}
+                                    <p style="color:#dc2626; font-size:13px;">No tienes cuentas registradas en {{ payoutAccounts.secondary.currency }}. Contacta al administrador.</p>
+                                {% else %}
+                                    <select id="payoutAccountSecondaryId" name="payoutAccountSecondaryId" class="form-input" required>
+                                        <option value="">Selecciona una cuenta</option>
+                                        {% for acc in payoutAccounts.secondary.accounts %}
+                                            <option value="{{ acc.id }}">{{ acc.alias }} - {{ acc.accountNumber }}{{ acc.bankName ? ' (' ~ acc.bankName ~ ')' : '' }}</option>
+                                        {% endfor %}
+                                    </select>
+                                {% endif %}
+                            </div>
+                        {% endif %}
+                    {% endif %}
+                    <div class="btn-row">
+                        <button type="submit" class="btn btn-approve">Aprobar conciliación</button>
+                    </div>
+                </form>
+                <details>
+                    <summary>¿No estás de acuerdo? Rechazar conciliación</summary>
+                    <form method="post" action="{{ path('reconciliation_public_reject', {token: token}) }}" style="margin-top: 12px;">
+                        <div class="form-group">
+                            <label class="form-label" for="rejectApproverName">Tu nombre</label>
+                            <input type="text" id="rejectApproverName" name="approverName" class="form-input" required placeholder="Nombre de quien rechaza">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="reason">Motivo</label>
+                            <input type="text" id="reason" name="reason" class="form-input" placeholder="Motivo del rechazo">
+                        </div>
+                        <div class="btn-row">
+                            <button type="submit" class="btn btn-reject">Rechazar conciliación</button>
+                        </div>
+                    </form>
+                </details>
+            {% endif %}
+        {% else %}
+            <p style="color: #6b7280; font-size: 14px; margin-top: 16px;">Esta conciliación ya fue procesada, no requiere más acciones de tu parte.</p>
+        {% endif %}
+
+        <div class="footer">
+            <p>Sistema de Gestión de Saldo v2.0</p>
+        </div>
+    </div>
+</body>
+</html>

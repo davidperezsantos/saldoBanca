@@ -1,218 +1,326 @@
 <!DOCTYPE html>
 <html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}SaldoGrin{% endblock %}</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💚</text></svg>">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    {% block stylesheets %}
-        {{ vite_entry_link_tags('app') }}
-    {% endblock %}
-    <style>
-        * { font-family: 'Inter', sans-serif; }
-        .sidebar { width: 260px; min-height: 100vh; background: #ffffff; border-right: 1px solid #e5e7eb; }
-        .sidebar-item { display: flex; align-items: center; gap: 12px; padding: 10px 16px; border-radius: 8px; color: #4b5563; transition: all 0.15s ease; cursor: pointer; font-size: 14px; font-weight: 500; }
-        .sidebar-item:hover { background: #f3f4f6; color: #111827; }
-        .sidebar-item.active { background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); color: #065f46; font-weight: 600; }
-        .sidebar-section { padding: 0 16px; margin-top: 24px; margin-bottom: 8px; }
-        .sidebar-section-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #9ca3af; }
-        .sidebar-submenu { padding-left: 44px; }
-        .sidebar-submenu .sidebar-item { padding: 8px 16px; font-size: 13px; }
-        .sidebar-toggle { width: 18px; height: 18px; margin-left: auto; transition: transform 0.2s ease; color: #9ca3af; }
-        .sidebar-toggle.open { transform: rotate(90deg); }
-    </style>
-</head>
-<body class="bg-gray-50">
-    <div id="app">
-        <div class="flex min-h-screen">
-            <aside class="sidebar flex flex-col fixed">
-                <div class="px-6 py-5 flex items-center gap-3 border-b border-gray-100">
-                    <div class="w-9 h-9 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-lg shadow-emerald-500/20">G</div>
-                    <span class="text-lg font-bold text-gray-800 tracking-tight">SaldoGrin</span>
-                </div>
+	<head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<meta name="csrf-token" content="{{ csrf_token('ajax') }}">
+		<title>
+			{% block title %}SaldoGrin
+			{% endblock %}
+		</title>
+		<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💚</text></svg>">
+		{% block stylesheets %}
+			{{ vite_entry_link_tags('app') }}
+		{% endblock %}
+		<style>
+			* {
+				font-family: 'Inter', sans-serif;
+			}
+			.sidebar {
+				position: fixed;
+				top: 0;
+				left: 0;
+				width: 260px;
+				min-height: 100vh;
+				background: #ffffff;
+				border-right: 1px solid #e5e7eb;
+				z-index: 30;
+				transform: translateX(-100%);
+				transition: transform 0.2s ease;
+			}
+			.sidebar.open {
+				transform: translateX(0);
+			}
+			.sidebar-backdrop {
+				display: none;
+				position: fixed;
+				inset: 0;
+				background: rgba(17, 24, 39, 0.4);
+				z-index: 20;
+			}
+			.sidebar-backdrop.open {
+				display: block;
+			}
+			@media(min-width: 1024px) {
+				.sidebar {
+					transform: none;
+				}
+				.sidebar-backdrop {
+					display: none !important;
+				}
+			}
+			.sidebar-item {
+				display: flex;
+				align-items: center;
+				gap: 12px;
+				padding: 10px 16px;
+				border-radius: 8px;
+				color: #4b5563;
+				transition: all 0.15s ease;
+				cursor: pointer;
+				font-size: 14px;
+				font-weight: 500;
+			}
+			.sidebar-item:hover {
+				background: #f3f4f6;
+				color: #111827;
+			}
+			.sidebar-item.active {
+				background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+				color: #065f46;
+				font-weight: 600;
+			}
+			.sidebar-section {
+				padding: 0 16px;
+				margin-top: 24px;
+				margin-bottom: 8px;
+			}
+			.sidebar-section-title {
+				font-size: 11px;
+				font-weight: 600;
+				text-transform: uppercase;
+				letter-spacing: 0.05em;
+				color: #9ca3af;
+			}
+			.sidebar-submenu {
+				padding-left: 44px;
+			}
+			.sidebar-submenu .sidebar-item {
+				padding: 8px 16px;
+				font-size: 13px;
+			}
+			.sidebar-toggle {
+				width: 18px;
+				height: 18px;
+				margin-left: auto;
+				transition: transform 0.2s ease;
+				color: #9ca3af;
+			}
+			.sidebar-toggle.open {
+				transform: rotate(90deg);
+			}
+		</style>
+	</head>
+	<body class="bg-gray-50">
+		<div id="app">
+			<div class="flex min-h-screen">
+				<div id="sidebar-backdrop" class="sidebar-backdrop" onclick="document.querySelector('.sidebar').classList.remove('open');this.classList.remove('open');"></div>
+				<aside class="sidebar flex flex-col">
+					<div class="px-6 py-5 flex items-center gap-3 border-b border-gray-100">
+						<div class="w-9 h-9 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-lg shadow-emerald-500/20">G</div>
+						<span class="text-lg font-bold text-gray-800 tracking-tight">SaldoGrin</span>
+					</div>
 
-                {% set canViewAdminUsers = is_granted('administration.users:view') %}
-                {% set canViewAdminRoles = is_granted('administration.roles:view') %}
-                {% set canViewOAuth = is_granted('oauth_clients:view') %}
-                {% set canViewGateways = is_granted('payment_gateway:view') %}
-                {% set canViewClients = is_granted('clients:view') %}
-                {% set canViewAuthorized = is_granted('authorized:view') %}
-                {% set canViewBusinesses = is_granted('businesses:view') %}
-                {% set canViewExchangeProviders = is_granted('exchange.providers:view') %}
-                {% set canViewExchangeRates = is_granted('exchange.rates:view') %}
-                {% set canViewDashboard = is_granted('dashboard:view') %}
-                {% set canViewRecharges = is_granted('recharges:view') %}
-                {% set canViewTransfers = is_granted('transfers:view') %}
-                {% set canViewInvoices = is_granted('invoices:view') %}
-                {% set canViewHistory = is_granted('history:view') %}
+					{% set canViewAdminUsers = is_granted('administration.users:view') %}
+					{% set canViewAdminRoles = is_granted('administration.roles:view') %}
+					{% set canViewOAuth = is_granted('oauth_clients:view') %}
+					{% set canViewGateways = is_granted('payment_gateway:view') %}
+					{% set canViewClients = is_granted('clients:view') %}
+					{% set canViewAuthorized = is_granted('authorized:view') %}
+					{% set canViewExchangeProviders = is_granted('exchange.providers:view') %}
+					{% set canViewExchangeRates = is_granted('exchange.rates:view') %}
+					{% set canViewCurrencies = is_granted('currencies:view') %}
+					{% set canViewDashboard = is_granted('dashboard:view') %}
+					{% set canViewRecharges = is_granted('recharges:view') %}
+					{% set canViewTransfers = is_granted('transfers:view') %}
+					{% set canViewInvoices = is_granted('invoices:view') %}
+					{% set canViewReconciliations = is_granted('reconciliations:view') %}
+					{% set canViewCommissionSettlements = is_granted('commission_settlements:view') %}
+					{% set canViewHistory = is_granted('history:view') %}
 
-                <nav class="flex-1 py-2 overflow-y-auto" x-data="{ openSection: '' }">
-                    {% if canViewDashboard %}
-                    <div class="px-4">
-                        <a href="/" class="sidebar-item {% if app.request.pathinfo == '/' %}active{% endif %}">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
-                            {{ 'menu.dashboard'|trans }}
-                        </a>
-                    </div>
-                    {% endif %}
+					<nav class="flex-1 py-2 overflow-y-auto" x-data="{ openSection: '' }">
+						{% if canViewDashboard %}
+							<div class="px-4">
+								<a href="/" class="sidebar-item {% if app.request.pathinfo == '/' %}active{% endif %}">
+									<svg class="w-5 h-5" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+									{{ 'menu.dashboard'|trans }}
+								</a>
+							</div>
+						{% endif %}
 
-                    {% if canViewAdminUsers or canViewAdminRoles or canViewOAuth or canViewGateways %}
-                    <div class="sidebar-section"><p class="sidebar-section-title">Framework</p></div>
-                    <div class="px-4 space-y-1">
-                        {% if canViewAdminUsers or canViewAdminRoles or canViewOAuth %}
-                        <div>
-                            <button @click="openSection = openSection === 'admin' ? '' : 'admin'" class="sidebar-item w-full">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                                {{ 'menu.administration'|trans }}
-                                <svg :class="{'open': openSection === 'admin'}" class="sidebar-toggle" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-                            </button>
-                            <div x-show="openSection === 'admin'" x-transition class="sidebar-submenu space-y-1 mt-1">
-                                {% if canViewOAuth %}<a href="/oauth-clients" class="sidebar-item">{{ 'menu.oauth_clients'|trans }}</a>{% endif %}
-                                {% if canViewAdminUsers %}<a href="/admin/users" class="sidebar-item">{{ 'menu.users'|trans }}</a>{% endif %}
-                                {% if canViewAdminRoles %}<a href="/admin/roles" class="sidebar-item">{{ 'menu.roles'|trans }}</a>{% endif %}
-                            </div>
-                        </div>
-                        {% endif %}
+						{% if canViewAdminUsers or canViewAdminRoles or canViewOAuth or canViewGateways %}
+							<div class="sidebar-section">
+								<p class="sidebar-section-title">Framework</p>
+							</div>
+							<div class="px-4 space-y-1">
+								{% if canViewAdminUsers or canViewAdminRoles or canViewOAuth %}
+									<div>
+										<button @click="openSection = openSection === 'admin' ? '' : 'admin'" class="sidebar-item w-full">
+											<svg class="w-5 h-5" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+											{{ 'menu.administration'|trans }}
+											<svg :class="{'open': openSection === 'admin'}" class="sidebar-toggle" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+										</button>
+										<div x-show="openSection === 'admin'" x-transition class="sidebar-submenu space-y-1 mt-1">
+											{% if canViewOAuth %}
+												<a href="/oauth-clients" class="sidebar-item">{{ 'menu.oauth_clients'|trans }}</a>
+											{% endif %}
+											{% if canViewAdminUsers %}
+												<a href="/admin/users" class="sidebar-item">{{ 'menu.users'|trans }}</a>
+											{% endif %}
+											{% if canViewAdminRoles %}
+												<a href="/admin/roles" class="sidebar-item">{{ 'menu.roles'|trans }}</a>
+											{% endif %}
+											<a href="/api/docs/" target="_blank" class="sidebar-item">{{ 'menu.api_docs'|trans }}</a>
+										</div>
+									</div>
+								{% endif %}
 
-                        {% if canViewGateways %}
-                        <div>
-                            <button @click="openSection = openSection === 'gateways' ? '' : 'gateways'" class="sidebar-item w-full">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
-                                {{ 'menu.payment_gateway'|trans }}
-                                <svg :class="{'open': openSection === 'gateways'}" class="sidebar-toggle" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-                            </button>
-                            <div x-show="openSection === 'gateways'" x-transition class="sidebar-submenu space-y-1 mt-1">
-                                <a href="/payment-gateways" class="sidebar-item">{{ 'menu.configure_gateways'|trans }}</a>
-                            </div>
-                        </div>
-                        {% endif %}
-                    </div>
-                    {% endif %}
+								{% if canViewGateways %}
+									<div>
+										<button @click="openSection = openSection === 'gateways' ? '' : 'gateways'" class="sidebar-item w-full">
+											<svg class="w-5 h-5" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
+											{{ 'menu.payment_gateway'|trans }}
+											<svg :class="{'open': openSection === 'gateways'}" class="sidebar-toggle" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+										</button>
+										<div x-show="openSection === 'gateways'" x-transition class="sidebar-submenu space-y-1 mt-1">
+											<a href="/payment-gateways" class="sidebar-item">{{ 'menu.configure_gateways'|trans }}</a>
+										</div>
+									</div>
+								{% endif %}
+							</div>
+						{% endif %}
 
-                    {% if canViewClients or canViewAuthorized or canViewBusinesses or canViewExchangeProviders or canViewExchangeRates %}
-                    <div class="sidebar-section"><p class="sidebar-section-title">Soporte</p></div>
-                    <div class="px-4 space-y-1">
-                        {% if canViewClients or canViewAuthorized %}
-                        <div>
-                            <button @click="openSection = openSection === 'clients' ? '' : 'clients'" class="sidebar-item w-full">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
-                                {{ 'menu.clients'|trans }}
-                                <svg :class="{'open': openSection === 'clients'}" class="sidebar-toggle" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-                            </button>
-                            <div x-show="openSection === 'clients'" x-transition class="sidebar-submenu space-y-1 mt-1">
-                                {% if canViewClients %}<a href="/accounts" class="sidebar-item">{{ 'menu.list_clients'|trans }}</a>{% endif %}
-                                {% if canViewAuthorized %}<a href="/authorized" class="sidebar-item">{{ 'menu.authorized_users'|trans }}</a>{% endif %}
-                            </div>
-                        </div>
-                        {% endif %}
+						{% if canViewClients or canViewAuthorized or canViewExchangeProviders or canViewExchangeRates or canViewCurrencies %}
+							<div class="sidebar-section">
+								<p class="sidebar-section-title">Soporte</p>
+							</div>
+							<div class="px-4 space-y-1">
+								{% if canViewClients %}
+									<a href="/accounts" class="sidebar-item {% if '/accounts' in app.request.pathinfo %}active{% endif %}">
+										<svg class="w-5 h-5" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+										{{ 'menu.accounts'|trans }}
+									</a>
+								{% endif %}
+								{% if canViewAuthorized %}
+									<a href="/authorized" class="sidebar-item {% if '/authorized' in app.request.pathinfo %}active{% endif %}">
+										<svg class="w-5 h-5" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+										{{ 'menu.authorized_users'|trans }}
+									</a>
+								{% endif %}
 
-                        {% if canViewBusinesses %}
-                        <div>
-                            <button @click="openSection = openSection === 'business' ? '' : 'business'" class="sidebar-item w-full">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
-                                {{ 'menu.businesses'|trans }}
-                                <svg :class="{'open': openSection === 'business'}" class="sidebar-toggle" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-                            </button>
-                            <div x-show="openSection === 'business'" x-transition class="sidebar-submenu space-y-1 mt-1">
-                                <a href="/accounts?type=business" class="sidebar-item">{{ 'menu.list_businesses'|trans }}</a>
-                                <a href="/authorized?type=business" class="sidebar-item">{{ 'menu.authorized_businesses'|trans }}</a>
-                            </div>
-                        </div>
-                        {% endif %}
+								{% if canViewExchangeProviders or canViewExchangeRates or canViewCurrencies %}
+									<div>
+										<button @click="openSection = openSection === 'exchange' ? '' : 'exchange'" class="sidebar-item w-full">
+											<svg class="w-5 h-5" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"/></svg>
+											{{ 'menu.exchange'|trans }}
+											<svg :class="{'open': openSection === 'exchange'}" class="sidebar-toggle" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+										</button>
+										<div x-show="openSection === 'exchange'" x-transition class="sidebar-submenu space-y-1 mt-1">
+											{% if canViewExchangeProviders %}
+												<a href="/exchange-providers" class="sidebar-item">{{ 'menu.exchange_providers'|trans }}</a>
+											{% endif %}
+											{% if canViewExchangeRates %}
+												<a href="/exchange-rates" class="sidebar-item">{{ 'menu.exchange_history'|trans }}</a>
+											{% endif %}
+											{% if canViewCurrencies %}
+												<a href="/currencies" class="sidebar-item">{{ 'menu.currencies'|trans }}</a>
+											{% endif %}
+										</div>
+									</div>
+								{% endif %}
+							</div>
+						{% endif %}
 
-                        {% if canViewExchangeProviders or canViewExchangeRates %}
-                        <div>
-                            <button @click="openSection = openSection === 'exchange' ? '' : 'exchange'" class="sidebar-item w-full">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"/></svg>
-                                {{ 'menu.exchange'|trans }}
-                                <svg :class="{'open': openSection === 'exchange'}" class="sidebar-toggle" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-                            </button>
-                            <div x-show="openSection === 'exchange'" x-transition class="sidebar-submenu space-y-1 mt-1">
-                                {% if canViewExchangeProviders %}<a href="/exchange-providers" class="sidebar-item">{{ 'menu.exchange_providers'|trans }}</a>{% endif %}
-                                {% if canViewExchangeRates %}<a href="/exchange-rates" class="sidebar-item">{{ 'menu.exchange_history'|trans }}</a>{% endif %}
-                            </div>
-                        </div>
-                        {% endif %}
-                    </div>
-                    {% endif %}
+						{% if canViewRecharges or canViewTransfers or canViewInvoices or canViewCommissionSettlements or canViewHistory %}
+							<div class="sidebar-section">
+								<p class="sidebar-section-title">Administración</p>
+							</div>
+							<div class="px-4 space-y-1">
+								{% if canViewRecharges %}
+									<a href="/recharges" class="sidebar-item {% if '/recharges' in app.request.pathinfo %}active{% endif %}">
+										<svg class="w-5 h-5" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+										{{ 'menu.recharges'|trans }}
+									</a>
+								{% endif %}
+								{% if canViewTransfers %}
+									<a href="/transfers" class="sidebar-item {% if '/transfers' in app.request.pathinfo %}active{% endif %}">
+										<svg class="w-5 h-5" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
+										{{ 'menu.transfers'|trans }}
+									</a>
+								{% endif %}
+								{% if canViewInvoices %}
+									<a href="/invoices" class="sidebar-item {% if '/invoices' in app.request.pathinfo %}active{% endif %}">
+										<svg class="w-5 h-5" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z"/></svg>
+										{{ 'menu.invoices'|trans }}
+									</a>
+								{% endif %}
+								{% if canViewReconciliations %}
+									<a href="/reconciliations" class="sidebar-item {% if app.request.pathinfo == '/reconciliations' %}active{% endif %}">
+										<svg class="w-5 h-5" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+										{{ 'menu.reconciliations'|trans }}
+									</a>
+									<a href="/reports/reconciliations" class="sidebar-item {% if '/reports/reconciliations' in app.request.pathinfo %}active{% endif %}">
+										<svg class="w-5 h-5" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 17v-6h2v6H9zm4 0v-9h2v9h-2zm4 0v-3h2v3h-2zM5 21h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+										{{ 'menu.reconciliation_report'|trans }}
+									</a>
+								{% endif %}
+								{% if canViewCommissionSettlements %}
+									<a href="/commission-settlements" class="sidebar-item {% if '/commission-settlements' in app.request.pathinfo %}active{% endif %}">
+										<svg class="w-5 h-5" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+										{{ 'menu.commission_settlements'|trans }}
+									</a>
+								{% endif %}
+								{% if canViewHistory %}
+									<a href="/history" class="sidebar-item {% if '/history' in app.request.pathinfo %}active{% endif %}">
+										<svg class="w-5 h-5" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+										{{ 'menu.history'|trans }}
+									</a>
+								{% endif %}
+							</div>
+						{% endif %}
+					</nav>
 
-                    {% if canViewRecharges or canViewTransfers or canViewInvoices or canViewHistory %}
-                    <div class="sidebar-section"><p class="sidebar-section-title">Administración</p></div>
-                    <div class="px-4 space-y-1">
-                        {% if canViewRecharges %}
-                        <a href="/recharges" class="sidebar-item {% if '/recharges' in app.request.pathinfo %}active{% endif %}">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                            {{ 'menu.recharges'|trans }}
-                        </a>
-                        {% endif %}
-                        {% if canViewTransfers %}
-                        <a href="/transfers" class="sidebar-item {% if '/transfers' in app.request.pathinfo %}active{% endif %}">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
-                            {{ 'menu.transfers'|trans }}
-                        </a>
-                        {% endif %}
-                        {% if canViewInvoices %}
-                        <a href="/invoices" class="sidebar-item {% if '/invoices' in app.request.pathinfo %}active{% endif %}">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z"/></svg>
-                            {{ 'menu.invoices'|trans }}
-                        </a>
-                        {% endif %}
-                        {% if canViewHistory %}
-                        <a href="/history" class="sidebar-item {% if '/history' in app.request.pathinfo %}active{% endif %}">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                            {{ 'menu.history'|trans }}
-                        </a>
-                        {% endif %}
-                    </div>
-                    {% endif %}
-                </nav>
+					<div class="px-4 py-4 border-t border-gray-100">
+						<div class="flex items-center gap-3">
+							<div class="w-9 h-9 bg-gradient-to-br from-indigo-400 to-purple-500 rounded-full flex items-center justify-center text-white text-sm font-semibold shadow-lg">
+								{{ app.user.name|first|upper }}
+							</div>
+							<div class="flex-1 min-w-0">
+								<p class="text-sm font-medium text-gray-800 truncate">{{ app.user.name }}</p>
+								<p class="text-xs text-gray-500 truncate">{{ app.user.email }}</p>
+							</div>
+							<a href="{{ path('app_logout') }}" class="text-gray-400 hover:text-red-500 transition-colors" title="{{ 'menu.logout'|trans }}">
+								<svg class="w-5 h-5" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+							</a>
+						</div>
+					</div>
+				</aside>
 
-                <div class="px-4 py-4 border-t border-gray-100">
-                    <div class="flex items-center gap-3">
-                        <div class="w-9 h-9 bg-gradient-to-br from-indigo-400 to-purple-500 rounded-full flex items-center justify-center text-white text-sm font-semibold shadow-lg">
-                            {{ app.user.name|first|upper }}
-                        </div>
-                        <div class="flex-1 min-w-0">
-                            <p class="text-sm font-medium text-gray-800 truncate">{{ app.user.name }}</p>
-                            <p class="text-xs text-gray-500 truncate">{{ app.user.email }}</p>
-                        </div>
-                        <a href="{{ path('app_logout') }}" class="text-gray-400 hover:text-red-500 transition-colors" title="{{ 'menu.logout'|trans }}">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
-                        </a>
-                    </div>
-                </div>
-            </aside>
-
-            <div class="flex-1 ml-[260px] flex flex-col min-h-screen">
-                <header class="bg-white border-b border-gray-200 h-16 flex items-center justify-between px-8 sticky top-0 z-10">
-                    <button id="sidebar-toggle" class="text-gray-500 hover:text-gray-700 lg:hidden" onclick="document.querySelector('.sidebar').classList.toggle('-translate-x-full')">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
-                    </button>
-                    <div class="flex items-center gap-3">
-                        <span class="text-sm text-gray-500">{% block header_title %}{% endblock %}</span>
-                    </div>
-                    <div class="flex items-center gap-4">
-                        <span class="text-sm font-medium text-gray-700">{{ app.user.name }}</span>
-                    </div>
-                </header>
-                <main class="flex-1 p-8">
-                    {% block body %}{% endblock %}
-                </main>
-            </div>
-        </div>
-    </div>
-    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
-    <script>
-        window.__USER__ = {{ app.user ? {
+				<div class="flex-1 lg:ml-[260px] flex flex-col h-screen overflow-hidden">
+					<header class="bg-white border-b border-gray-200 h-16 flex-shrink-0 flex items-center justify-between px-8 z-10">
+						<button id="sidebar-toggle" class="text-gray-500 hover:text-gray-700 lg:hidden" onclick="document.querySelector('.sidebar').classList.toggle('open');document.getElementById('sidebar-backdrop').classList.toggle('open');">
+							<svg class="w-6 h-6" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+						</button>
+						<div class="flex items-center gap-3">
+							<span class="text-sm text-gray-500"> {% block header_title %}{% endblock %}
+								</span>
+							</div>
+							<div class="flex items-center gap-2">
+								<a href="{{ path('manual_download', {tipo: 'usuario'}) }}" class="flex items-center justify-center w-9 h-9 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100 hover:text-emerald-700 transition-colors" title="{{ 'menu.manual_usuario'|trans }}">
+									<svg class="w-5 h-5" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4v12m0 0l-4-4m4 4l4-4M4 20h16"/></svg>
+								</a>
+								<a href="{{ path('manual_download', {tipo: 'api'}) }}" class="flex items-center justify-center w-9 h-9 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100 hover:text-emerald-700 transition-colors" title="{{ 'menu.manual_api'|trans }}">
+									<svg class="w-5 h-5" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10 20l4-16m4 4l4 4-4 4M6 8l-4 4 4 4"/></svg>
+								</a>
+							</div>
+						</header>
+						<main class="flex-1 overflow-y-auto p-8"> {% block body %}{% endblock %}
+							</main>
+							<footer class="px-8 py-4 border-t border-gray-100 text-center text-xs text-gray-400 flex-shrink-0">
+								{{ 'footer.developed_by'|trans }}
+							</footer>
+						</div>
+					</div>
+				</div>
+				<script>
+					window.__USER__ = {{ app.user ? {
             id: app.user.id,
             name: app.user.name,
             email: app.user.email,
             roles: app.user.roles
         }|json_encode|raw : 'null' }};
-    </script>
-    {% block javascripts %}{% endblock %}
-</body>
-</html>
+window.__PERMISSIONS__ = {{ app.user and app.user.role ? app.user.role.flatPermissions|json_encode|raw : '[]' }};
+				</script>
+				{% block javascripts %}{% endblock %}
+			</body>
+		</html>

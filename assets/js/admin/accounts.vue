@@ -152,6 +152,7 @@ import InputText from 'primevue/inputtext';
 import Dialog from 'primevue/dialog';
 import Select from 'primevue/select';
 import { useToast } from 'primevue/usetoast';
+import typeDocumentOptions from '../../static/type_document.json';
 
 const { t } = useI18n();
 const toast = useToast();
@@ -179,12 +180,7 @@ const accountTypes = [
     { label: 'Personal', value: 'personal' },
 ];
 
-const documentTypes = [
-    { label: 'NIT', value: 'NIT' },
-    { label: 'CC', value: 'CC' },
-    { label: 'RIF', value: 'RIF' },
-    { label: 'RUC', value: 'RUC' },
-];
+const documentTypes = typeDocumentOptions;
 
 const currencies = [
     { label: 'USD', value: 'USD' },

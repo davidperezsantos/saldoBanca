@@ -1,0 +1,25 @@
+framework:
+    rate_limiter:
+        # Login por JWT (/api/v1/login) — el form_login del panel admin ya tiene su propio
+        # login_throttling nativo en security.yaml; este es para el endpoint JWT, que no pasa
+        # por ese mecanismo (firewall "api_public", security: false).
+        api_login:
+            policy: 'sliding_window'
+            limit: 5
+            interval: '1 minute'
+
+        # Solicitar restablecimiento de contraseña (por WhatsApp) — evita spamear el WhatsApp
+        # de alguien pidiendo el link una y otra vez.
+        password_reset:
+            policy: 'sliding_window'
+            limit: 3
+            interval: '15 minutes'
+
+        # Pedir un PIN por WhatsApp (Account::requestPin / AuthorizedUser::requestPin). Cada
+        # cuenta/autorizado ya tiene su propio cooldown de 60s (ver AccountService/AuthorizedService),
+        # pero eso no frena a alguien probando contra MUCHAS cuentas distintas rápido — este límite
+        # es por IP, independiente de a cuál cuenta le esté pidiendo el código.
+        pin_request:
+            policy: 'sliding_window'
+            limit: 10
+            interval: '1 minute'

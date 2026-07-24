@@ -3,17 +3,23 @@
 namespace App\Entity\Balance;
 
 use App\Entity\Base\BaseEntity;
+use App\Entity\User;
 use Doctrine\ORM\Mapping as ORM;
 use App\Repository\Balance\AuthorizedUserRepository;
+use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 
 #[ORM\Entity(repositoryClass: AuthorizedUserRepository::class)]
 #[ORM\Table(name: 'balance_authorized_user')]
 #[ORM\HasLifecycleCallbacks]
-class AuthorizedUser extends BaseEntity
+class AuthorizedUser extends BaseEntity implements PasswordAuthenticatedUserInterface
 {
     #[ORM\ManyToOne(targetEntity: Account::class, inversedBy: 'authorizedUsers')]
     #[ORM\JoinColumn(nullable: false)]
     private ?Account $account = null;
+
+    #[ORM\OneToOne(targetEntity: User::class)]
+    #[ORM\JoinColumn(nullable: true)]
+    private ?User $user = null;
 
     #[ORM\Column(length: 255)]
     private ?string $userName = null;
@@ -33,6 +39,16 @@ class AuthorizedUser extends BaseEntity
     #[ORM\Column(type: 'decimal', precision: 18, scale: 2, nullable: true)]
     private ?string $maxAmount = null;
 
+    /**
+     * Cuánto queda todavía del cupo reservado en AccountBalance.reservedBalance para ESTE
+     * autorizado específicamente (reservedBalance en la cuenta es un agregado entre todos sus
+     * autorizados). Arranca en maxAmount al reservar y baja con cada spend(); es lo que hay que
+     * devolver (no maxAmount) al desactivar/eliminar, y lo que hay que volver a reservar al
+     * reactivar (no el maxAmount original completo).
+     */
+    #[ORM\Column(type: 'decimal', precision: 18, scale: 2, nullable: true)]
+    private ?string $reservedAmount = null;
+
     #[ORM\Column(type: 'decimal', precision: 18, scale: 2, nullable: true)]
     private ?string $dailyLimit = null;
 
@@ -48,8 +64,15 @@ class AuthorizedUser extends BaseEntity
     #[ORM\Column(length: 20)]
     private string $status = 'active';
 
-    #[ORM\Column(length: 4, nullable: true)]
+    #[ORM\Column(length: 255, nullable: true)]
     private ?string $pinCode = null;
+
+    /**
+     * Cooldown de 60s entre pedidos de código (AuthorizedService::requestPin()) — evita que se
+     * spamee WhatsApp con reenvíos.
+     */
+    #[ORM\Column(type: 'datetime_immutable', nullable: true)]
+    private ?\DateTimeImmutable $pinRequestedAt = null;
 
     #[ORM\Column(type: 'datetime_immutable', nullable: true)]
     private ?\DateTimeImmutable $lastUsedAt = null;
@@ -68,6 +91,17 @@ class AuthorizedUser extends BaseEntity
     public function setAccount(?Account $account): static
     {
         $this->account = $account;
+        return $this;
+    }
+
+    public function getUser(): ?User
+    {
+        return $this->user;
+    }
+
+    public function setUser(?User $user): static
+    {
+        $this->user = $user;
         return $this;
     }
 
@@ -137,6 +171,17 @@ class AuthorizedUser extends BaseEntity
         return $this;
     }
 
+    public function getReservedAmount(): ?string
+    {
+        return $this->reservedAmount;
+    }
+
+    public function setReservedAmount(?string $reservedAmount): static
+    {
+        $this->reservedAmount = $reservedAmount;
+        return $this;
+    }
+
     public function getDailyLimit(): ?string
     {
         return $this->dailyLimit;
@@ -201,6 +246,26 @@ class AuthorizedUser extends BaseEntity
     {
         $this->pinCode = $pinCode;
         return $this;
+    }
+
+    public function getPinRequestedAt(): ?\DateTimeImmutable
+    {
+        return $this->pinRequestedAt;
+    }
+
+    public function setPinRequestedAt(?\DateTimeImmutable $pinRequestedAt): static
+    {
+        $this->pinRequestedAt = $pinRequestedAt;
+        return $this;
+    }
+
+    /**
+     * Requerido por PasswordAuthenticatedUserInterface para reutilizar UserPasswordHasherInterface
+     * (mismo mecanismo que User::password) — el PIN se guarda hasheado, no en texto plano.
+     */
+    public function getPassword(): ?string
+    {
+        return $this->pinCode;
     }
 
     public function getLastUsedAt(): ?\DateTimeImmutable

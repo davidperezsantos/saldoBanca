@@ -4,11 +4,14 @@ namespace App\Command;
 
 use App\Entity\Role;
 use Doctrine\ORM\EntityManagerInterface;
+use Gedmo\Loggable\LoggableListener;
+use Gedmo\Tool\ActorProviderInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 #[AsCommand(
     name: 'app:seed-roles',
@@ -17,13 +20,26 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 class SeedRolesCommand extends Command
 {
     public function __construct(
-        private EntityManagerInterface $entityManager
+        private EntityManagerInterface $entityManager,
+        #[Autowire(service: 'stof_doctrine_extensions.listener.loggable')]
+        private LoggableListener $loggableListener,
     ) {
         parent::__construct();
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
+        // Gedmo\Loggable usa un ActorProvider (ligado al token de seguridad HTTP) que tiene
+        // prioridad sobre setUsername() — en un comando de consola no hay token y ese provider
+        // devuelve null, lo que revienta al persistir/actualizar un Role. Se reemplaza por uno fijo
+        // mientras corre este comando (ver Gedmo\Loggable\LoggableListener::getUsername()).
+        $this->loggableListener->setActorProvider(new class implements ActorProviderInterface {
+            public function getActor(): string
+            {
+                return 'console';
+            }
+        });
+
         $io = new SymfonyStyle($input, $output);
 
         $roles = [
@@ -34,14 +50,20 @@ class SeedRolesCommand extends Command
                 'permissions' => [
                     'dashboard' => ['view'],
                     'administration' => ['users' => ['view', 'create', 'edit', 'delete', 'status'], 'roles' => ['view', 'create', 'edit', 'delete', 'assign_permissions']],
+                    'oauth_clients' => ['view', 'create', 'edit', 'delete', 'status'],
                     'payment_gateway' => ['view', 'create', 'edit', 'delete', 'configure'],
                     'clients' => ['view', 'create', 'edit', 'delete', 'details', 'status', 'balance'],
-                    'businesses' => ['view', 'create', 'edit', 'delete', 'details', 'status', 'balance'],
-                    'authorized' => ['view', 'create', 'edit', 'delete', 'details', 'status', 'verify', 'transfer'],
+                    'businesses' => ['edit'],
+                    'payout_accounts' => ['view', 'create', 'edit', 'delete'],
+                    'authorized' => ['view', 'create', 'edit', 'delete', 'details', 'status', 'verify'],
                     'exchange' => ['providers' => ['view', 'create', 'edit', 'delete'], 'rates' => ['view', 'fetch']],
+                    'currencies' => ['view', 'create', 'edit', 'status'],
                     'recharges' => ['view', 'create', 'details', 'complete', 'fail', 'cancel'],
                     'transfers' => ['view', 'create', 'details', 'process', 'cancel', 'limits'],
                     'invoices' => ['view', 'create', 'details', 'pay', 'cancel', 'refund', 'summary'],
+                    'reconciliations' => ['view', 'create', 'details', 'send', 'approve', 'settle'],
+                    'reconciliation' => ['run', 'view'],
+                    'commission_settlements' => ['view', 'create', 'details', 'approve', 'assign_account', 'settle', 'close'],
                     'history' => ['view', 'export'],
                 ],
             ],
@@ -52,12 +74,17 @@ class SeedRolesCommand extends Command
                 'permissions' => [
                     'dashboard' => ['view'],
                     'clients' => ['view', 'create', 'edit', 'details', 'status', 'balance'],
-                    'businesses' => ['view', 'create', 'edit', 'details', 'status', 'balance'],
-                    'authorized' => ['view', 'create', 'edit', 'delete', 'details', 'status', 'verify', 'transfer'],
+                    'businesses' => ['edit'],
+                    'payout_accounts' => ['view', 'create', 'edit', 'delete'],
+                    'authorized' => ['view', 'create', 'edit', 'delete', 'details', 'status', 'verify'],
                     'exchange' => ['providers' => ['view', 'create', 'edit'], 'rates' => ['view', 'fetch']],
+                    'currencies' => ['view', 'create', 'edit', 'status'],
                     'recharges' => ['view', 'create', 'details', 'complete', 'fail', 'cancel'],
                     'transfers' => ['view', 'create', 'details', 'process', 'cancel', 'limits'],
                     'invoices' => ['view', 'create', 'details', 'pay', 'cancel', 'refund', 'summary'],
+                    'reconciliations' => ['view', 'create', 'details', 'send', 'approve', 'settle'],
+                    'reconciliation' => ['run', 'view'],
+                    'commission_settlements' => ['view', 'create', 'details', 'approve', 'settle'],
                     'history' => ['view', 'export'],
                 ],
             ],
@@ -68,11 +95,13 @@ class SeedRolesCommand extends Command
                 'permissions' => [
                     'dashboard' => ['view'],
                     'clients' => ['view', 'details', 'status', 'balance'],
-                    'businesses' => ['view', 'details', 'status', 'balance'],
-                    'authorized' => ['view', 'details', 'status', 'verify', 'transfer'],
+                    'payout_accounts' => ['view'],
+                    'authorized' => ['view', 'details', 'status', 'verify'],
                     'recharges' => ['view', 'create', 'details'],
                     'transfers' => ['view', 'details'],
                     'invoices' => ['view', 'details', 'summary'],
+                    'reconciliations' => ['view', 'details'],
+                    'reconciliation' => ['view'],
                     'history' => ['view'],
                 ],
             ],

@@ -18,6 +18,9 @@ class InvoiceDto
         public readonly ?string $customerCode = null,
         public readonly ?string $customerName = null,
         public readonly ?string $notes = null,
+        public readonly ?string $originalAmount = null,
+        public readonly ?string $originalCurrency = null,
+        public readonly ?string $businessAccountId = null,
     ) {
     }
 
@@ -37,6 +40,9 @@ class InvoiceDto
             customerCode: $data['customerCode'] ?? null,
             customerName: $data['customerName'] ?? null,
             notes: $data['notes'] ?? null,
+            originalAmount: $data['originalAmount'] ?? null,
+            originalCurrency: $data['originalCurrency'] ?? null,
+            businessAccountId: $data['businessAccountId'] ?? null,
         );
     }
 
@@ -56,6 +62,9 @@ class InvoiceDto
             'customerCode' => $this->customerCode,
             'customerName' => $this->customerName,
             'notes' => $this->notes,
+            'originalAmount' => $this->originalAmount,
+            'originalCurrency' => $this->originalCurrency,
+            'businessAccountId' => $this->businessAccountId,
         ];
     }
 }

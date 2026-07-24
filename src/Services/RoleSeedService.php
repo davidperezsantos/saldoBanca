@@ -33,7 +33,8 @@ class RoleSeedService
     ];
 
     public function __construct(
-        private EntityManagerInterface $entityManager
+        private EntityManagerInterface $entityManager,
+        private LoggableSystemActor $systemActor,
     ) {
     }
 
@@ -57,8 +58,14 @@ class RoleSeedService
         $role->setLabel($config['label']);
         $role->setPermissions($config['permissions']);
         $role->setIsSystem(false);
+        // Roles que solo se asignan vía autorregistro público (ver RegistrationService) — su JWT
+        // es para otra API/app propia del cliente, nunca deben poder loguearse en el panel admin.
+        $role->setAllowPanelLogin(false);
 
         $this->entityManager->persist($role);
+        // ensureRoleExists() se llama desde el autorregistro público (sin token de seguridad) la
+        // primera vez que se necesita este rol — ver LoggableSystemActor.
+        $this->systemActor->actAsSystem('autorregistro');
         $this->entityManager->flush();
 
         return $role;

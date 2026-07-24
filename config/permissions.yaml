@@ -34,7 +34,11 @@ modules:
       configure: Configurar
 
   clients:
-    label: Clientes
+    # Cubre TODAS las cuentas (Account), tanto clientes como negocios, distinguidas solo por
+    # accountType — el módulo se llama "clients" por historia, pero AccountController usa este
+    # mismo permiso para cualquier tipo de cuenta (ver "businesses" abajo para la única acción
+    # que sí es específica de negocios: aprobar un registro pendiente).
+    label: Cuentas (Clientes y Negocios)
     actions:
       view: Ver
       create: Crear
@@ -45,15 +49,22 @@ modules:
       balance: Ver Saldo
 
   businesses:
-    label: Negocios
+    # Única acción real distinta de "clients": aprobar una cuenta de negocio que se autorregistró
+    # y quedó pendiente (AccountController::approveBusiness). No es un CRUD aparte de negocios.
+    label: Aprobación de Negocios
+    actions:
+      edit: Aprobar Negocio Pendiente
+
+  payout_accounts:
+    # Cuentas reales (bancarias/de pago) que un negocio registra para indicar a dónde debe
+    # transferírsele el dinero al liquidar una conciliación (BusinessPayoutAccount). Solo aplica a
+    # cuentas accountType=business.
+    label: Cuentas de Pago de Negocios
     actions:
       view: Ver
       create: Crear
       edit: Editar
       delete: Eliminar
-      details: Ver Detalles
-      status: Cambiar Estado
-      balance: Ver Saldo
 
   authorized:
     label: Usuarios Autorizados
@@ -65,7 +76,6 @@ modules:
       details: Ver Detalles
       status: Cambiar Estado
       verify: Verificar
-      transfer: Transferir Saldo
 
   exchange:
     label: Tasas de Cambio
@@ -122,6 +132,52 @@ modules:
       edit: Editar
       delete: Eliminar
       status: Cambiar Estado
+
+  currencies:
+    label: Monedas
+    actions:
+      view: Ver
+      create: Crear
+      edit: Editar
+      status: Cambiar Estado
+
+  reconciliations:
+    label: Conciliaciones con Negocios
+    actions:
+      view: Ver
+      create: Crear
+      details: Ver Detalles
+      send: Enviar por WhatsApp
+      approve: Aprobar
+      settle: Liquidar Pago
+
+  reconciliation:
+    # Conciliación de una pasarela de pago contra los movimientos que reporta el externo
+    # (ReconciliationController, distinto de "reconciliations" arriba que es con negocios).
+    # OJO: hoy no tiene pantalla propia en el panel — solo endpoints JSON (/reconciliation/...),
+    # sin link en el menú. El permiso ya existe porque el código lo exige (antes ningún rol lo
+    # tenía y quedaba inaccesible incluso para super_admin); si no se va a usar todavía se puede
+    # quitar de este archivo sin romper nada más.
+    label: Conciliación Bancaria (Pasarelas)
+    actions:
+      run: Ejecutar
+      view: Ver
+
+  commission_settlements:
+    # Liquidación de la comisión del sistema entre el Administrador (dueño de la cuenta física con
+    # el dinero) y el Super Administrador (a quien le corresponde esa comisión). Distinto de
+    # "reconciliations" (que es con negocios) — acá el "negocio" es el propio sistema.
+    # create/approve/settle son pasos del Administrador; assign_account/close son del Super
+    # Administrador (ver flujo completo en CommissionSettlement).
+    label: Conciliación de Comisión del Sistema
+    actions:
+      view: Ver
+      create: Crear
+      details: Ver Detalles
+      approve: Aprobar (Administrador)
+      assign_account: Asignar Cuenta de Pago (Super Admin)
+      settle: Liquidar Pago (Administrador)
+      close: Cerrar (Super Admin)
 
   history:
     label: Historial
