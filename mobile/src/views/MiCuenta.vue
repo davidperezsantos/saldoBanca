@@ -6,6 +6,7 @@ import { useAccount, loadAccount } from '../composables/account';
 import { useUser } from '../composables/user';
 import Sparkline from '../components/Sparkline.vue';
 import Barcode from '../components/Barcode.vue';
+import { currencySymbol } from '../utils/currency';
 
 const BARCODE_PREFIX = 'SG-';
 
@@ -15,6 +16,7 @@ const { user } = useUser();
 const loading = ref(true);
 const error = ref('');
 const balance = ref(null);
+const baseBalance = ref(null);
 const movements = ref([]);
 
 const BAR_COLORS = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100'];
@@ -70,8 +72,20 @@ async function load() {
     try {
         await loadAccount();
         if (account.value) {
-            const { data: balanceRes } = await apiClient.get(`/balance/${account.value.id}`);
-            balance.value = balanceRes.data;
+            // Sin ?currency= devuelve el saldo en la moneda BASE del sistema — la usamos para
+            // saber cuál es esa moneda, y de paso queda como fallback si la cuenta ya está en
+            // esa misma moneda (no hace falta pedir una segunda vez).
+            const { data: baseRes } = await apiClient.get(`/balance/${account.value.id}`);
+            baseBalance.value = baseRes.data;
+
+            if (account.value.defaultCurrency && account.value.defaultCurrency !== baseRes.data.currency) {
+                const { data: ownRes } = await apiClient.get(`/balance/${account.value.id}`, {
+                    params: { currency: account.value.defaultCurrency },
+                });
+                balance.value = ownRes.data;
+            } else {
+                balance.value = baseRes.data;
+            }
 
             const dateFrom = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
                 .toISOString()
@@ -106,7 +120,10 @@ onMounted(load);
         <p class="label">{{ t('account.accountLabel') }}</p>
         <p class="value">{{ account.accountNumber }}</p>
         <p class="label">{{ t('account.balanceLabel') }}</p>
-        <p class="balance">{{ balance?.available ?? '0.00' }} {{ balance?.currency ?? '' }}</p>
+        <p class="balance">{{ balance?.available ?? '0.00' }} {{ currencySymbol(balance?.currency) }}</p>
+        <p v-if="baseBalance && balance && baseBalance.currency !== balance.currency" class="balance-alt">
+          ≈ {{ baseBalance.available }} {{ currencySymbol(baseBalance.currency) }}
+        </p>
         <p v-if="balanceDelta !== null" class="delta" :class="{ up: balanceDelta >= 0, down: balanceDelta < 0 }">
           {{ balanceDelta >= 0 ? '+' : '' }}{{ balanceDelta.toFixed(2) }} {{ t('account.deltaSuffix') }}
         </p>
@@ -125,7 +142,7 @@ onMounted(load);
               <span class="bar-label">{{ item.label }}</span>
             </div>
           </div>
-          <span class="bar-amount">{{ item.total.toFixed(2) }}</span>
+          <span class="bar-amount">{{ item.total.toFixed(2) }} {{ currencySymbol(balance?.currency) }}</span>
         </li>
       </ul>
     </div>
@@ -189,6 +206,11 @@ h2 {
     font-size: 1.8rem;
     font-weight: 700;
     color: var(--primary-dark);
+}
+.balance-alt {
+    margin: 0;
+    font-size: 0.9rem;
+    color: #888;
 }
 .delta {
     margin: 0;

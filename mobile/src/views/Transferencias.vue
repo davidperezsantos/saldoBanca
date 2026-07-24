@@ -3,6 +3,7 @@ import { ref, computed, onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { apiClient } from '../api/client';
 import { useAccount, loadAccount } from '../composables/account';
+import { currencySymbol } from '../utils/currency';
 
 const { t } = useI18n();
 const { account } = useAccount();
@@ -40,6 +41,12 @@ async function load() {
 
 function isSent(transfer) {
     return transfer.originAccountId === account.value?.id;
+}
+
+// amount/currency ya está en la moneda de la cuenta; originalAmount/originalCurrency es lo que
+// se tecleó al crear la transferencia, si fue distinto.
+function hasConversion(transfer) {
+    return transfer.originalCurrency && transfer.originalCurrency !== transfer.currency;
 }
 
 async function submitTransfer() {
@@ -85,7 +92,7 @@ onMounted(load);
           <input v-model="destinationAccountNumber" type="text" required :placeholder="t('transfers.destinationPlaceholder')" />
         </label>
         <label>
-          {{ t('transfers.amount', { currency: account?.defaultCurrency ?? '' }) }}
+          {{ t('transfers.amount', { currency: currencySymbol(account?.defaultCurrency) }) }}
           <input v-model="amount" type="number" step="0.01" min="0.01" required />
         </label>
         <label>
@@ -110,8 +117,10 @@ onMounted(load);
           <div class="item-info">
             <p class="item-title">
               {{ isSent(tr) ? '↑' : '↓' }}
-              {{ tr.amount }} {{ tr.currency }}
+              <template v-if="hasConversion(tr)">{{ tr.originalAmount }} {{ currencySymbol(tr.originalCurrency) }}</template>
+              <template v-else>{{ tr.amount }} {{ currencySymbol(tr.currency) }}</template>
             </p>
+            <p v-if="hasConversion(tr)" class="item-alt">≈ {{ tr.amount }} {{ currencySymbol(tr.currency) }}</p>
             <p class="item-sub">
               {{ isSent(tr)
                 ? t('transfers.sentTo', { name: tr.destAccountName || tr.destAccountNumber })
@@ -228,6 +237,11 @@ h2 {
 .item-title {
     margin: 0;
     font-weight: 600;
+}
+.item-alt {
+    margin: 0;
+    font-size: 0.75rem;
+    color: #999;
 }
 .item-sub {
     margin: 0;

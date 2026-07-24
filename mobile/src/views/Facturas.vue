@@ -3,6 +3,7 @@ import { ref, computed, onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { apiClient } from '../api/client';
 import { useAccount, loadAccount } from '../composables/account';
+import { currencySymbol } from '../utils/currency';
 
 const { t } = useI18n();
 const { account } = useAccount();
@@ -26,6 +27,14 @@ const STATUS_LABELS = computed(() => ({
 
 function hasTax(invoice) {
     return invoice.taxAmount && parseFloat(invoice.taxAmount) > 0;
+}
+
+// El monto "real" de la factura es originalAmount/originalCurrency (lo que se tecleó al
+// crearla); amount/taxAmount/totalAmount ya están convertidos a la moneda de la cuenta. Si no
+// hay originalCurrency (se creó directo en la moneda de la cuenta) no hay conversión que
+// mostrar aparte.
+function hasConversion(invoice) {
+    return invoice.originalCurrency && invoice.originalCurrency !== invoice.currency;
 }
 
 async function load() {
@@ -108,15 +117,22 @@ onMounted(load);
           <div class="amounts">
             <div v-if="hasTax(i)" class="amount-row">
               <span>{{ t('invoices.subtotal') }}</span>
-              <span>{{ i.amount }} {{ i.currency }}</span>
+              <span>{{ i.amount }} {{ currencySymbol(i.currency) }}</span>
             </div>
             <div v-if="hasTax(i)" class="amount-row">
               <span>{{ t('invoices.tax') }}</span>
-              <span>{{ i.taxAmount }} {{ i.currency }}</span>
+              <span>{{ i.taxAmount }} {{ currencySymbol(i.currency) }}</span>
             </div>
             <div class="amount-row total">
               <span>{{ t('invoices.total') }}</span>
-              <span>{{ i.totalAmount }} {{ i.currency }}</span>
+              <span>
+                <template v-if="hasConversion(i)">{{ i.originalAmount }} {{ currencySymbol(i.originalCurrency) }}</template>
+                <template v-else>{{ i.totalAmount }} {{ currencySymbol(i.currency) }}</template>
+              </span>
+            </div>
+            <div v-if="hasConversion(i)" class="amount-row alt">
+              <span>≈</span>
+              <span>{{ i.totalAmount }} {{ currencySymbol(i.currency) }}</span>
             </div>
           </div>
 

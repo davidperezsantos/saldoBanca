@@ -1,14 +1,32 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { apiClient } from '../api/client';
 import { useAccount, loadAccount } from '../composables/account';
+import { currencySymbol } from '../utils/currency';
 
 const { t } = useI18n();
 const { account } = useAccount();
 const loading = ref(true);
 const error = ref('');
 const movements = ref([]);
+
+const TYPE_LABELS = computed(() => ({
+    recharge: t('history.typeRecharge'),
+    transfer_out: t('history.typeTransferOut'),
+    transfer_in: t('history.typeTransferIn'),
+    invoice_pay: t('history.typeInvoicePay'),
+    invoice_credit: t('history.typeInvoiceCredit'),
+    authorized_spend: t('history.typeAuthorizedSpend'),
+    reconciliation_settlement: t('history.typeReconciliationSettlement'),
+    reserve: t('history.typeReserve'),
+    release: t('history.typeRelease'),
+    adjustment: t('history.typeAdjustment'),
+}));
+
+function movementLabel(movement) {
+    return TYPE_LABELS.value[movement.movementType] ?? t('history.typeOther');
+}
 
 async function load() {
     loading.value = true;
@@ -46,11 +64,11 @@ onMounted(load);
     <ul v-else class="list">
       <li v-for="m in movements" :key="m.id" class="item">
         <div>
-          <p class="item-title">{{ m.description || m.movementType }}</p>
+          <p class="item-title">{{ movementLabel(m) }}</p>
           <p class="item-sub">{{ m.createdAt }}</p>
         </div>
         <span class="amount" :class="{ credit: isCredit(m.amount), debit: !isCredit(m.amount) }">
-          {{ isCredit(m.amount) ? '+' : '' }}{{ m.amount }} {{ m.currency }}
+          {{ isCredit(m.amount) ? '+' : '' }}{{ m.amount }} {{ currencySymbol(m.currency) }}
         </span>
       </li>
     </ul>

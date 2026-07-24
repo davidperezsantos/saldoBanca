@@ -2,6 +2,7 @@
 import { ref, computed, onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { apiClient } from '../api/client';
+import { currencySymbol } from '../utils/currency';
 
 const { t } = useI18n();
 const loading = ref(true);
@@ -14,6 +15,12 @@ const STATUS_LABELS = computed(() => ({
     cancelled: t('recharges.statusCancelled'),
     failed: t('recharges.statusFailed'),
 }));
+
+// amount/currency ya está en la moneda de la cuenta; originalAmount/originalCurrency es lo que
+// efectivamente pagó (ej. con tarjeta en USD), si fue distinto.
+function hasConversion(recharge) {
+    return recharge.originalCurrency && recharge.originalCurrency !== recharge.currency;
+}
 
 async function load() {
     loading.value = true;
@@ -46,7 +53,11 @@ onMounted(load);
       <ul v-else class="list">
         <li v-for="r in recharges" :key="r.id" class="item">
           <div>
-            <p class="item-title">{{ r.amount }} {{ r.currency }}</p>
+            <p class="item-title">
+              <template v-if="hasConversion(r)">{{ r.originalAmount }} {{ currencySymbol(r.originalCurrency) }}</template>
+              <template v-else>{{ r.amount }} {{ currencySymbol(r.currency) }}</template>
+            </p>
+            <p v-if="hasConversion(r)" class="item-alt">≈ {{ r.amount }} {{ currencySymbol(r.currency) }}</p>
             <p class="item-sub">{{ r.createdAt }}</p>
           </div>
           <span class="badge" :class="r.status">{{ STATUS_LABELS[r.status] ?? r.status }}</span>
@@ -113,6 +124,11 @@ h2 {
 .item-title {
     margin: 0;
     font-weight: 600;
+}
+.item-alt {
+    margin: 0;
+    font-size: 0.75rem;
+    color: #999;
 }
 .item-sub {
     margin: 0;
