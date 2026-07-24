@@ -1,8 +1,10 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { apiClient } from '../api/client';
 import { useAccount, loadAccount } from '../composables/account';
 
+const { t } = useI18n();
 const { account } = useAccount();
 const loading = ref(true);
 const error = ref('');
@@ -15,12 +17,16 @@ const payError = ref('');
 const paySuccess = ref('');
 const payBusy = ref(false);
 
-const STATUS_LABELS = {
-    pending: 'Pendiente',
-    paid: 'Pagada',
-    cancelled: 'Cancelada',
-    refunded: 'Reembolsada',
-};
+const STATUS_LABELS = computed(() => ({
+    pending: t('invoices.statusPending'),
+    paid: t('invoices.statusPaid'),
+    cancelled: t('invoices.statusCancelled'),
+    refunded: t('invoices.statusRefunded'),
+}));
+
+function hasTax(invoice) {
+    return invoice.taxAmount && parseFloat(invoice.taxAmount) > 0;
+}
 
 async function load() {
     loading.value = true;
@@ -30,7 +36,7 @@ async function load() {
         const { data } = await apiClient.get('/invoices');
         invoices.value = data.data;
     } catch (e) {
-        error.value = e.response?.data?.message || 'No se pudieron cargar las facturas';
+        error.value = e.response?.data?.message || t('invoices.error');
     } finally {
         loading.value = false;
     }
@@ -55,7 +61,7 @@ async function requestPin() {
         await apiClient.post(`/accounts/${account.value.id}/request-pin`);
         pinRequested.value = true;
     } catch (e) {
-        payError.value = e.response?.data?.message || 'No se pudo enviar el código';
+        payError.value = e.response?.data?.message || t('invoices.pinError');
     } finally {
         payBusy.value = false;
     }
@@ -66,11 +72,11 @@ async function confirmPay() {
     payBusy.value = true;
     try {
         await apiClient.put(`/invoices/${payingId.value}/pay`, { pinCode: pinCode.value });
-        paySuccess.value = 'Factura pagada';
+        paySuccess.value = t('invoices.paySuccess');
         payingId.value = null;
         await load();
     } catch (e) {
-        payError.value = e.response?.data?.message || 'No se pudo pagar la factura';
+        payError.value = e.response?.data?.message || t('invoices.payError');
     } finally {
         payBusy.value = false;
     }
@@ -82,43 +88,61 @@ onMounted(load);
 <template>
   <div class="stack">
     <div class="card">
-      <h2>Mis facturas</h2>
-      <p v-if="loading">Cargando...</p>
+      <h2>{{ t('invoices.title') }}</h2>
+      <p v-if="loading">{{ t('common.loading') }}</p>
       <p v-else-if="error" class="error">{{ error }}</p>
-      <p v-else-if="!invoices.length" class="empty">No tenés facturas.</p>
+      <p v-else-if="!invoices.length" class="empty">{{ t('invoices.empty') }}</p>
       <ul v-else class="list">
         <li v-for="i in invoices" :key="i.id" class="item">
           <div class="item-row">
-            <div>
+            <div class="item-info">
               <p class="item-title">{{ i.invoiceNumber }}</p>
-              <p class="item-sub">{{ i.totalAmount }} {{ i.currency }} · vence {{ i.dueDate ?? '—' }}</p>
+              <p v-if="i.businessAccountName" class="item-sub">{{ t('invoices.issuedBy', { name: i.businessAccountName }) }}</p>
+              <p class="item-sub">{{ t('invoices.issuedOn', { date: i.invoiceDate }) }}</p>
+              <p v-if="i.dueDate" class="item-sub">{{ t('invoices.dueOn', { date: i.dueDate }) }}</p>
+              <p v-if="i.paymentDate" class="item-sub">{{ t('invoices.paidOn', { date: i.paymentDate }) }}</p>
             </div>
             <span class="badge" :class="i.status">{{ STATUS_LABELS[i.status] ?? i.status }}</span>
           </div>
 
+          <div class="amounts">
+            <div v-if="hasTax(i)" class="amount-row">
+              <span>{{ t('invoices.subtotal') }}</span>
+              <span>{{ i.amount }} {{ i.currency }}</span>
+            </div>
+            <div v-if="hasTax(i)" class="amount-row">
+              <span>{{ t('invoices.tax') }}</span>
+              <span>{{ i.taxAmount }} {{ i.currency }}</span>
+            </div>
+            <div class="amount-row total">
+              <span>{{ t('invoices.total') }}</span>
+              <span>{{ i.totalAmount }} {{ i.currency }}</span>
+            </div>
+          </div>
+
           <button v-if="i.status === 'pending' && payingId !== i.id" class="pay-btn" @click="startPay(i)">
-            Pagar
+            {{ t('invoices.pay') }}
           </button>
 
           <div v-if="payingId === i.id" class="pay-box">
             <template v-if="!pinRequested">
-              <p class="hint">Te vamos a enviar un código de verificación por WhatsApp.</p>
+              <p class="hint">{{ t('invoices.pinIntro') }}</p>
               <div class="pay-actions">
-                <button class="secondary" @click="cancelPay">Cancelar</button>
+                <button class="secondary" @click="cancelPay">{{ t('common.cancel') }}</button>
                 <button :disabled="payBusy" @click="requestPin">
-                  {{ payBusy ? 'Enviando...' : 'Enviar código' }}
+                  {{ payBusy ? t('invoices.sendingCode') : t('invoices.sendCode') }}
                 </button>
               </div>
             </template>
             <template v-else>
               <label>
-                Código recibido por WhatsApp
+                {{ t('invoices.codeLabel') }}
                 <input v-model="pinCode" type="text" inputmode="numeric" placeholder="0000" />
               </label>
               <div class="pay-actions">
-                <button class="secondary" @click="cancelPay">Cancelar</button>
+                <button class="secondary" @click="cancelPay">{{ t('common.cancel') }}</button>
                 <button :disabled="payBusy || !pinCode" @click="confirmPay">
-                  {{ payBusy ? 'Confirmando...' : 'Confirmar pago' }}
+                  {{ payBusy ? t('invoices.confirmingPay') : t('invoices.confirmPay') }}
                 </button>
               </div>
             </template>
@@ -177,19 +201,26 @@ h2 {
 }
 .item-row {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: space-between;
+    gap: 0.5rem;
+}
+.item-info {
+    flex: 1;
+    min-width: 0;
 }
 .item-title {
     margin: 0;
     font-weight: 600;
 }
 .item-sub {
-    margin: 0;
-    font-size: 0.78rem;
+    margin: 0.1rem 0 0;
+    font-size: 0.75rem;
     color: #888;
+    overflow-wrap: break-word;
 }
 .badge {
+    flex-shrink: 0;
     font-size: 0.72rem;
     font-weight: 600;
     padding: 0.25rem 0.55rem;
@@ -209,6 +240,25 @@ h2 {
 .badge.cancelled, .badge.refunded {
     background: #fdecea;
     color: #c0392b;
+}
+.amounts {
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px dashed #eee;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+.amount-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.78rem;
+    color: #888;
+}
+.amount-row.total {
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: var(--primary-dark);
 }
 .pay-btn {
     margin-top: 0.5rem;

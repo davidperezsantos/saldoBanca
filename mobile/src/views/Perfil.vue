@@ -1,10 +1,12 @@
 <script setup>
 import { ref, onMounted } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { apiClient } from '../api/client';
 import { useUser, initials } from '../composables/user';
 import { useAccount, loadAccount } from '../composables/account';
 import { hasScope } from '../api/permissions';
 
+const { t } = useI18n();
 const emit = defineEmits(['logged-out']);
 
 const { user } = useUser();
@@ -26,9 +28,9 @@ async function requestNewPin() {
     try {
         await loadAccount();
         await apiClient.post(`/accounts/${account.value.id}/request-pin`);
-        pinMessage.value = 'Listo, te enviamos un código nuevo por WhatsApp.';
+        pinMessage.value = t('profile.pinSuccess');
     } catch (e) {
-        pinError.value = e.response?.data?.message || 'No se pudo generar el código';
+        pinError.value = e.response?.data?.message || t('profile.pinError');
     } finally {
         pinLoading.value = false;
     }
@@ -46,11 +48,11 @@ async function changePassword() {
     passwordSuccess.value = '';
 
     if (newPassword.value.length < 8) {
-        passwordError.value = 'La contraseña nueva debe tener al menos 8 caracteres';
+        passwordError.value = t('profile.passwordTooShort');
         return;
     }
     if (newPassword.value !== confirmPassword.value) {
-        passwordError.value = 'Las contraseñas nuevas no coinciden';
+        passwordError.value = t('profile.passwordMismatch');
         return;
     }
 
@@ -60,12 +62,12 @@ async function changePassword() {
             currentPassword: currentPassword.value,
             newPassword: newPassword.value,
         });
-        passwordSuccess.value = 'Contraseña actualizada';
+        passwordSuccess.value = t('profile.passwordSuccess');
         currentPassword.value = '';
         newPassword.value = '';
         confirmPassword.value = '';
     } catch (e) {
-        passwordError.value = e.response?.data?.message || 'No se pudo cambiar la contraseña';
+        passwordError.value = e.response?.data?.message || t('profile.passwordError');
     } finally {
         submitting.value = false;
     }
@@ -86,46 +88,44 @@ function handleLogout() {
     </div>
 
     <div class="card">
-      <h2>Código de verificación</h2>
-      <p class="hint">
-        Generá un código nuevo — te llega por WhatsApp, igual que cuando pagás una factura.
-      </p>
+      <h2>{{ t('profile.pinTitle') }}</h2>
+      <p class="hint">{{ t('profile.pinHint') }}</p>
       <p v-if="pinError" class="error">{{ pinError }}</p>
       <p v-if="pinMessage" class="success">{{ pinMessage }}</p>
       <button class="secondary-btn" :disabled="pinLoading" @click="requestNewPin">
-        {{ pinLoading ? 'Enviando...' : 'Crear PIN nuevo' }}
+        {{ pinLoading ? t('common.sending') : t('profile.pinButton') }}
       </button>
     </div>
 
     <router-link v-if="canSeeAuthorized" to="/autorizados" class="card link-card">
-      <span>Usuarios autorizados</span>
+      <span>{{ t('profile.authorizedLink') }}</span>
       <span class="chevron">›</span>
     </router-link>
 
     <div class="card">
-      <h2>Cambiar contraseña</h2>
+      <h2>{{ t('profile.passwordTitle') }}</h2>
       <form class="form" @submit.prevent="changePassword">
         <label>
-          Contraseña actual
+          {{ t('profile.currentPassword') }}
           <input v-model="currentPassword" type="password" required autocomplete="current-password" />
         </label>
         <label>
-          Contraseña nueva
+          {{ t('profile.newPassword') }}
           <input v-model="newPassword" type="password" required autocomplete="new-password" minlength="8" />
         </label>
         <label>
-          Confirmar contraseña nueva
+          {{ t('profile.confirmPassword') }}
           <input v-model="confirmPassword" type="password" required autocomplete="new-password" minlength="8" />
         </label>
         <p v-if="passwordError" class="error">{{ passwordError }}</p>
         <p v-if="passwordSuccess" class="success">{{ passwordSuccess }}</p>
         <button type="submit" :disabled="submitting">
-          {{ submitting ? 'Guardando...' : 'Guardar' }}
+          {{ submitting ? t('common.saving') : t('common.save') }}
         </button>
       </form>
     </div>
 
-    <button class="logout-btn" @click="handleLogout">Cerrar sesión</button>
+    <button class="logout-btn" @click="handleLogout">{{ t('profile.logout') }}</button>
   </div>
 </template>
 

@@ -1,8 +1,10 @@
 <script setup>
 import { ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { login } from '../api/auth';
 import { apiClient } from '../api/client';
 
+const { t } = useI18n();
 const emit = defineEmits(['logged-in']);
 
 const mode = ref('login');
@@ -24,7 +26,7 @@ async function handleSubmit() {
         await login(username.value, password.value);
         emit('logged-in');
     } catch (e) {
-        error.value = e.response?.data?.message || 'No se pudo iniciar sesión';
+        error.value = e.response?.data?.message || t('login.error');
     } finally {
         loading.value = false;
     }
@@ -46,9 +48,9 @@ async function requestReset() {
     resetLoading.value = true;
     try {
         await apiClient.post('/password-reset/request', { username: resetUsername.value });
-        resetMessage.value = 'Si el usuario existe, te enviamos un enlace por WhatsApp para restablecer tu contraseña.';
+        resetMessage.value = t('login.resetSuccess');
     } catch (e) {
-        resetError.value = e.response?.data?.message || 'No se pudo enviar el enlace';
+        resetError.value = e.response?.data?.message || t('login.resetError');
     } finally {
         resetLoading.value = false;
     }
@@ -64,39 +66,39 @@ async function requestReset() {
 
         <form v-if="mode === 'login'" @submit.prevent="handleSubmit">
             <label>
-                Usuario
+                {{ t('login.username') }}
                 <input v-model="username" type="text" required autocomplete="username" />
             </label>
             <label>
-                Contraseña
+                {{ t('login.password') }}
                 <input v-model="password" type="password" required autocomplete="current-password" />
             </label>
             <p v-if="error" class="error">{{ error }}</p>
             <button type="submit" :disabled="loading">
-                {{ loading ? 'Ingresando...' : 'Ingresar' }}
+                {{ loading ? t('login.submitting') : t('login.submit') }}
             </button>
             <p class="link-row">
-                <a href="#" class="link" @click.prevent="showReset">¿Olvidaste tu contraseña?</a>
+                <a href="#" class="link" @click.prevent="showReset">{{ t('login.forgotPassword') }}</a>
             </p>
         </form>
 
         <form v-else @submit.prevent="requestReset">
-            <p class="reset-desc">Ingresá tu usuario y te enviamos un enlace por WhatsApp para restablecer tu contraseña.</p>
+            <p class="reset-desc">{{ t('login.resetDesc') }}</p>
             <label>
-                Usuario
+                {{ t('login.username') }}
                 <input v-model="resetUsername" type="text" required autocomplete="username" />
             </label>
             <p v-if="resetError" class="error">{{ resetError }}</p>
             <p v-if="resetMessage" class="success">{{ resetMessage }}</p>
             <button type="submit" :disabled="resetLoading">
-                {{ resetLoading ? 'Enviando...' : 'Enviar enlace' }}
+                {{ resetLoading ? t('login.resetSending') : t('login.resetSend') }}
             </button>
             <p class="link-row">
-                <a href="#" class="link" @click.prevent="showLogin">← Volver</a>
+                <a href="#" class="link" @click.prevent="showLogin">{{ t('login.back') }}</a>
             </p>
         </form>
 
-        <p class="footer">Sistema de Gestión de Saldo v2.0</p>
+        <p class="footer">{{ t('login.footer') }}</p>
     </div>
 </template>
 

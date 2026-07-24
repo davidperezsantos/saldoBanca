@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { apiClient } from '../api/client';
 import { useAccount, loadAccount } from '../composables/account';
 import { useUser } from '../composables/user';
@@ -8,6 +9,7 @@ import Barcode from '../components/Barcode.vue';
 
 const BARCODE_PREFIX = 'SG-';
 
+const { t } = useI18n();
 const { account } = useAccount();
 const { user } = useUser();
 const loading = ref(true);
@@ -15,11 +17,6 @@ const error = ref('');
 const balance = ref(null);
 const movements = ref([]);
 
-const CATEGORY_LABELS = {
-    invoice: 'Facturas',
-    transfer: 'Transferencias',
-    recharge: 'Recargas',
-};
 const BAR_COLORS = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100'];
 
 function firstName(name) {
@@ -27,7 +24,12 @@ function firstName(name) {
 }
 
 function categoryLabel(referenceType) {
-    return CATEGORY_LABELS[referenceType] ?? 'Otros';
+    const labels = {
+        invoice: t('account.categoryInvoices'),
+        transfer: t('account.categoryTransfers'),
+        recharge: t('account.categoryRecharges'),
+    };
+    return labels[referenceType] ?? t('account.categoryOther');
 }
 
 const sparklineValues = computed(() => movements.value.map((m) => parseFloat(m.balanceAfter)));
@@ -83,7 +85,7 @@ async function load() {
             );
         }
     } catch (e) {
-        error.value = e.response?.data?.message || 'No se pudo cargar la cuenta';
+        error.value = e.response?.data?.message || t('account.error');
     } finally {
         loading.value = false;
     }
@@ -94,28 +96,28 @@ onMounted(load);
 
 <template>
   <div class="stack">
-    <p class="greeting">Hola, {{ firstName(user?.name) || user?.username }}</p>
+    <p class="greeting">{{ t('account.greeting', { name: firstName(user?.name) || user?.username }) }}</p>
 
     <div class="card">
-      <h1>Mi cuenta</h1>
-      <p v-if="loading">Cargando...</p>
+      <h1>{{ t('account.title') }}</h1>
+      <p v-if="loading">{{ t('common.loading') }}</p>
       <p v-else-if="error" class="error">{{ error }}</p>
       <template v-else-if="account">
-        <p class="label">Cuenta</p>
+        <p class="label">{{ t('account.accountLabel') }}</p>
         <p class="value">{{ account.accountNumber }}</p>
-        <p class="label">Saldo disponible</p>
+        <p class="label">{{ t('account.balanceLabel') }}</p>
         <p class="balance">{{ balance?.available ?? '0.00' }} {{ balance?.currency ?? '' }}</p>
         <p v-if="balanceDelta !== null" class="delta" :class="{ up: balanceDelta >= 0, down: balanceDelta < 0 }">
-          {{ balanceDelta >= 0 ? '+' : '' }}{{ balanceDelta.toFixed(2) }} en los últimos 30 días
+          {{ balanceDelta >= 0 ? '+' : '' }}{{ balanceDelta.toFixed(2) }} {{ t('account.deltaSuffix') }}
         </p>
         <Sparkline v-if="sparklineValues.length > 1" :values="sparklineValues" />
       </template>
-      <p v-else>Tu usuario no tiene una cuenta de cliente asociada a esta app.</p>
+      <p v-else>{{ t('account.noAccount') }}</p>
     </div>
 
     <div v-if="spendByCategory.length" class="card">
-      <h2>En qué gastaste más</h2>
-      <p class="period">Últimos 30 días</p>
+      <h2>{{ t('account.spendTitle') }}</h2>
+      <p class="period">{{ t('account.last30Days') }}</p>
       <ul class="bars">
         <li v-for="item in spendByCategory" :key="item.label" class="bar-row">
           <div class="bar-track">

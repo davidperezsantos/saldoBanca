@@ -1,6 +1,9 @@
 <script setup>
 import { ref, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 import countries from '../data/countries.json';
+
+const { t } = useI18n();
 
 const props = defineProps({
     modelValue: { type: String, default: '' },
@@ -39,7 +42,7 @@ watch([dial, local], () => {
     <select v-model="dial" class="dial-select">
       <option v-for="c in countries" :key="c.code" :value="c.dial">{{ flagEmoji(c.code) }} {{ c.dial }}</option>
     </select>
-    <input v-model="local" type="tel" class="local-input" placeholder="Número" />
+    <input v-model="local" type="tel" class="local-input" :placeholder="t('common.phoneNumber')" />
   </div>
 </template>
 

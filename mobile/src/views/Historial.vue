@@ -1,8 +1,10 @@
 <script setup>
 import { ref, onMounted } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { apiClient } from '../api/client';
 import { useAccount, loadAccount } from '../composables/account';
 
+const { t } = useI18n();
 const { account } = useAccount();
 const loading = ref(true);
 const error = ref('');
@@ -22,7 +24,7 @@ async function load() {
         });
         movements.value = data.data;
     } catch (e) {
-        error.value = e.response?.data?.message || 'No se pudo cargar el historial';
+        error.value = e.response?.data?.message || t('history.error');
     } finally {
         loading.value = false;
     }
@@ -37,10 +39,10 @@ onMounted(load);
 
 <template>
   <div class="card">
-    <h2>Historial de movimientos</h2>
-    <p v-if="loading">Cargando...</p>
+    <h2>{{ t('history.title') }}</h2>
+    <p v-if="loading">{{ t('common.loading') }}</p>
     <p v-else-if="error" class="error">{{ error }}</p>
-    <p v-else-if="!movements.length" class="empty">Todavía no hay movimientos.</p>
+    <p v-else-if="!movements.length" class="empty">{{ t('history.empty') }}</p>
     <ul v-else class="list">
       <li v-for="m in movements" :key="m.id" class="item">
         <div>

@@ -1,17 +1,19 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { apiClient } from '../api/client';
 
+const { t } = useI18n();
 const loading = ref(true);
 const error = ref('');
 const recharges = ref([]);
 
-const STATUS_LABELS = {
-    pending: 'Pendiente',
-    completed: 'Completada',
-    cancelled: 'Cancelada',
-    failed: 'Fallida',
-};
+const STATUS_LABELS = computed(() => ({
+    pending: t('recharges.statusPending'),
+    completed: t('recharges.statusCompleted'),
+    cancelled: t('recharges.statusCancelled'),
+    failed: t('recharges.statusFailed'),
+}));
 
 async function load() {
     loading.value = true;
@@ -20,7 +22,7 @@ async function load() {
         const { data } = await apiClient.get('/recharges');
         recharges.value = data.data;
     } catch (e) {
-        error.value = e.response?.data?.message || 'No se pudieron cargar las recargas';
+        error.value = e.response?.data?.message || t('recharges.error');
     } finally {
         loading.value = false;
     }
@@ -32,15 +34,15 @@ onMounted(load);
 <template>
   <div class="stack">
     <div class="card soon">
-      <p class="soon-title">Recargar saldo</p>
-      <p class="soon-text">Próximamente vas a poder recargar tu cuenta desde aquí con tarjeta.</p>
+      <p class="soon-title">{{ t('recharges.comingSoonTitle') }}</p>
+      <p class="soon-text">{{ t('recharges.comingSoonText') }}</p>
     </div>
 
     <div class="card">
-      <h2>Mis recargas</h2>
-      <p v-if="loading">Cargando...</p>
+      <h2>{{ t('recharges.myRecharges') }}</h2>
+      <p v-if="loading">{{ t('common.loading') }}</p>
       <p v-else-if="error" class="error">{{ error }}</p>
-      <p v-else-if="!recharges.length" class="empty">Todavía no tenés recargas.</p>
+      <p v-else-if="!recharges.length" class="empty">{{ t('recharges.empty') }}</p>
       <ul v-else class="list">
         <li v-for="r in recharges" :key="r.id" class="item">
           <div>

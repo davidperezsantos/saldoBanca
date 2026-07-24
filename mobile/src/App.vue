@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
+import { useI18n } from 'vue-i18n';
 import { getToken } from './api/client';
 import { logout } from './api/auth';
 import { resetAccount } from './composables/account';
@@ -9,6 +10,7 @@ import Login from './views/Login.vue';
 import BottomNav from './components/BottomNav.vue';
 
 const router = useRouter();
+const { t } = useI18n();
 const { user } = useUser();
 const checkingSession = ref(true);
 const isLoggedIn = ref(false);
@@ -44,7 +46,7 @@ async function handleLogout() {
                     <div class="icon">G</div>
                     <h1>SaldoGrin</h1>
                 </div>
-                <router-link to="/perfil" class="avatar" aria-label="Mi perfil">
+                <router-link to="/perfil" class="avatar" :aria-label="t('profile.ariaLabel')">
                     {{ initials(user?.name) }}
                 </router-link>
             </header>

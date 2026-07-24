@@ -1,8 +1,10 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { apiClient } from '../api/client';
 import { useAccount, loadAccount } from '../composables/account';
 
+const { t } = useI18n();
 const { account } = useAccount();
 const loading = ref(true);
 const error = ref('');
@@ -16,11 +18,11 @@ const submitting = ref(false);
 const formError = ref('');
 const formSuccess = ref('');
 
-const STATUS_LABELS = {
-    pending: 'Pendiente',
-    processed: 'Procesada',
-    cancelled: 'Cancelada',
-};
+const STATUS_LABELS = computed(() => ({
+    pending: t('transfers.statusPending'),
+    processed: t('transfers.statusProcessed'),
+    cancelled: t('transfers.statusCancelled'),
+}));
 
 async function load() {
     loading.value = true;
@@ -30,14 +32,14 @@ async function load() {
         const { data } = await apiClient.get('/transfers');
         transfers.value = data.data;
     } catch (e) {
-        error.value = e.response?.data?.message || 'No se pudieron cargar las transferencias';
+        error.value = e.response?.data?.message || t('transfers.loadError');
     } finally {
         loading.value = false;
     }
 }
 
-function direction(t) {
-    return t.originAccountId === account.value?.id ? 'enviada' : 'recibida';
+function isSent(transfer) {
+    return transfer.originAccountId === account.value?.id;
 }
 
 async function submitTransfer() {
@@ -51,14 +53,14 @@ async function submitTransfer() {
             currency: account.value?.defaultCurrency ?? 'USD',
             notes: notes.value || null,
         });
-        formSuccess.value = 'Transferencia creada';
+        formSuccess.value = t('transfers.success');
         destinationAccountNumber.value = '';
         amount.value = '';
         notes.value = '';
         showForm.value = false;
         await load();
     } catch (e) {
-        formError.value = e.response?.data?.message || 'No se pudo crear la transferencia';
+        formError.value = e.response?.data?.message || t('transfers.error');
     } finally {
         submitting.value = false;
     }
@@ -71,51 +73,53 @@ onMounted(load);
   <div class="stack">
     <div class="card">
       <div class="card-header">
-        <h2>Transferencias</h2>
+        <h2>{{ t('transfers.title') }}</h2>
         <button class="link-btn" @click="showForm = !showForm">
-          {{ showForm ? 'Cancelar' : '+ Nueva' }}
+          {{ showForm ? t('common.cancel') : t('transfers.newBtn') }}
         </button>
       </div>
 
       <form v-if="showForm" class="form" @submit.prevent="submitTransfer">
         <label>
-          Cuenta destino
-          <input v-model="destinationAccountNumber" type="text" required placeholder="Número de cuenta" />
+          {{ t('transfers.destination') }}
+          <input v-model="destinationAccountNumber" type="text" required :placeholder="t('transfers.destinationPlaceholder')" />
         </label>
         <label>
-          Monto ({{ account?.defaultCurrency ?? '' }})
+          {{ t('transfers.amount', { currency: account?.defaultCurrency ?? '' }) }}
           <input v-model="amount" type="number" step="0.01" min="0.01" required />
         </label>
         <label>
-          Nota (opcional)
+          {{ t('transfers.note') }}
           <input v-model="notes" type="text" />
         </label>
         <p v-if="formError" class="error">{{ formError }}</p>
         <p v-if="formSuccess" class="success">{{ formSuccess }}</p>
         <button type="submit" :disabled="submitting">
-          {{ submitting ? 'Enviando...' : 'Transferir' }}
+          {{ submitting ? t('transfers.submitting') : t('transfers.submit') }}
         </button>
       </form>
     </div>
 
     <div class="card">
-      <h2>Historial</h2>
-      <p v-if="loading">Cargando...</p>
+      <h2>{{ t('transfers.historyTitle') }}</h2>
+      <p v-if="loading">{{ t('common.loading') }}</p>
       <p v-else-if="error" class="error">{{ error }}</p>
-      <p v-else-if="!transfers.length" class="empty">Todavía no tenés transferencias.</p>
+      <p v-else-if="!transfers.length" class="empty">{{ t('transfers.empty') }}</p>
       <ul v-else class="list">
-        <li v-for="t in transfers" :key="t.id" class="item">
-          <div>
+        <li v-for="tr in transfers" :key="tr.id" class="item">
+          <div class="item-info">
             <p class="item-title">
-              {{ direction(t) === 'enviada' ? '↑' : '↓' }}
-              {{ t.amount }} {{ t.currency }}
+              {{ isSent(tr) ? '↑' : '↓' }}
+              {{ tr.amount }} {{ tr.currency }}
             </p>
             <p class="item-sub">
-              {{ direction(t) === 'enviada' ? 'a ' + t.destAccountNumber : 'de ' + t.originAccountNumber }}
-              · {{ t.createdAt }}
+              {{ isSent(tr)
+                ? t('transfers.sentTo', { name: tr.destAccountName || tr.destAccountNumber })
+                : t('transfers.receivedFrom', { name: tr.originAccountName || tr.originAccountNumber }) }}
+              · {{ tr.createdAt }}
             </p>
           </div>
-          <span class="badge" :class="t.status">{{ STATUS_LABELS[t.status] ?? t.status }}</span>
+          <span class="badge" :class="tr.status">{{ STATUS_LABELS[tr.status] ?? tr.status }}</span>
         </li>
       </ul>
     </div>
@@ -210,11 +214,16 @@ h2 {
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: 0.5rem;
     padding: 0.6rem 0;
     border-bottom: 1px solid #f0f1f3;
 }
 .item:last-child {
     border-bottom: none;
+}
+.item-info {
+    flex: 1;
+    min-width: 0;
 }
 .item-title {
     margin: 0;
@@ -224,8 +233,10 @@ h2 {
     margin: 0;
     font-size: 0.78rem;
     color: #888;
+    overflow-wrap: break-word;
 }
 .badge {
+    flex-shrink: 0;
     font-size: 0.72rem;
     font-weight: 600;
     padding: 0.25rem 0.55rem;

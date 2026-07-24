@@ -1,8 +1,10 @@
 <script setup>
 import { ref, onMounted, reactive } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { apiClient } from '../api/client';
 import PhoneInput from '../components/PhoneInput.vue';
 
+const { t } = useI18n();
 const loading = ref(true);
 const error = ref('');
 const authorized = ref([]);
@@ -18,7 +20,7 @@ async function load() {
         const { data } = await apiClient.get('/authorized');
         authorized.value = data.data;
     } catch (e) {
-        error.value = e.response?.data?.message || 'No se pudieron cargar los autorizados';
+        error.value = e.response?.data?.message || t('authorized.error');
     } finally {
         loading.value = false;
     }
@@ -53,7 +55,7 @@ async function saveEdit(id) {
         editingId.value = null;
         await load();
     } catch (e) {
-        saveError.value = e.response?.data?.message || 'No se pudo guardar';
+        saveError.value = e.response?.data?.message || t('authorized.saveError');
     } finally {
         saving.value = false;
     }
@@ -68,7 +70,7 @@ async function toggleStatus(item) {
         });
         await load();
     } catch (e) {
-        saveError.value = e.response?.data?.message || 'No se pudo cambiar el estado';
+        saveError.value = e.response?.data?.message || t('authorized.statusError');
     } finally {
         saving.value = false;
     }
@@ -79,20 +81,20 @@ onMounted(load);
 
 <template>
   <div class="card">
-    <h1>Usuarios autorizados</h1>
-    <p class="hint">Personas que pueden operar sobre tu cuenta.</p>
+    <h1>{{ t('authorized.title') }}</h1>
+    <p class="hint">{{ t('authorized.hint') }}</p>
 
-    <p v-if="loading">Cargando...</p>
+    <p v-if="loading">{{ t('common.loading') }}</p>
     <p v-else-if="error" class="error">{{ error }}</p>
-    <p v-else-if="!authorized.length" class="empty">Todavía no autorizaste a nadie.</p>
+    <p v-else-if="!authorized.length" class="empty">{{ t('authorized.empty') }}</p>
 
     <ul v-else class="list">
       <li v-for="item in authorized" :key="item.id" class="item">
         <div class="item-row">
           <p class="item-title">{{ item.userName }}</p>
-          <span class="badge" :class="item.status">{{ item.status === 'active' ? 'Activo' : 'Inactivo' }}</span>
+          <span class="badge" :class="item.status">{{ item.status === 'active' ? t('authorized.statusActive') : t('authorized.statusInactive') }}</span>
         </div>
-        <p class="item-phone">{{ item.userPhone || 'Sin móvil registrado' }}</p>
+        <p class="item-phone">{{ item.userPhone || t('authorized.noPhone') }}</p>
         <!-- Límites ocultos por ahora, a pedido — quedan comentados para agregarlos más
         adelante, no borrados:
         <ul class="limits">
@@ -103,23 +105,23 @@ onMounted(load);
         -->
 
         <div v-if="editingId !== item.id" class="actions">
-          <button class="secondary" @click="startEdit(item)">Editar</button>
+          <button class="secondary" @click="startEdit(item)">{{ t('authorized.edit') }}</button>
           <button class="secondary" :disabled="saving" @click="toggleStatus(item)">
-            {{ item.status === 'active' ? 'Desactivar' : 'Activar' }}
+            {{ item.status === 'active' ? t('authorized.deactivate') : t('authorized.activate') }}
           </button>
         </div>
 
         <form v-else class="edit-form" @submit.prevent="saveEdit(item.id)">
           <label>
-            Nombre
+            {{ t('authorized.nameLabel') }}
             <input v-model="forms[item.id].userName" type="text" required />
           </label>
           <label>
-            Email
+            {{ t('authorized.emailLabel') }}
             <input v-model="forms[item.id].userEmail" type="email" required />
           </label>
           <label>
-            Móvil
+            {{ t('authorized.phoneLabel') }}
             <PhoneInput v-model="forms[item.id].userPhone" />
           </label>
           <!-- Límites ocultos por ahora, a pedido — quedan comentados para agregarlos más
@@ -141,8 +143,8 @@ onMounted(load);
           -->
           <p v-if="saveError" class="error">{{ saveError }}</p>
           <div class="actions">
-            <button type="button" class="secondary" @click="cancelEdit">Cancelar</button>
-            <button type="submit" :disabled="saving">{{ saving ? 'Guardando...' : 'Guardar' }}</button>
+            <button type="button" class="secondary" @click="cancelEdit">{{ t('common.cancel') }}</button>
+            <button type="submit" :disabled="saving">{{ saving ? t('common.saving') : t('common.save') }}</button>
           </div>
         </form>
       </li>
