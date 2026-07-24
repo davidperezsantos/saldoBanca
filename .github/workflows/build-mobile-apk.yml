@@ -44,7 +44,7 @@ jobs:
       - uses: android-actions/setup-android@v3
 
       - name: Decode signing keystore
-        working-directory: mobile/android
+        working-directory: mobile/android/app
         run: echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > release.keystore.p12
 
       - name: Build release APK
