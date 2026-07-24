@@ -85,14 +85,14 @@ onMounted(load);
     <ul v-else class="list">
       <li v-for="item in authorized" :key="item.id" class="item">
         <div class="item-row">
-          <div class="item-info">
-            <p class="item-title">{{ item.userName }}</p>
-            <p class="item-sub">
-              Máx. por operación {{ item.maxAmount ?? '—' }} · Diario {{ item.dailyLimit ?? '—' }} · Mensual {{ item.monthlyLimit ?? '—' }}
-            </p>
-          </div>
+          <p class="item-title">{{ item.userName }}</p>
           <span class="badge" :class="item.status">{{ item.status === 'active' ? 'Activo' : 'Inactivo' }}</span>
         </div>
+        <ul class="limits">
+          <li>Máx. por operación: {{ item.maxAmount ?? '—' }}</li>
+          <li>Límite diario: {{ item.dailyLimit ?? '—' }}</li>
+          <li>Límite mensual: {{ item.monthlyLimit ?? '—' }}</li>
+        </ul>
 
         <div v-if="editingId !== item.id" class="actions">
           <button class="secondary" @click="startEdit(item)">Editar</button>
@@ -185,19 +185,22 @@ h1 {
     justify-content: space-between;
     gap: 0.5rem;
 }
-.item-info {
-    flex: 1;
-    min-width: 0;
-}
 .item-title {
+    flex: 1;
     margin: 0;
+    min-width: 0;
+    overflow-wrap: break-word;
     font-weight: 600;
 }
-.item-sub {
-    margin: 0.15rem 0 0;
+.limits {
+    list-style: none;
+    margin: 0.3rem 0 0;
+    padding: 0;
     font-size: 0.75rem;
     color: #888;
-    overflow-wrap: break-word;
+}
+.limits li {
+    margin: 0.1rem 0;
 }
 .badge {
     flex-shrink: 0;
