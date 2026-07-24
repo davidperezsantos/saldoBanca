@@ -83,6 +83,7 @@ class AuthorizedController extends BaseController
             'accountNumber' => $a->getAccount()->getAccountNumber(),
             'userName' => $a->getUserName(),
             'userEmail' => $a->getUserEmail(),
+            'userPhone' => $a->getUserPhone(),
             'documentType' => $a->getDocumentType(),
             'documentNumber' => $a->getDocumentNumber(),
             'maxAmount' => $a->getMaxAmount(),

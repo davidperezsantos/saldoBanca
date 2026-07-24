@@ -29,8 +29,11 @@ function startEdit(item) {
     forms[item.id] = {
         userName: item.userName,
         userEmail: item.userEmail,
+        userPhone: item.userPhone ?? '',
         documentType: item.documentType,
         documentNumber: item.documentNumber,
+        // Límites ocultos de la vista por ahora (ver template) — se siguen mandando tal cual
+        // venían para no perderlos al guardar otro campo.
         maxAmount: item.maxAmount ?? '',
         dailyLimit: item.dailyLimit ?? '',
         monthlyLimit: item.monthlyLimit ?? '',
@@ -88,11 +91,15 @@ onMounted(load);
           <p class="item-title">{{ item.userName }}</p>
           <span class="badge" :class="item.status">{{ item.status === 'active' ? 'Activo' : 'Inactivo' }}</span>
         </div>
+        <p class="item-phone">{{ item.userPhone || 'Sin móvil registrado' }}</p>
+        <!-- Límites ocultos por ahora, a pedido — quedan comentados para agregarlos más
+        adelante, no borrados:
         <ul class="limits">
           <li>Máx. por operación: {{ item.maxAmount ?? '—' }}</li>
           <li>Límite diario: {{ item.dailyLimit ?? '—' }}</li>
           <li>Límite mensual: {{ item.monthlyLimit ?? '—' }}</li>
         </ul>
+        -->
 
         <div v-if="editingId !== item.id" class="actions">
           <button class="secondary" @click="startEdit(item)">Editar</button>
@@ -110,6 +117,12 @@ onMounted(load);
             Email
             <input v-model="forms[item.id].userEmail" type="email" required />
           </label>
+          <label>
+            Móvil
+            <input v-model="forms[item.id].userPhone" type="tel" />
+          </label>
+          <!-- Límites ocultos por ahora, a pedido — quedan comentados para agregarlos más
+          adelante, no borrados:
           <div class="row">
             <label>
               Máx. por operación
@@ -124,6 +137,7 @@ onMounted(load);
             Límite mensual
             <input v-model="forms[item.id].monthlyLimit" type="number" step="0.01" />
           </label>
+          -->
           <p v-if="saveError" class="error">{{ saveError }}</p>
           <div class="actions">
             <button type="button" class="secondary" @click="cancelEdit">Cancelar</button>
@@ -191,6 +205,11 @@ h1 {
     min-width: 0;
     overflow-wrap: break-word;
     font-weight: 600;
+}
+.item-phone {
+    margin: 0.2rem 0 0;
+    font-size: 0.78rem;
+    color: #888;
 }
 .limits {
     list-style: none;

@@ -83,7 +83,7 @@ async function requestReset() {
         <form v-else @submit.prevent="requestReset">
             <p class="reset-desc">Ingresá tu usuario y te enviamos un enlace por WhatsApp para restablecer tu contraseña.</p>
             <label>
-                Usuario o email
+                Usuario
                 <input v-model="resetUsername" type="text" required autocomplete="username" />
             </label>
             <p v-if="resetError" class="error">{{ resetError }}</p>
