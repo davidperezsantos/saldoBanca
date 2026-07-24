@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { Preferences } from '@capacitor/preferences';
+import { markSessionActive, handleSessionExpired } from '../composables/session';
 
 const TOKEN_KEY = 'saldobanca_token';
 const SCOPES_KEY = 'saldobanca_scopes';
@@ -18,12 +19,21 @@ apiClient.interceptors.request.use(async (config) => {
 });
 
 apiClient.interceptors.response.use(
-    (response) => response,
+    (response) => {
+        if (response.config?.headers?.Authorization) {
+            markSessionActive();
+        }
+        return response;
+    },
     async (error) => {
-        if (error.response?.status === 401) {
+        // /login tiene su propio manejo de 401 (contraseña incorrecta) en Login.vue,
+        // no es una expiración de sesión.
+        if (error.response?.status === 401 && error.config?.url !== '/login') {
+            const expiredUser = await getUser();
             await clearToken();
             await clearScopes();
             await clearUser();
+            handleSessionExpired(expiredUser?.username);
         }
         return Promise.reject(error);
     }

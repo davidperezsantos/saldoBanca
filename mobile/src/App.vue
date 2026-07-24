@@ -1,13 +1,15 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { getToken } from './api/client';
 import { logout } from './api/auth';
 import { resetAccount } from './composables/account';
 import { useUser, loadUser, resetUser, initials } from './composables/user';
+import { forceLogout, resetSession } from './composables/session';
 import Login from './views/Login.vue';
 import BottomNav from './components/BottomNav.vue';
+import SessionExpiredModal from './components/SessionExpiredModal.vue';
 
 const router = useRouter();
 const { t } = useI18n();
@@ -21,6 +23,13 @@ onMounted(async () => {
         await loadUser();
     }
     checkingSession.value = false;
+});
+
+watch(forceLogout, async (expired) => {
+    if (expired) {
+        await handleLogout();
+        resetSession();
+    }
 });
 
 async function onLoggedIn() {
@@ -59,6 +68,7 @@ async function handleLogout() {
             <Login @logged-in="onLoggedIn" />
         </div>
     </div>
+    <SessionExpiredModal />
 </template>
 
 <style>

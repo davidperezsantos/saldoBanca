@@ -7,6 +7,8 @@ export default {
         sending: 'Enviando...',
         confirm: 'Confirmar',
         phoneNumber: 'Número',
+        yes: 'Sí',
+        no: 'No',
     },
     nav: {
         account: 'Cuenta',
@@ -139,6 +141,13 @@ export default {
         passwordSuccess: 'Contraseña actualizada',
         passwordError: 'No se pudo cambiar la contraseña',
         logout: 'Cerrar sesión',
+    },
+    session: {
+        expiredTitle: 'Tu sesión caducó',
+        expiredQuestion: '¿Deseas renovarla?',
+        renewTitle: 'Ingresá tu contraseña para renovar la sesión',
+        renewButton: 'Renovar',
+        renewError: 'Contraseña incorrecta',
     },
     authorized: {
         title: 'Usuarios autorizados',
