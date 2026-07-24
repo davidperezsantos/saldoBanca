@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted, reactive } from 'vue';
 import { apiClient } from '../api/client';
+import PhoneInput from '../components/PhoneInput.vue';
 
 const loading = ref(true);
 const error = ref('');
@@ -119,7 +120,7 @@ onMounted(load);
           </label>
           <label>
             Móvil
-            <input v-model="forms[item.id].userPhone" type="tel" />
+            <PhoneInput v-model="forms[item.id].userPhone" />
           </label>
           <!-- Límites ocultos por ahora, a pedido — quedan comentados para agregarlos más
           adelante, no borrados:
