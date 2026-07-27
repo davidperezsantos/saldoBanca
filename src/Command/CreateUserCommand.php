@@ -44,6 +44,7 @@ class CreateUserCommand extends Command
         $io = new SymfonyStyle($input, $output);
 
         $email = $io->ask('User email', 'admin@saldobanca.com');
+        $username = $io->ask('Username', 'admin');
         $password = $io->ask('User password', 'password');
         $name = $io->ask('User name', 'Admin User');
 
@@ -54,10 +55,14 @@ class CreateUserCommand extends Command
         $selectedRole = $io->choice('Role', $roleNames, 'super_admin');
 
         $userRepository = $this->entityManager->getRepository(User::class);
-        $existingUser = $userRepository->findByEmail($email);
 
-        if ($existingUser) {
+        if ($userRepository->findByEmail($email)) {
             $io->error('User with this email already exists');
+            return Command::FAILURE;
+        }
+
+        if ($userRepository->findByUsername($username)) {
+            $io->error('User with this username already exists');
             return Command::FAILURE;
         }
 
@@ -65,6 +70,7 @@ class CreateUserCommand extends Command
 
         $user = new User();
         $user->setEmail($email);
+        $user->setUsername($username);
         $user->setName($name);
         $user->setPassword($this->passwordHasher->hashPassword($user, $password));
         $user->setRole($role);
@@ -74,6 +80,7 @@ class CreateUserCommand extends Command
         $this->entityManager->flush();
 
         $io->success('User created successfully');
+        $io->note('Username: ' . $username);
         $io->note('Email: ' . $email);
         $io->note('Role: ' . $selectedRole);
 
