@@ -28,12 +28,16 @@ menu:
     logout: Logout
     manual_usuario: Download user manual (PDF)
     manual_api: Download API integration manual (PDF)
+    edit_profile: Edit profile
+    username: Username
+    full_name: Full name
 
 footer:
     developed_by: Developed by David Pérez Santos
 
 common:
     save: Save
+    saving: Saving...
     cancel: Cancel
     delete: Delete
     edit: Edit
