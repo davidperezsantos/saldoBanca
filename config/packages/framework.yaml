@@ -3,7 +3,14 @@ framework:
     secret: '%env(APP_SECRET)%'
 
     # Note that the session will be started ONLY if you read or write from it.
-    session: true
+    #
+    # handler_id explícito: guarda la sesión en la tabla "sessions" de Postgres en vez de
+    # archivos locales del contenedor. Necesario porque el deploy corre (o puede correr) con
+    # más de una réplica sin almacenamiento compartido — con sesiones en archivo, cada request
+    # cae en un contenedor distinto y la sesión de otro no existe ahí (ver PdoSessionHandler
+    # registrado en services.yaml, y la migración que crea la tabla "sessions").
+    session:
+        handler_id: Symfony\Component\HttpFoundation\Session\Storage\Handler\PdoSessionHandler
 
     #esi: true
     #fragments: true
