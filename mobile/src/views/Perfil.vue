@@ -1,7 +1,6 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { Browser } from '@capacitor/browser';
 import { apiClient, setUser } from '../api/client';
 import { useUser, initials } from '../composables/user';
 import { useAccount, loadAccount } from '../composables/account';
@@ -35,7 +34,13 @@ onMounted(async () => {
 async function openUpdate() {
     updateError.value = '';
     try {
-        await Browser.open({ url: updateInfo.value.downloadUrl });
+        // @capacitor/browser abre siempre un Chrome Custom Tab en Android, que tiene un problema
+        // conocido con descargas de archivos redirigidos (como los assets de GitHub Releases,
+        // que redirigen a objects.githubusercontent.com): la barra de progreso avanza pero el
+        // archivo nunca termina de guardarse. window.open(url, '_system') hace que el bridge de
+        // Capacitor lance un Intent ACTION_VIEW real — el navegador del sistema (no un Custom
+        // Tab embebido) — donde la descarga sí funciona.
+        window.open(updateInfo.value.downloadUrl, '_system');
     } catch (e) {
         updateError.value = t('profile.updateError');
     }
@@ -143,6 +148,12 @@ function handleLogout() {
       <p class="detail">{{ user?.email }}</p>
     </div>
 
+    <div v-if="updateInfo" class="card update-card">
+      <p class="update-title">{{ t('profile.updateAvailable', { version: updateInfo.latestVersion }) }}</p>
+      <p v-if="updateError" class="error">{{ updateError }}</p>
+      <button class="update-btn" @click="openUpdate">{{ t('profile.updateButton') }}</button>
+    </div>
+
     <div class="card">
       <h2>{{ t('profile.editTitle') }}</h2>
       <form class="form" @submit.prevent="saveProfile">
@@ -160,12 +171,6 @@ function handleLogout() {
           {{ editSubmitting ? t('common.saving') : t('common.save') }}
         </button>
       </form>
-    </div>
-
-    <div v-if="updateInfo" class="card update-card">
-      <p class="update-title">{{ t('profile.updateAvailable', { version: updateInfo.latestVersion }) }}</p>
-      <p v-if="updateError" class="error">{{ updateError }}</p>
-      <button class="update-btn" @click="openUpdate">{{ t('profile.updateButton') }}</button>
     </div>
 
     <div class="card">
