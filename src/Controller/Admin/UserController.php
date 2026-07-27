@@ -25,11 +25,21 @@ class UserController extends BaseController
     {
         $this->denyAccessUnlessGranted('administration.users:view');
 
+        // El rol "de sistema" (isSystem, hoy solo super_admin) queda oculto y no asignable para
+        // cualquiera que no sea a su vez de ese rol — un admin/soporte con permiso de gestión de
+        // usuarios no debe poder ver ni crear otros super_admin.
+        $viewerIsSystem = $this->getUser()?->getRole()?->isSystem() ?? false;
+
         $users = $this->entityManager->getRepository(User::class)->findAll();
 
         $usersData = [];
         foreach ($users as $user) {
             $role = $user->getRole();
+
+            if (!$viewerIsSystem && $role?->isSystem()) {
+                continue;
+            }
+
             $usersData[] = [
                 'id' => $user->getId()->toRfc4122(),
                 'email' => $user->getEmail(),
@@ -46,10 +56,10 @@ class UserController extends BaseController
         }
 
         $roles = $this->entityManager->getRepository(Role::class)->findBy([], ['name' => 'ASC']);
-        $rolesData = array_map(fn(Role $role) => [
+        $rolesData = array_values(array_map(fn(Role $role) => [
             'id' => $role->getId()->toRfc4122(),
             'label' => $role->getLabel(),
-        ], $roles);
+        ], array_filter($roles, fn(Role $role) => $viewerIsSystem || !$role->isSystem())));
 
         return $this->render('admin/users.html.twig', [
             'users' => $usersData,
@@ -88,6 +98,11 @@ class UserController extends BaseController
         $role = null;
         if ($roleId) {
             $role = $this->entityManager->getRepository(Role::class)->find($roleId);
+        }
+
+        $viewerIsSystem = $this->getUser()?->getRole()?->isSystem() ?? false;
+        if (!$viewerIsSystem && $role?->isSystem()) {
+            return $this->json(['error' => 'No podés asignar ese rol'], 403);
         }
 
         $user = new User();
@@ -141,6 +156,12 @@ class UserController extends BaseController
 
         if (isset($data['role_id'])) {
             $role = $data['role_id'] ? $this->entityManager->getRepository(Role::class)->find($data['role_id']) : null;
+
+            $viewerIsSystem = $this->getUser()?->getRole()?->isSystem() ?? false;
+            if (!$viewerIsSystem && $role?->isSystem()) {
+                return $this->json(['error' => 'No podés asignar ese rol'], 403);
+            }
+
             $user->setRole($role);
         }
 
