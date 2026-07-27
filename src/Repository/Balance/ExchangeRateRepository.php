@@ -27,6 +27,24 @@ class ExchangeRateRepository extends ServiceEntityRepository
             ->getOneOrNullResult();
     }
 
+    /**
+     * Todas las filas activas para una moneda destino, sin importar el origen — usado para
+     * desactivar cualquier tasa vieja antes de fijar una nueva, incluso si quedó de un momento en
+     * que la moneda base del sistema era otra (esas filas huérfanas nunca las vuelve a tocar
+     * findLatestByPair(), que exige coincidencia exacta de origen).
+     *
+     * @return ExchangeRate[]
+     */
+    public function findActiveByToCurrency(string $toCurrency): array
+    {
+        return $this->createQueryBuilder('er')
+            ->where('er.toCurrency = :to')
+            ->andWhere('er.isActive = true')
+            ->setParameter('to', $toCurrency)
+            ->getQuery()
+            ->getResult();
+    }
+
     public function findRecentRates(int $limit = 50): array
     {
         return $this->createQueryBuilder('er')

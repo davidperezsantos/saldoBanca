@@ -3,6 +3,8 @@
 namespace App\Controller\Api;
 
 use App\Controller\BaseController;
+use App\Security\Attribute\RequireScope;
+use App\Security\ScopeAuthorizationService;
 use App\Services\Balance\AccountService;
 use App\Services\Balance\BalanceService;
 use App\Services\SystemCurrencyService;
@@ -20,6 +22,7 @@ class BalanceController extends BaseController
         private AccountService $accountService,
         private SystemCurrencyService $systemCurrencyService,
         private APIExchangeRate $apiExchangeRate,
+        private ScopeAuthorizationService $scopeAuthorizationService,
     ) {
     }
 
@@ -48,10 +51,21 @@ class BalanceController extends BaseController
         )
     )]
     #[OA\Response(response: 400, description: 'Error al consultar saldo')]
+    #[RequireScope('balance.read')]
     #[Route('/balance/{accountId}', name: 'api_balance_show', methods: ['GET'])]
     public function show(string $accountId, Request $request): JsonResponse
     {
         try {
+            // Usuario final (JWT): solo puede consultar el saldo de SU propia cuenta — sin este
+            // chequeo, cualquier usuario podría leer el saldo de otra cuenta cambiando el id
+            // (IDOR). Un cliente OAuth2 de negocio no tiene esta restricción.
+            $selfServiceUser = $this->scopeAuthorizationService->getSelfServiceUser();
+            if ($selfServiceUser !== null
+                && (string) $selfServiceUser->getAccount()?->getId() !== $accountId
+            ) {
+                return $this->error('No podés consultar el saldo de esta cuenta', 403);
+            }
+
             $baseCurrency = $this->systemCurrencyService->getBaseCurrency();
             $balance = $this->balanceService->getBalance($accountId, $baseCurrency);
             $available = $balance ? $balance->getAvailableBalance() : '0.00';
@@ -76,7 +90,7 @@ class BalanceController extends BaseController
                 'currency' => $requestCurrency ?? $baseCurrency,
             ]);
         } catch (\Exception $e) {
-            return $this->error($e->getMessage(), 400);
+            return $this->handleException($e);
         }
     }
 
@@ -111,14 +125,13 @@ class BalanceController extends BaseController
         )
     )]
     #[OA\Response(response: 400, description: 'Account number is required')]
-    #[OA\Response(response: 401, description: 'Invalid API key')]
+    #[OA\Response(response: 401, description: 'Token OAuth2 inválido o ausente')]
+    #[OA\Response(response: 403, description: 'Scope insuficiente (requiere "balance")')]
     #[OA\Response(response: 404, description: 'Account not found')]
+    #[RequireScope('balance.read')]
     #[Route('/balance/check', name: 'api_balance_check', methods: ['POST'])]
     public function check(Request $request): JsonResponse
     {
-        if (!$this->checkApiKey($request)) {
-            return $this->error('Invalid API key', 401);
-        }
         try {
             $data = $this->getJsonContent($request);
             $accountNumber = $data['accountNumber'] ?? null;
@@ -129,6 +142,14 @@ class BalanceController extends BaseController
             if (!$account) {
                 return $this->error('Account not found', 404);
             }
+
+            $selfServiceUser = $this->scopeAuthorizationService->getSelfServiceUser();
+            if ($selfServiceUser !== null
+                && (string) $selfServiceUser->getAccount()?->getId() !== (string) $account->getId()
+            ) {
+                return $this->error('No podés consultar el saldo de esta cuenta', 403);
+            }
+
             $baseCurrency = $this->systemCurrencyService->getBaseCurrency();
             $balance = $this->balanceService->getBalance(
                 $account->getId()->toString(),
@@ -151,7 +172,7 @@ class BalanceController extends BaseController
                 'currency' => $displayCurrency,
             ]);
         } catch (\Exception $e) {
-            return $this->error($e->getMessage(), 400);
+            return $this->handleException($e);
         }
     }
 }

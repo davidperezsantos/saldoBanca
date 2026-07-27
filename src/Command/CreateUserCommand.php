@@ -5,11 +5,14 @@ namespace App\Command;
 use App\Entity\User;
 use App\Entity\Role;
 use Doctrine\ORM\EntityManagerInterface;
+use Gedmo\Loggable\LoggableListener;
+use Gedmo\Tool\ActorProviderInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 
 #[AsCommand(
@@ -20,13 +23,24 @@ class CreateUserCommand extends Command
 {
     public function __construct(
         private EntityManagerInterface $entityManager,
-        private UserPasswordHasherInterface $passwordHasher
+        private UserPasswordHasherInterface $passwordHasher,
+        #[Autowire(service: 'stof_doctrine_extensions.listener.loggable')]
+        private LoggableListener $loggableListener,
     ) {
         parent::__construct();
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
+        // Ver SeedRolesCommand::execute() — mismo problema: sin token de seguridad HTTP el
+        // ActorProvider de Gedmo\Loggable devuelve null y revienta al persistir el User.
+        $this->loggableListener->setActorProvider(new class implements ActorProviderInterface {
+            public function getActor(): string
+            {
+                return 'console';
+            }
+        });
+
         $io = new SymfonyStyle($input, $output);
 
         $email = $io->ask('User email', 'admin@saldobanca.com');

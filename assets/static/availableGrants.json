@@ -1,0 +1,7 @@
+[
+    "client_credentials",
+    "authorization_code",
+    "password",
+    "refresh_token",
+    "implicit"
+]

@@ -15,6 +15,11 @@ class AccountDto
         public readonly string $creditLimit = '0.00',
         public readonly bool $allowTransfers = true,
         public readonly bool $allowAuthorizedUsers = true,
+        public readonly ?string $maxPerTransfer = null,
+        public readonly ?string $maxDaily = null,
+        public readonly ?string $maxMonthly = null,
+        public readonly ?string $payoutCurrencyPercent = null,
+        public readonly ?string $payoutSecondaryCurrencyPercent = null,
     ) {
     }
 
@@ -31,6 +36,11 @@ class AccountDto
             creditLimit: $data['creditLimit'] ?? '0.00',
             allowTransfers: $data['allowTransfers'] ?? true,
             allowAuthorizedUsers: $data['allowAuthorizedUsers'] ?? true,
+            maxPerTransfer: $data['maxPerTransfer'] ?? null,
+            maxDaily: $data['maxDaily'] ?? null,
+            maxMonthly: $data['maxMonthly'] ?? null,
+            payoutCurrencyPercent: $data['payoutCurrencyPercent'] ?? null,
+            payoutSecondaryCurrencyPercent: $data['payoutSecondaryCurrencyPercent'] ?? null,
         );
     }
 
@@ -47,6 +57,11 @@ class AccountDto
             'creditLimit' => $this->creditLimit,
             'allowTransfers' => $this->allowTransfers,
             'allowAuthorizedUsers' => $this->allowAuthorizedUsers,
+            'maxPerTransfer' => $this->maxPerTransfer,
+            'maxDaily' => $this->maxDaily,
+            'maxMonthly' => $this->maxMonthly,
+            'payoutCurrencyPercent' => $this->payoutCurrencyPercent,
+            'payoutSecondaryCurrencyPercent' => $this->payoutSecondaryCurrencyPercent,
         ];
     }
 }

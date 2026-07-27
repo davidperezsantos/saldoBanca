@@ -4,11 +4,17 @@ namespace App\Controller\Api;
 
 use App\Http\ApiResponse;
 use App\Repository\UserRepository;
+use App\Security\ScopeAuthorizationService;
+use App\Services\LoggableSystemActor;
+use App\Services\PasswordResetService;
+use App\Services\RoleSeedService;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use OpenApi\Attributes as OA;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\RateLimiter\RateLimiterFactory;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Doctrine\ORM\EntityManagerInterface;
@@ -22,6 +28,14 @@ class AuthController extends AbstractController
         private EntityManagerInterface $entityManager,
         private JWTTokenManagerInterface $jwtManager,
         private UserRepository $userRepository,
+        private PasswordResetService $passwordResetService,
+        #[Autowire(service: 'limiter.api_login')]
+        private RateLimiterFactory $apiLoginLimiter,
+        #[Autowire(service: 'limiter.password_reset')]
+        private RateLimiterFactory $passwordResetLimiter,
+        private LoggableSystemActor $systemActor,
+        private RoleSeedService $roleSeedService,
+        private ScopeAuthorizationService $scopeAuthorizationService,
     ) {
     }
 
@@ -58,6 +72,12 @@ class AuthController extends AbstractController
                         new OA\Property(property: 'name', type: 'string', example: 'Juan Pérez'),
                         new OA\Property(property: 'roles', type: 'array', items: new OA\Items(type: 'string', example: 'ROLE_USER')),
                     ], type: 'object'),
+                    new OA\Property(
+                        property: 'scopes',
+                        description: 'Scopes habilitados para este usuario sobre su propia cuenta (según los permisos de su Role) — para que la app sepa qué mostrar.',
+                        type: 'array',
+                        items: new OA\Items(type: 'string', example: 'balance.read')
+                    ),
                 ], type: 'object'),
             ]
         )
@@ -68,6 +88,11 @@ class AuthController extends AbstractController
     #[Route('/login', name: 'api_login', methods: ['POST'])]
     public function login(Request $request): JsonResponse
     {
+        $limiter = $this->apiLoginLimiter->create($request->getClientIp());
+        if (!$limiter->consume(1)->isAccepted()) {
+            return ApiResponse::error('Demasiados intentos. Probá de nuevo en un minuto.', 429);
+        }
+
         $data = json_decode($request->getContent(), true);
         $username = $data['username'] ?? $data['email'] ?? '';
         $password = $data['password'] ?? '';
@@ -94,6 +119,7 @@ class AuthController extends AbstractController
         }
 
         $user->setLastLoginAt(new \DateTimeImmutable());
+        $this->systemActor->actAsSystem('login');
         $this->entityManager->flush();
 
         $token = $this->jwtManager->create($user);
@@ -107,6 +133,7 @@ class AuthController extends AbstractController
                 'name' => $user->getName(),
                 'roles' => $user->getRoles(),
             ],
+            'scopes' => $this->scopeAuthorizationService->getScopesForUser($user),
         ], 'Login successful');
     }
 
@@ -181,8 +208,12 @@ class AuthController extends AbstractController
         $user->setPassword($this->passwordHasher->hashPassword($user, $password));
         $user->setRoles(['ROLE_USER']);
         $user->setIsActive(true);
+        // Mismo rol "cliente" que /register/client — para que allowPanelLogin=false lo cubra
+        // igual (ver RestrictPanelLoginListener), en vez de quedar sin Role y en un estado ambiguo.
+        $user->setRole($this->roleSeedService->ensureRoleExists('cliente'));
 
         $this->entityManager->persist($user);
+        $this->systemActor->actAsSystem('autorregistro');
         $this->entityManager->flush();
 
         $token = $this->jwtManager->create($user);
@@ -196,5 +227,86 @@ class AuthController extends AbstractController
                 'name' => $user->getName(),
             ],
         ], 'Registration successful', 201);
+    }
+
+    #[OA\Post(
+        path: '/api/v1/password-reset/request',
+        summary: 'Solicitar restablecimiento de contraseña',
+        description: 'Envía un enlace de restablecimiento por WhatsApp si el username/email existe. ' .
+            'Responde siempre el mismo mensaje genérico, exista o no la cuenta, para no revelar su ' .
+            'existencia.',
+        tags: ['Auth'],
+    )]
+    #[OA\RequestBody(
+        required: true,
+        content: new OA\JsonContent(
+            required: ['username'],
+            properties: [
+                new OA\Property(property: 'username', description: 'Username o email', type: 'string', example: 'juanperez'),
+            ]
+        )
+    )]
+    #[OA\Response(response: 200, description: 'Si la cuenta existe, se envió un enlace de restablecimiento')]
+    #[OA\Response(response: 400, description: 'username es requerido')]
+    #[Route('/password-reset/request', name: 'api_password_reset_request', methods: ['POST'])]
+    public function requestPasswordReset(Request $request): JsonResponse
+    {
+        $limiter = $this->passwordResetLimiter->create($request->getClientIp());
+        if (!$limiter->consume(1)->isAccepted()) {
+            return ApiResponse::error('Demasiados intentos. Probá de nuevo más tarde.', 429);
+        }
+
+        $data = json_decode($request->getContent(), true) ?? [];
+        $username = $data['username'] ?? '';
+
+        if (empty($username)) {
+            return ApiResponse::error('username is required', 400);
+        }
+
+        try {
+            $this->passwordResetService->requestReset($username);
+        } catch (\Exception $e) {
+            // Best-effort: si falla el envío (ej. WhatsApp caído) no revelamos detalles al llamador.
+        }
+
+        return ApiResponse::success(null, 'If the account exists, a reset link was sent');
+    }
+
+    #[OA\Post(
+        path: '/api/v1/password-reset/confirm',
+        summary: 'Confirmar restablecimiento de contraseña',
+        description: 'Establece la nueva contraseña usando el token recibido por WhatsApp.',
+        tags: ['Auth'],
+    )]
+    #[OA\RequestBody(
+        required: true,
+        content: new OA\JsonContent(
+            required: ['token', 'password'],
+            properties: [
+                new OA\Property(property: 'token', description: 'Token de restablecimiento', type: 'string'),
+                new OA\Property(property: 'password', description: 'Nueva contraseña', type: 'string', example: 'nuevaPassword123'),
+            ]
+        )
+    )]
+    #[OA\Response(response: 200, description: 'Contraseña actualizada')]
+    #[OA\Response(response: 400, description: 'Token inválido/expirado o password vacío')]
+    #[Route('/password-reset/confirm', name: 'api_password_reset_confirm', methods: ['POST'])]
+    public function confirmPasswordReset(Request $request): JsonResponse
+    {
+        $data = json_decode($request->getContent(), true) ?? [];
+        $token = $data['token'] ?? '';
+        $password = $data['password'] ?? '';
+
+        if (empty($token) || empty($password)) {
+            return ApiResponse::error('token and password are required', 400);
+        }
+
+        try {
+            $this->passwordResetService->confirmReset($token, $password);
+        } catch (\Exception $e) {
+            return ApiResponse::fromException($e);
+        }
+
+        return ApiResponse::success(null, 'Password updated successfully');
     }
 }

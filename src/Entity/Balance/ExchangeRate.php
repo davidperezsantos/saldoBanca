@@ -12,7 +12,7 @@ use App\Repository\Balance\ExchangeRateRepository;
 class ExchangeRate extends BaseEntity
 {
     #[ORM\ManyToOne(targetEntity: ExchangeRateProvider::class, inversedBy: 'exchangeRates')]
-    #[ORM\JoinColumn(nullable: false)]
+    #[ORM\JoinColumn(nullable: true)]
     private ?ExchangeRateProvider $provider = null;
 
     #[ORM\Column(length: 10)]
@@ -21,10 +21,10 @@ class ExchangeRate extends BaseEntity
     #[ORM\Column(length: 10)]
     private ?string $toCurrency = null;
 
-    #[ORM\Column(type: 'decimal', precision: 18, scale: 8)]
+    #[ORM\Column(type: 'decimal', precision: 18, scale: 4)]
     private ?string $rate = null;
 
-    #[ORM\Column(type: 'decimal', precision: 18, scale: 8, nullable: true)]
+    #[ORM\Column(type: 'decimal', precision: 18, scale: 4, nullable: true)]
     private ?string $inverseRate = null;
 
     #[ORM\Column(type: 'datetime_immutable')]
@@ -32,6 +32,11 @@ class ExchangeRate extends BaseEntity
 
     #[ORM\Column(type: 'boolean')]
     private bool $isActive = true;
+
+    // Una tasa manual bloqueada no se sobrescribe con el próximo fetch automático: fetchAndStore()
+    // descarta el valor que trae la API para esa moneda mientras esta fila siga activa y bloqueada.
+    #[ORM\Column(type: 'boolean')]
+    private bool $isLocked = false;
 
     public function getProvider(): ?ExchangeRateProvider
     {
@@ -107,6 +112,17 @@ class ExchangeRate extends BaseEntity
     public function setIsActive(bool $isActive): static
     {
         $this->isActive = $isActive;
+        return $this;
+    }
+
+    public function isLocked(): bool
+    {
+        return $this->isLocked;
+    }
+
+    public function setIsLocked(bool $isLocked): static
+    {
+        $this->isLocked = $isLocked;
         return $this;
     }
 }

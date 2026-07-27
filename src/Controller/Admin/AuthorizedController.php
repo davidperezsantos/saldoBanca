@@ -6,6 +6,8 @@ use App\Controller\BaseController;
 use App\DTO\Balance\AuthorizedDto;
 use App\Services\Balance\AuthorizedService;
 use App\Services\Balance\BalanceService;
+use App\Services\ExchangeRate\APIExchangeRate;
+use App\Services\SystemCurrencyService;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
@@ -17,10 +19,12 @@ class AuthorizedController extends BaseController
     public function __construct(
         private AuthorizedService $authorizedService,
         private BalanceService $balanceService,
+        private SystemCurrencyService $systemCurrencyService,
+        private APIExchangeRate $apiExchangeRate,
     ) {
     }
 
-    #[Route('', name: 'admin_authorized_page')]
+    #[Route('', name: 'admin_authorized_page', methods: ['GET'])]
     public function authorizedPage(): Response
     {
         $this->denyAccessUnlessGranted('authorized:view');
@@ -50,13 +54,30 @@ class AuthorizedController extends BaseController
 
         $data = array_map(function ($authorized) {
             $account = $authorized->getAccount();
-            $balance = $this->balanceService->getBalance($account->getId()->toString(), $account->getDefaultCurrency());
+            $baseCurrency = $this->systemCurrencyService->getBaseCurrency();
+            // El saldo real vive en la moneda base (todo lo que entra se convierte a esa moneda),
+            // no necesariamente en account.defaultCurrency — buscar directo por defaultCurrency
+            // devolvía "0.00" para cuentas sin ninguna fila de AccountBalance en esa moneda,
+            // aunque sí tuvieran saldo real en otra. Se busca por la base y se convierte para
+            // mostrar, igual que Admin\AccountController::index().
+            $baseBalance = $this->balanceService->getBalance($account->getId()->toString(), $baseCurrency);
+            $displayCurrency = $account->getDefaultCurrency();
+            $available = $baseBalance ? $baseBalance->getAvailableBalance() : '0.00';
+
+            if ($displayCurrency !== $baseCurrency) {
+                $rate = $this->apiExchangeRate->getRate($displayCurrency);
+                if ($rate !== null) {
+                    $available = (string) round((float) bcmul($available, (string) $rate, 4), 2);
+                }
+            }
+
             return [
                 'id' => $authorized->getId(),
                 'accountId' => $account->getId(),
-                'accountNumber' => $account->getAccountNumber(),
-                'saldoDisponible' => $balance ? $balance->getAvailableBalance() : '0.00',
-                'moneda' => $account->getDefaultCurrency(),
+                'saldoDisponible' => $available,
+                'moneda' => $displayCurrency,
+                'saldoBase' => $baseBalance ? $baseBalance->getAvailableBalance() : '0.00',
+                'baseCurrency' => $baseCurrency,
                 'userName' => $authorized->getUserName(),
                 'userEmail' => $authorized->getUserEmail(),
                 'userPhone' => $authorized->getUserPhone(),
@@ -82,16 +103,20 @@ class AuthorizedController extends BaseController
         $this->denyAccessUnlessGranted('authorized:create');
 
         try {
+            $this->validateCsrfToken();
             $data = $this->getJsonContent($request);
             $dto = AuthorizedDto::fromJson($data);
-            $authorized = $this->authorizedService->createAuthorized($dto);
+            $password = bin2hex(random_bytes(8));
+            $authorized = $this->authorizedService->createAuthorized($dto, $password);
 
             return $this->success([
                 'id' => $authorized->getId(),
                 'userName' => $authorized->getUserName(),
                 'documentNumber' => $authorized->getDocumentNumber(),
                 'status' => $authorized->getStatus(),
-            ], 'Authorized user created successfully', 201);
+                'username' => $authorized->getUser()?->getUsername(),
+                'password' => $password,
+            ], 'Usuario autorizado creado exitosamente', 201);
         } catch (\Exception $e) {
             return $this->error($e->getMessage(), 400);
         }
@@ -117,6 +142,7 @@ class AuthorizedController extends BaseController
         $this->denyAccessUnlessGranted('authorized:edit');
 
         try {
+            $this->validateCsrfToken();
             $data = $this->getJsonContent($request);
             $dto = AuthorizedDto::fromJson($data);
             $authorized = $this->authorizedService->updateAuthorized($id, $dto);
@@ -137,6 +163,7 @@ class AuthorizedController extends BaseController
         $this->denyAccessUnlessGranted('authorized:delete');
 
         try {
+            $this->validateCsrfToken();
             $this->authorizedService->deleteAuthorized($id);
 
             return $this->success(null, 'Authorized user deleted successfully');
@@ -151,6 +178,7 @@ class AuthorizedController extends BaseController
         $this->denyAccessUnlessGranted('authorized:status');
 
         try {
+            $this->validateCsrfToken();
             $data = $this->getJsonContent($request);
             $status = $data['status'] ?? null;
 
@@ -187,5 +215,24 @@ class AuthorizedController extends BaseController
             'status' => $authorized->getStatus(),
             'accountNumber' => $authorized->getAccount()->getAccountNumber(),
         ]);
+    }
+
+    #[Route('/{id}/reset-password', name: 'admin_authorized_reset_password', methods: ['POST'])]
+    public function resetPassword(string $id): JsonResponse
+    {
+        $this->denyAccessUnlessGranted('authorized:edit');
+
+        try {
+            $this->validateCsrfToken();
+            $token = bin2hex(random_bytes(32));
+            $this->authorizedService->saveResetToken($id, $token);
+
+            $resetUrl = $this->generateUrl('app_reset_password_confirm', ['token' => $token], true);
+            $this->authorizedService->resetPassword($id, $resetUrl);
+
+            return $this->success([], 'Enlace de restablecimiento enviado por WhatsApp');
+        } catch (\Exception $e) {
+            return $this->error($e->getMessage(), 400);
+        }
     }
 }

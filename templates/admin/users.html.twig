@@ -5,8 +5,14 @@
 {% block body %}
 <script>
     window.__USERS__ = {{ users|json_encode|raw }};
+    window.__ROLES__ = {{ roles|json_encode|raw }};
 </script>
-<div id="vue-app"></div>
+<div id="vue-app"
+    data-store-url="{{ path('admin_user_store') }}"
+    data-update-url="{{ path('admin_user_update', {id: '__ID__'}) }}"
+    data-toggle-status-url="{{ path('admin_user_toggle_status', {id: '__ID__'}) }}"
+    data-delete-url="{{ path('admin_user_delete', {id: '__ID__'}) }}"
+></div>
 {% endblock %}
 
 {% block javascripts %}

@@ -1,0 +1,10 @@
+[
+    { "label": "CI (Cédula de Identidad)", "value": "CI" },
+    { "label": "CC (Cédula de Ciudadanía)", "value": "CC" },
+    { "label": "CE (Cédula de Extranjería)", "value": "CE" },
+    { "label": "NIT (Número de Identificación Tributaria)", "value": "NIT" },
+    { "label": "RIF (Registro de Información Fiscal)", "value": "RIF" },
+    { "label": "RUC (Registro Único de Contribuyentes)", "value": "RUC" },
+    { "label": "Pasaporte", "value": "PASSPORT" },
+    { "label": "DNI (Documento Nacional de Identidad)", "value": "DNI" }
+]

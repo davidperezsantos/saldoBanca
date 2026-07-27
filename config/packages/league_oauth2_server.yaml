@@ -1,6 +1,6 @@
 league_oauth2_server:
     authorization_server:
-        enable_password_grant: true
+        enable_password_grant: false
         enable_refresh_token_grant: true
         private_key: '%env(resolve:OAUTH_PRIVATE_KEY)%'
         private_key_passphrase: '%env(resolve:OAUTH_PASSPHRASE)%'
@@ -10,9 +10,59 @@ league_oauth2_server:
         auth_code_ttl: 'PT10M'
     resource_server:
         public_key: '%env(resolve:OAUTH_PUBLIC_KEY)%'
+    # Scopes explícitos resource.action (sin nombres genéricos tipo "api"/"admin") — cada uno
+    # habilita exactamente una capacidad de la API, exigido vía #[RequireScope] en el controlador
+    # (ver App\Security\Attribute\RequireScope). "default" es el scope que el bundle le asigna a
+    # un cliente OAuth2 creado SIN elegir ningún scope explícito (AddClientDefaultScopesListener)
+    # — no puede ser vacío (lo dejaría "sin restricción", ver setupScopes() del bundle), así que
+    # se usa el scope de menor privilegio del catálogo como red de seguridad, no como un scope
+    # pensado para usarse a propósito.
     scopes:
-        available: ['api', 'profile', 'accounts', 'recharges', 'transfers', 'invoices', 'authorized']
-        default: ['api']
+        available:
+            - 'accounts.read'
+            - 'accounts.create'
+            - 'accounts.update'
+            - 'accounts.status'
+            - 'accounts.request_pin'
+            - 'payout_accounts.read'
+            - 'payout_accounts.create'
+            - 'payout_accounts.update'
+            - 'payout_accounts.delete'
+            - 'authorized.read'
+            - 'authorized.create'
+            - 'authorized.update'
+            - 'authorized.delete'
+            - 'authorized.status'
+            - 'authorized.charge'
+            - 'authorized.reset_password'
+            - 'authorized.request_pin'
+            - 'balance.read'
+            - 'recharges.read'
+            - 'recharges.create'
+            - 'recharges.complete'
+            - 'recharges.cancel'
+            - 'recharges.fail'
+            - 'transfers.read'
+            - 'transfers.create'
+            - 'transfers.process'
+            - 'transfers.cancel'
+            - 'invoices.read'
+            - 'invoices.create'
+            - 'invoices.pay'
+            - 'invoices.cancel'
+            - 'invoices.refund'
+            - 'history.read'
+            - 'exchange_rates.read'
+            - 'exchange_providers.read'
+            - 'payment_gateways.read'
+            - 'commission_settlements.read'
+            - 'commission_settlements.create'
+            - 'commission_settlements.request_pin'
+            - 'commission_settlements.approve'
+            - 'commission_settlements.assign_account'
+            - 'commission_settlements.settle'
+            - 'commission_settlements.close'
+        default: ['balance.read']
     persistence:
         doctrine:
             # Name of the entity manager that you wish to use for managing clients and tokens.

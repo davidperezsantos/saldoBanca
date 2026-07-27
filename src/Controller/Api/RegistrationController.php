@@ -87,12 +87,8 @@ class RegistrationController extends AbstractController
                     'accountNumber' => $result['account']->getAccountNumber(),
                 ],
             ], 'Client registered successfully', 201);
-        } catch (\InvalidArgumentException $e) {
-            return ApiResponse::error($e->getMessage(), 400);
-        } catch (\RuntimeException $e) {
-            return ApiResponse::error($e->getMessage(), 409);
         } catch (\Exception $e) {
-            return ApiResponse::error($e->getMessage(), 400);
+            return ApiResponse::fromException($e);
         }
     }
 
@@ -147,10 +143,8 @@ class RegistrationController extends AbstractController
                     'status' => $account->getStatus(),
                 ],
             ], 'Business registered, pending approval', 201);
-        } catch (\InvalidArgumentException $e) {
-            return ApiResponse::error($e->getMessage(), 400);
         } catch (\Exception $e) {
-            return ApiResponse::error($e->getMessage(), 400);
+            return ApiResponse::fromException($e);
         }
     }
 }

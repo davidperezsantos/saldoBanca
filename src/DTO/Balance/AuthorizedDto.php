@@ -5,7 +5,7 @@ namespace App\DTO\Balance;
 class AuthorizedDto
 {
     public function __construct(
-        public readonly string $accountId,
+        public readonly ?string $accountId = null,
         public readonly string $userName,
         public readonly string $userEmail,
         public readonly ?string $userPhone = null,
@@ -21,7 +21,7 @@ class AuthorizedDto
     public static function fromJson(array $data): self
     {
         return new self(
-            accountId: $data['accountId'],
+            accountId: $data['accountId'] ?? null,
             userName: $data['userName'],
             userEmail: $data['userEmail'],
             userPhone: $data['userPhone'] ?? null,

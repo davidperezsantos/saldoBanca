@@ -3,33 +3,47 @@
 namespace App\Entity\Balance;
 
 use App\Entity\Base\BaseEntity;
+use App\Entity\LogEntry;
 use Doctrine\ORM\Mapping as ORM;
 use App\Repository\Balance\PaymentGatewayRepository;
+use Gedmo\Mapping\Annotation as Gedmo;
 
+/**
+ * Auditada con Gedmo Loggable (ver App\Entity\LogEntry) — `config` queda fuera de
+ * #[Gedmo\Versioned] a propósito: guarda el webhook_secret (Fase 3), no debe terminar en la tabla
+ * de auditoría en texto plano.
+ */
 #[ORM\Entity(repositoryClass: PaymentGatewayRepository::class)]
 #[ORM\Table(name: 'balance_payment_gateway')]
 #[ORM\HasLifecycleCallbacks]
+#[Gedmo\Loggable(logEntryClass: LogEntry::class)]
 class PaymentGateway extends BaseEntity
 {
     #[ORM\Column(length: 100)]
+    #[Gedmo\Versioned]
     private ?string $name = null;
 
     #[ORM\Column(length: 50)]
+    #[Gedmo\Versioned]
     private ?string $code = null;
 
     #[ORM\Column(length: 20)]
+    #[Gedmo\Versioned]
     private ?string $authType = null;
 
     #[ORM\Column(type: 'json', nullable: true)]
     private ?array $config = null;
 
     #[ORM\Column(length: 20)]
+    #[Gedmo\Versioned]
     private ?string $status = 'active';
 
     #[ORM\Column(type: 'text', nullable: true)]
+    #[Gedmo\Versioned]
     private ?string $notes = null;
 
     #[ORM\Column(type: 'boolean')]
+    #[Gedmo\Versioned]
     private bool $isDefault = false;
 
     public function getName(): ?string

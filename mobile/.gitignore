@@ -1,0 +1,15 @@
+node_modules/
+dist/
+.env
+.env.local
+
+# Android build outputs (el proyecto android/ en sí se versiona)
+android/app/build/
+android/build/
+android/.gradle/
+android/local.properties
+android/captures/
+android/app/release/
+android/app/debug/
+*.apk
+*.aab

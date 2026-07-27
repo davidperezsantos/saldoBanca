@@ -3,7 +3,12 @@
 {% block title %}Pasarelas de Pago - Saldo Banca{% endblock %}
 
 {% block body %}
-<div id="vue-app"></div>
+<div id="vue-app"
+    data-list-url="{{ path('admin_payment_gateways_list') }}"
+    data-create-url="{{ path('admin_payment_gateway_create') }}"
+    data-detail-url="{{ path('admin_payment_gateway_update', {id: '__ID__'}) }}"
+    data-status-url="{{ path('admin_payment_gateway_status', {id: '__ID__'}) }}"
+></div>
 {% endblock %}
 
 {% block javascripts %}

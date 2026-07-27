@@ -3,29 +3,41 @@
 namespace App\Entity\Balance;
 
 use App\Entity\Base\BaseEntity;
+use App\Entity\LogEntry;
 use Doctrine\ORM\Mapping as ORM;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use App\Repository\Balance\ExchangeRateProviderRepository;
+use Gedmo\Mapping\Annotation as Gedmo;
 
+/**
+ * Auditada con Gedmo Loggable (ver App\Entity\LogEntry) — apiKey/password/token/config quedan
+ * fuera de #[Gedmo\Versioned] a propósito: son credenciales, no deben terminar en texto plano en
+ * la tabla de auditoría.
+ */
 #[ORM\Entity(repositoryClass: ExchangeRateProviderRepository::class)]
 #[ORM\Table(name: 'balance_exchange_rate_provider')]
 #[ORM\HasLifecycleCallbacks]
+#[Gedmo\Loggable(logEntryClass: LogEntry::class)]
 class ExchangeRateProvider extends BaseEntity
 {
     #[ORM\Column(length: 100)]
+    #[Gedmo\Versioned]
     private ?string $name = null;
 
     #[ORM\Column(length: 50)]
+    #[Gedmo\Versioned]
     private ?string $code = null;
 
     #[ORM\Column(length: 255, nullable: true)]
+    #[Gedmo\Versioned]
     private ?string $apiUrl = null;
 
     #[ORM\Column(name: 'api_key', length: 255, nullable: true)]
     private ?string $apiKey = null;
 
     #[ORM\Column(length: 100, nullable: true)]
+    #[Gedmo\Versioned]
     private ?string $username = null;
 
     #[ORM\Column(length: 255, nullable: true)]
@@ -35,15 +47,18 @@ class ExchangeRateProvider extends BaseEntity
     private ?string $token = null;
 
     #[ORM\Column(name: 'auth_type', length: 20, nullable: true)]
+    #[Gedmo\Versioned]
     private ?string $authType = null;
 
     #[ORM\Column(type: 'json', nullable: true)]
     private ?array $config = null;
 
     #[ORM\Column(length: 20)]
+    #[Gedmo\Versioned]
     private ?string $status = 'active';
 
     #[ORM\Column(name: 'is_active', type: 'boolean')]
+    #[Gedmo\Versioned]
     private bool $isActive = false;
 
     #[ORM\OneToMany(mappedBy: 'provider', targetEntity: ExchangeRate::class)]

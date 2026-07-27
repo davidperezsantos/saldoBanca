@@ -9,39 +9,17 @@
         <div class="card mb-6">
             <div class="flex flex-wrap gap-4 items-center justify-between">
                 <div class="flex gap-2">
-                    <InputText
-                        v-model="accountId"
-                        :placeholder="$t('saldo.accounts.accountNumber')"
-                        class="w-48"
-                    />
-                    <Select
-                        v-model="filterType"
-                        :options="movementTypes"
-                        optionLabel="label"
-                        optionValue="value"
-                        :placeholder="$t('saldo.common.filter')"
-                        class="w-48"
-                    />
-                    <Button
-                        :label="$t('saldo.common.search')"
-                        @click="loadHistory"
-                    />
+                    <InputText v-model="accountId" :placeholder="$t('saldo.accounts.accountNumber')" class="w-48" />
+                    <Select v-model="filterType" :options="movementTypes" optionLabel="label" optionValue="value"
+                        :placeholder="$t('saldo.common.filter')" class="w-48" />
+                    <Button :label="$t('saldo.common.search')" @click="loadHistory" />
                 </div>
-                <Button
-                    :label="$t('saldo.common.export')"
-                    icon="pi pi-download"
-                    @click="exportHistory"
-                />
+                <Button :label="$t('saldo.common.export')" icon="pi pi-download" @click="exportHistory" />
             </div>
         </div>
 
         <div class="card">
-            <DataTable
-                :value="movements"
-                :loading="loading"
-                stripedRows
-                responsiveLayout="scroll"
-            >
+            <DataTable :value="movements" :loading="loading" stripedRows responsiveLayout="scroll">
                 <Column field="movementType" :header="$t('saldo.history.movementType')" />
                 <Column field="amount" :header="$t('saldo.history.amount')">
                     <template #body="{ data }">

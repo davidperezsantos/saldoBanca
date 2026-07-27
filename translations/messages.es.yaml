@@ -5,6 +5,7 @@ menu:
     configure_gateways: Configurar Pasarelas
     oauth_clients: Clientes OAuth2
     clients: Clientes
+    accounts: Cuentas
     list_clients: Listado Clientes
     authorized_users: Usuarios Autorizados
     businesses: Negocios
@@ -13,13 +14,23 @@ menu:
     exchange: Tasas de Cambio
     exchange_providers: Proveedores de Tasa
     exchange_history: Historial de Tasas
+    currencies: Monedas
     recharges: Recargas
     transfers: Transferencias
     invoices: Facturas
+    reconciliations: Conciliaciones
+    reconciliation_report: Reporte de Conciliaciones
+    commission_settlements: Conciliación de Comisión
     history: Historial
     users: Usuarios
     roles: Roles y Permisos
+    api_docs: Documentación API
     logout: Cerrar Sesión
+    manual_usuario: Descargar manual de usuario (PDF)
+    manual_api: Descargar manual de integración API (PDF)
+
+footer:
+    developed_by: Desarrollado por David Pérez Santos
 
 common:
     save: Guardar
@@ -207,3 +218,27 @@ exchange_rates:
     rate: Tasa
     inverse_rate: Tasa Inversa
     fetched_at: Fecha Obtención
+
+email:
+    user:
+        welcome_title: Nueva contraseña temporal
+        account_created: Se ha generado una nueva contraseña temporal para tu cuenta.
+        credentials_info: Credenciales de acceso
+        username: Usuario
+        password: Contraseña temporal
+        role_assigned: "Has sido asignado al rol: %role%"
+        warning_title: Importante
+        warning_message: Si tú no realizaste esta solicitud, por favor contacta con el soporte de inmediato.
+        support: Soporte
+        footer: Si necesitas ayuda, nuestro equipo está disponible para ayudarte.
+    reset:
+        header: Restablecimiento de contraseña
+        request_received: Hemos recibido una solicitud para restablecer la contraseña de tu cuenta.
+        click_link: Para crear una nueva contraseña, haz clic en el siguiente enlace:
+        warning_title: Importante
+        warning_message: Este enlace expirará en %hours% horas.
+        ignore_request: Si tú no realizaste esta solicitud, puedes ignorar este mensaje.
+        footer: Soporte
+        support_message: Ante cualquier duda o inquietud puedes comunicarte con nuestro equipo de soporte:
+        team: Equipo de soporte
+        security_note: No compartas tus credenciales con terceros. El uso de la cuenta y el acceso a la información es responsabilidad del usuario.

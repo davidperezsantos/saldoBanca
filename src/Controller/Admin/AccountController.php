@@ -18,22 +18,13 @@ use Symfony\Component\Routing\Attribute\Route;
 #[Route('/accounts')]
 class AccountController extends BaseController
 {
-    public function __construct(
-        private AccountService $accountService,
-        private BalanceService $balanceService,
-        private RegistrationService $registrationService,
-        private JWTTokenManagerInterface $jwtManager,
-        private SystemCurrencyService $systemCurrencyService,
-        private APIExchangeRate $apiExchangeRate,
-    ) {
-    }
 
     #[Route('', name: 'admin_accounts_page', methods: ['GET'])]
-    public function accountsPage(): Response
+    public function accountsPage(AccountService $accountService): Response
     {
         $this->denyAccessUnlessGranted('clients:view');
 
-        $accounts = $this->accountService->listAccounts([]);
+        $accounts = $accountService->listAccounts([]);
 
         return $this->render('admin/accounts.html.twig', [
             'accounts' => $accounts,
@@ -41,7 +32,7 @@ class AccountController extends BaseController
     }
 
     #[Route('/list', name: 'admin_account_index', methods: ['GET'])]
-    public function index(Request $request): JsonResponse
+    public function index(Request $request, AccountService $accountService, SystemCurrencyService $systemCurrencyService, BalanceService $balanceService, APIExchangeRate $apiExchangeRate): JsonResponse
     {
         $this->denyAccessUnlessGranted('clients:view');
 
@@ -62,18 +53,18 @@ class AccountController extends BaseController
             $filters['search'] = $request->query->get('search');
         }
 
-        $accounts = $this->accountService->listAccounts($filters);
+        $accounts = $accountService->listAccounts($filters);
 
-        $baseCurrency = $this->systemCurrencyService->getBaseCurrency();
-        $data = array_map(function ($account) use ($baseCurrency) {
-            $balance = $this->balanceService->getBalance($account->getId()->toString(), $baseCurrency);
+        $baseCurrency = $systemCurrencyService->getBaseCurrency();
+        $data = array_map(function ($account) use ($apiExchangeRate, $balanceService, $baseCurrency) {
+            $balance = $balanceService->getBalance($account->getId()->toString(), $baseCurrency);
             $available = $balance ? $balance->getAvailableBalance() : '0.00';
             $displayCurrency = $account->getDefaultCurrency();
 
             if ($displayCurrency !== $baseCurrency) {
-                $rate = $this->apiExchangeRate->getRate($displayCurrency);
+                $rate = $apiExchangeRate->getRate($displayCurrency);
                 if ($rate !== null) {
-                    $available = bcmul($available, (string)$rate, 2);
+                    $available = (string)round((float)bcmul($available, (string)$rate, 4), 2);
                 }
             }
 
@@ -90,6 +81,10 @@ class AccountController extends BaseController
                 'defaultCurrency' => $displayCurrency,
                 'creditLimit' => $account->getCreditLimit(),
                 'saldoDisponible' => $available,
+                'saldoBase' => $balance ? $balance->getAvailableBalance() : '0.00',
+                'baseCurrency' => $baseCurrency,
+                'payoutCurrencyPercent' => $account->getPayoutCurrencyPercent(),
+                'payoutSecondaryCurrencyPercent' => $account->getPayoutSecondaryCurrencyPercent(),
                 'createdAt' => $account->getCreatedAt()?->format('Y-m-d H:i:s'),
             ];
         }, $accounts);
@@ -97,15 +92,27 @@ class AccountController extends BaseController
         return $this->success($data);
     }
 
+    #[Route('/system-currencies', name: 'admin_account_system_currencies', methods: ['GET'])]
+    public function systemCurrencies(SystemCurrencyService $systemCurrencyService): JsonResponse
+    {
+        $this->denyAccessUnlessGranted('clients:view');
+
+        return $this->success([
+            'currency' => $systemCurrencyService->getBaseCurrency(),
+            'currencySecondary' => $systemCurrencyService->getSecondaryCurrency(),
+        ]);
+    }
+
     #[Route('', name: 'admin_account_create', methods: ['POST'])]
-    public function create(Request $request): JsonResponse
+    public function create(Request $request, AccountService $accountService): JsonResponse
     {
         $this->denyAccessUnlessGranted('clients:create');
 
         try {
+            $this->validateCsrfToken();
             $data = $this->getJsonContent($request);
             $dto = AccountDto::fromJson($data);
-            $account = $this->accountService->createAccount($dto);
+            $account = $accountService->createAccount($dto);
 
             return $this->success([
                 'id' => $account->getId(),
@@ -114,35 +121,36 @@ class AccountController extends BaseController
                 'status' => $account->getStatus(),
             ], 'Account created successfully', 201);
         } catch (\Exception $e) {
-            return $this->error($e->getMessage(), 400);
+            return $this->handleException($e);
         }
     }
 
     #[Route('/{id}', name: 'admin_account_show', methods: ['GET'])]
-    public function show(string $id): JsonResponse
+    public function show(string $id, AccountService $accountService): JsonResponse
     {
         $this->denyAccessUnlessGranted('clients:details');
 
-        $account = $this->accountService->getAccount($id);
+        $account = $accountService->getAccount($id);
 
         if (!$account) {
             return $this->error('Account not found', 404);
         }
 
-        $summary = $this->accountService->getAccountSummary($id);
+        $summary = $accountService->getAccountSummary($id);
 
         return $this->success($summary);
     }
 
     #[Route('/{id}', name: 'admin_account_update', methods: ['PUT'])]
-    public function update(string $id, Request $request): JsonResponse
+    public function update(string $id, Request $request, AccountService $accountService): JsonResponse
     {
         $this->denyAccessUnlessGranted('clients:edit');
 
         try {
+            $this->validateCsrfToken();
             $data = $this->getJsonContent($request);
             $dto = AccountDto::fromJson($data);
-            $account = $this->accountService->updateAccount($id, $dto);
+            $account = $accountService->updateAccount($id, $dto);
 
             return $this->success([
                 'id' => $account->getId(),
@@ -151,16 +159,17 @@ class AccountController extends BaseController
                 'status' => $account->getStatus(),
             ], 'Account updated successfully');
         } catch (\Exception $e) {
-            return $this->error($e->getMessage(), 400);
+            return $this->handleException($e);
         }
     }
 
     #[Route('/{id}/status', name: 'admin_account_status', methods: ['PUT'])]
-    public function changeStatus(string $id, Request $request): JsonResponse
+    public function changeStatus(string $id, Request $request, AccountService $accountService): JsonResponse
     {
         $this->denyAccessUnlessGranted('clients:status');
 
         try {
+            $this->validateCsrfToken();
             $data = $this->getJsonContent($request);
             $status = $data['status'] ?? null;
 
@@ -168,30 +177,30 @@ class AccountController extends BaseController
                 return $this->error('Status is required');
             }
 
-            $account = $this->accountService->changeStatus($id, $status);
+            $account = $accountService->changeStatus($id, $status);
 
             return $this->success([
                 'id' => $account->getId(),
                 'status' => $account->getStatus(),
             ], 'Account status updated successfully');
         } catch (\Exception $e) {
-            return $this->error($e->getMessage(), 400);
+            return $this->handleException($e);
         }
     }
 
     #[Route('/{id}/balance', name: 'admin_account_balance', methods: ['GET'])]
-    public function balance(string $id): JsonResponse
+    public function balance(string $id, AccountService $accountService, SystemCurrencyService $systemCurrencyService, BalanceService $balanceService, APIExchangeRate $apiExchangeRate): JsonResponse
     {
         $this->denyAccessUnlessGranted('clients:balance');
 
-        $account = $this->accountService->getAccount($id);
+        $account = $accountService->getAccount($id);
 
         if (!$account) {
             return $this->error('Account not found', 404);
         }
 
-        $baseCurrency = $this->systemCurrencyService->getBaseCurrency();
-        $balance = $this->balanceService->getBalance($id, $baseCurrency);
+        $baseCurrency = $systemCurrencyService->getBaseCurrency();
+        $balance = $balanceService->getBalance($id, $baseCurrency);
 
         $available = $balance ? $balance->getAvailableBalance() : '0.00';
         $pending = $balance ? $balance->getPendingBalance() : '0.00';
@@ -199,7 +208,7 @@ class AccountController extends BaseController
         $displayCurrency = $account->getDefaultCurrency();
 
         if ($displayCurrency !== $baseCurrency) {
-            $rate = $this->apiExchangeRate->getRate($displayCurrency);
+            $rate = $apiExchangeRate->getRate($displayCurrency);
             if ($rate !== null) {
                 $available = bcmul($available, (string)$rate, 2);
                 $pending = bcmul($pending, (string)$rate, 2);
@@ -219,15 +228,16 @@ class AccountController extends BaseController
     }
 
     #[Route('/{id}/approve', name: 'admin_account_approve_business', methods: ['POST'])]
-    public function approveBusiness(string $id, Request $request): JsonResponse
+    public function approveBusiness(string $id, Request $request, RegistrationService $registrationService, JWTTokenManagerInterface $jwtManager): JsonResponse
     {
         $this->denyAccessUnlessGranted('businesses:edit');
 
         try {
+            $this->validateCsrfToken();
             $data = $this->getJsonContent($request);
-            $user = $this->registrationService->approveBusiness($id, $data);
+            $user = $registrationService->approveBusiness($id, $data);
 
-            $token = $this->jwtManager->create($user);
+            $token = $jwtManager->create($user);
 
             return $this->success([
                 'token' => $token,
@@ -238,12 +248,8 @@ class AccountController extends BaseController
                     'name' => $user->getName(),
                 ],
             ], 'Business approved successfully');
-        } catch (\InvalidArgumentException $e) {
-            return $this->error($e->getMessage(), 400);
-        } catch (\RuntimeException $e) {
-            return $this->error($e->getMessage(), 404);
         } catch (\Exception $e) {
-            return $this->error($e->getMessage(), 400);
+            return $this->handleException($e);
         }
     }
 }

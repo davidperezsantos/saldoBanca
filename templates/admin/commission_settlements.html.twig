@@ -1,0 +1,22 @@
+{% extends 'admin_layout.html.twig' %}
+
+{% block title %}Conciliación de Comisión - SaldoGrin{% endblock %}
+
+{% block body %}
+<div id="vue-app"
+    data-currencies-list-url="{{ path('admin_currency_list') }}"
+    data-available-url="{{ path('admin_commission_settlement_available') }}"
+    data-list-url="{{ path('admin_commission_settlement_index') }}"
+    data-create-url="{{ path('admin_commission_settlement_create') }}"
+    data-detail-url="{{ path('admin_commission_settlement_show', {id: '__ID__'}) }}"
+    data-approve-url="{{ path('admin_commission_settlement_approve', {id: '__ID__'}) }}"
+    data-assign-account-url="{{ path('admin_commission_settlement_assign_account', {id: '__ID__'}) }}"
+    data-settle-url="{{ path('admin_commission_settlement_settle', {id: '__ID__'}) }}"
+    data-close-url="{{ path('admin_commission_settlement_close', {id: '__ID__'}) }}"
+></div>
+{% endblock %}
+
+{% block javascripts %}
+{{ parent() }}
+{{ vite_entry_script_tags('commission_settlements') }}
+{% endblock %}

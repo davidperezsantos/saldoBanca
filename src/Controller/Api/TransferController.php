@@ -4,6 +4,8 @@ namespace App\Controller\Api;
 
 use App\Controller\BaseController;
 use App\DTO\Balance\TransferDto;
+use App\Security\Attribute\RequireScope;
+use App\Security\ScopeAuthorizationService;
 use App\Services\Balance\TransferService;
 use OpenApi\Attributes as OA;
 use Symfony\Component\HttpFoundation\Request;
@@ -15,6 +17,7 @@ class TransferController extends BaseController
 {
     public function __construct(
         private TransferService $transferService,
+        private ScopeAuthorizationService $scopeAuthorizationService,
     ) {
     }
 
@@ -52,6 +55,7 @@ class TransferController extends BaseController
             ]
         )
     )]
+    #[RequireScope('transfers.read')]
     #[Route('/transfers', name: 'api_transfer_list', methods: ['GET'])]
     public function list(Request $request): JsonResponse
     {
@@ -59,7 +63,12 @@ class TransferController extends BaseController
             'limit' => $request->query->getInt('limit', 20),
             'offset' => $request->query->getInt('offset', 0),
         ];
-        if ($request->query->has('accountId')) {
+        $selfServiceUser = $this->scopeAuthorizationService->getSelfServiceUser();
+        if ($selfServiceUser !== null) {
+            // Usuario final (JWT): solo las propias (como origen o destino, TransferService ya
+            // cubre ambas) — ignora cualquier accountId que venga en la query.
+            $filters['accountId'] = (string) $selfServiceUser->getAccount()?->getId();
+        } elseif ($request->query->has('accountId')) {
             $filters['accountId'] = $request->query->get('accountId');
         }
         if ($request->query->has('status')) {
@@ -69,12 +78,17 @@ class TransferController extends BaseController
         $transfers = $this->transferService->listTransfers($filters);
         $data = array_map(fn($t) => [
             'id' => $t->getId(),
+            'receiptNumber' => $t->getReceiptNumber(),
             'originAccountId' => $t->getOriginAccount()->getId(),
             'originAccountNumber' => $t->getOriginAccountNumber(),
+            'originAccountName' => $t->getOriginAccount()->getBusinessName(),
             'destinationAccountId' => $t->getDestinationAccount()->getId(),
             'destAccountNumber' => $t->getDestAccountNumber(),
+            'destAccountName' => $t->getDestinationAccount()->getBusinessName(),
             'amount' => $t->getAmount(),
             'currency' => $t->getCurrency(),
+            'originalAmount' => $t->getOriginalAmount(),
+            'originalCurrency' => $t->getOriginalCurrency(),
             'fee' => $t->getFee(),
             'status' => $t->getStatus(),
             'notes' => $t->getNotes(),
@@ -121,26 +135,36 @@ class TransferController extends BaseController
         )
     )]
     #[OA\Response(response: 400, description: 'Error de validación')]
-    #[OA\Response(response: 401, description: 'Invalid API key')]
+    #[OA\Response(response: 401, description: 'Token OAuth2 inválido o ausente')]
+    #[OA\Response(response: 403, description: 'Scope insuficiente (requiere "transfers")')]
+    #[RequireScope('transfers.create')]
     #[Route('/transfers', name: 'api_transfer_create', methods: ['POST'])]
     public function create(Request $request): JsonResponse
     {
-        if (!$this->checkApiKey($request)) {
-            return $this->error('Invalid API key', 401);
-        }
         try {
             $data = $this->getJsonContent($request);
+            $selfServiceUser = $this->scopeAuthorizationService->getSelfServiceUser();
+            if ($selfServiceUser !== null) {
+                // Usuario final (JWT): la cuenta origen siempre es la propia, sin importar qué
+                // mande el payload — si no, cualquiera podría transferir fondos de otra cuenta
+                // (IDOR) con solo cambiar el originAccountId.
+                $data['originAccountId'] = (string) $selfServiceUser->getAccount()?->getId();
+            }
             $dto = TransferDto::fromJson($data);
             $transfer = $this->transferService->createTransfer($dto);
             return $this->success([
                 'id' => $transfer->getId(),
+                'receiptNumber' => $transfer->getReceiptNumber(),
                 'amount' => $transfer->getAmount(),
+                'currency' => $transfer->getCurrency(),
+                'originalAmount' => $transfer->getOriginalAmount(),
+                'originalCurrency' => $transfer->getOriginalCurrency(),
                 'status' => $transfer->getStatus(),
                 'originAccountNumber' => $transfer->getOriginAccountNumber(),
                 'destAccountNumber' => $transfer->getDestAccountNumber(),
             ], 'Transfer created', 201);
         } catch (\Exception $e) {
-            return $this->error($e->getMessage(), 400);
+            return $this->handleException($e);
         }
     }
 
@@ -172,6 +196,7 @@ class TransferController extends BaseController
         )
     )]
     #[OA\Response(response: 404, description: 'Transfer not found')]
+    #[RequireScope('transfers.read')]
     #[Route('/transfers/{id}', name: 'api_transfer_show', methods: ['GET'])]
     public function show(string $id): JsonResponse
     {
@@ -180,14 +205,25 @@ class TransferController extends BaseController
             if (!$transfer) {
                 return $this->error('Transfer not found', 404);
             }
+            if (!$this->scopeAuthorizationService->selfServiceOwnsAccount($transfer->getOriginAccount())
+                && !$this->scopeAuthorizationService->selfServiceOwnsAccount($transfer->getDestinationAccount())
+            ) {
+                return $this->error('Transfer not found', 404);
+            }
             return $this->success([
                 'id' => $transfer->getId(),
+                'receiptNumber' => $transfer->getReceiptNumber(),
                 'originAccountId' => $transfer->getOriginAccount()->getId(),
                 'originAccountNumber' => $transfer->getOriginAccountNumber(),
+                'originAccountName' => $transfer->getOriginAccount()->getBusinessName(),
                 'destinationAccountId' => $transfer->getDestinationAccount()->getId(),
                 'destAccountNumber' => $transfer->getDestAccountNumber(),
+                'destAccountName' => $transfer->getDestinationAccount()->getBusinessName(),
                 'amount' => $transfer->getAmount(),
                 'currency' => $transfer->getCurrency(),
+                'originalAmount' => $transfer->getOriginalAmount(),
+                'originalCurrency' => $transfer->getOriginalCurrency(),
+                'exchangeRate' => $transfer->getExchangeRate(),
                 'fee' => $transfer->getFee(),
                 'status' => $transfer->getStatus(),
                 'authorizedBy' => $transfer->getAuthorizedBy(),
@@ -195,7 +231,7 @@ class TransferController extends BaseController
                 'createdAt' => $transfer->getCreatedAt()?->format('Y-m-d H:i:s'),
             ]);
         } catch (\Exception $e) {
-            return $this->error($e->getMessage(), 400);
+            return $this->handleException($e);
         }
     }
 
@@ -208,6 +244,7 @@ class TransferController extends BaseController
     #[OA\Parameter(name: 'id', in: 'path', description: 'ID de la transferencia', required: true, schema: new OA\Schema(type: 'string'))]
     #[OA\Response(response: 200, description: 'Transfer processed')]
     #[OA\Response(response: 400, description: 'Error al procesar transferencia')]
+    #[RequireScope('transfers.process')]
     #[Route('/transfers/{id}/process', name: 'api_transfer_process', methods: ['PUT'])]
     public function process(string $id): JsonResponse
     {
@@ -218,7 +255,7 @@ class TransferController extends BaseController
                 'status' => $transfer->getStatus(),
             ], 'Transfer processed');
         } catch (\Exception $e) {
-            return $this->error($e->getMessage(), 400);
+            return $this->handleException($e);
         }
     }
 
@@ -231,6 +268,7 @@ class TransferController extends BaseController
     #[OA\Parameter(name: 'id', in: 'path', description: 'ID de la transferencia', required: true, schema: new OA\Schema(type: 'string'))]
     #[OA\Response(response: 200, description: 'Transfer cancelled')]
     #[OA\Response(response: 400, description: 'Error al cancelar transferencia')]
+    #[RequireScope('transfers.cancel')]
     #[Route('/transfers/{id}/cancel', name: 'api_transfer_cancel', methods: ['PUT'])]
     public function cancel(string $id): JsonResponse
     {
@@ -241,7 +279,7 @@ class TransferController extends BaseController
                 'status' => $transfer->getStatus(),
             ], 'Transfer cancelled');
         } catch (\Exception $e) {
-            return $this->error($e->getMessage(), 400);
+            return $this->handleException($e);
         }
     }
 
@@ -259,21 +297,33 @@ class TransferController extends BaseController
             properties: [
                 new OA\Property(property: 'success', type: 'boolean', example: true),
                 new OA\Property(property: 'data', properties: [
-                    new OA\Property(property: 'maxPerTransfer', type: 'string', example: '10000.00'),
-                    new OA\Property(property: 'maxDaily', type: 'string', example: '50000.00'),
-                    new OA\Property(property: 'maxMonthly', type: 'string', example: '500000.00'),
+                    new OA\Property(property: 'available', type: 'string', example: '1000.00'),
+                    new OA\Property(property: 'currency', type: 'string', example: 'USD'),
+                    new OA\Property(property: 'allowTransfers', type: 'boolean', example: true),
+                    new OA\Property(property: 'maxPerTransfer', type: 'string', example: '10000.00', nullable: true),
+                    new OA\Property(property: 'maxDaily', type: 'string', example: '50000.00', nullable: true),
+                    new OA\Property(property: 'usedToday', type: 'string', example: '1200.00', nullable: true),
+                    new OA\Property(property: 'maxMonthly', type: 'string', example: '500000.00', nullable: true),
+                    new OA\Property(property: 'usedThisMonth', type: 'string', example: '15000.00', nullable: true),
                 ], type: 'object'),
             ]
         )
     )]
+    #[RequireScope('transfers.read')]
     #[Route('/transfers/limits/{accountId}', name: 'api_transfer_limits', methods: ['GET'])]
     public function limits(string $accountId): JsonResponse
     {
         try {
+            $selfServiceUser = $this->scopeAuthorizationService->getSelfServiceUser();
+            if ($selfServiceUser !== null
+                && (string) $selfServiceUser->getAccount()?->getId() !== $accountId
+            ) {
+                return $this->error('No podés consultar los límites de esta cuenta', 403);
+            }
             $limits = $this->transferService->getTransferLimits($accountId);
             return $this->success($limits);
         } catch (\Exception $e) {
-            return $this->error($e->getMessage(), 400);
+            return $this->handleException($e);
         }
     }
 }

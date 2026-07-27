@@ -3,7 +3,13 @@
 {% block title %}Historial de Tasas de Cambio - Saldo Banca{% endblock %}
 
 {% block body %}
-<div id="vue-app"></div>
+<div id="vue-app"
+    data-providers-list-url="{{ path('admin_exchange_providers_list') }}"
+    data-list-url="{{ path('admin_exchange_rates_list') }}"
+    data-fetch-url="{{ path('admin_exchange_rates_fetch') }}"
+    data-manual-create-url="{{ path('admin_exchange_rate_manual_create') }}"
+    data-currencies-list-url="{{ path('admin_currency_list') }}"
+></div>
 {% endblock %}
 
 {% block javascripts %}

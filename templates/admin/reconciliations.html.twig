@@ -1,0 +1,22 @@
+{% extends 'admin_layout.html.twig' %}
+
+{% block title %}Conciliaciones - SaldoGrin{% endblock %}
+
+{% block body %}
+<div id="vue-app"
+    data-accounts-list-url="{{ path('admin_account_index') }}"
+    data-list-url="{{ path('admin_reconciliation_index') }}"
+    data-preview-url="{{ path('admin_reconciliation_preview') }}"
+    data-create-url="{{ path('admin_reconciliation_create') }}"
+    data-detail-url="{{ path('admin_business_reconciliation_show', {id: '__ID__'}) }}"
+    data-send-url="{{ path('admin_reconciliation_send', {id: '__ID__'}) }}"
+    data-approve-url="{{ path('admin_reconciliation_approve', {id: '__ID__'}) }}"
+    data-reject-url="{{ path('admin_reconciliation_reject', {id: '__ID__'}) }}"
+    data-settle-url="{{ path('admin_reconciliation_settle', {id: '__ID__'}) }}"
+></div>
+{% endblock %}
+
+{% block javascripts %}
+{{ parent() }}
+{{ vite_entry_script_tags('reconciliations') }}
+{% endblock %}

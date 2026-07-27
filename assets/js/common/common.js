@@ -1,6 +1,6 @@
 //const base64 = require('base-64')
 import $ from 'jquery';
-import i18n from '@/translations/i18n';
+import i18n from '@/js/translations/index';
 import base64 from 'base-64';
 
 function decodeBase64(encodedString) {
@@ -90,6 +90,14 @@ function getCurrencies() {
     ]
 }
 
+// Permisos del usuario logueado, inyectados por admin_layout.html.twig como
+// window.__PERMISSIONS__ (lista plana "modulo:accion" / "modulo.submodulo:accion" — mismo
+// formato que valida App\Security\PermissionVoter en el backend). Sirve para ocultar en el
+// SPA botones de acciones que el backend igual va a rechazar con 403.
+function can(permission) {
+    return (window.__PERMISSIONS__ || []).includes(permission);
+}
+
 function getTypeDriver() {
     return [
         {
@@ -116,5 +124,6 @@ export default {
     formatCurrency,
     getCurrencies,
     decodeBase64,
-    encodeBase64
+    encodeBase64,
+    can
 }

@@ -2,21 +2,21 @@
 
 namespace App\Controller\Admin;
 
+use App\Controller\BaseController;
 use App\Entity\User;
 use App\Entity\Role;
 use App\Services\UsernameGenerator;
 use Doctrine\ORM\EntityManagerInterface;
-use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 
-class UserController extends AbstractController
+class UserController extends BaseController
 {
     public function __construct(
         private EntityManagerInterface $entityManager,
-        private UsernameGenerator $usernameGenerator
+        private UsernameGenerator $usernameGenerator,
     ) {
     }
 
@@ -45,40 +45,15 @@ class UserController extends AbstractController
             ];
         }
 
+        $roles = $this->entityManager->getRepository(Role::class)->findBy([], ['name' => 'ASC']);
+        $rolesData = array_map(fn(Role $role) => [
+            'id' => $role->getId()->toRfc4122(),
+            'label' => $role->getLabel(),
+        ], $roles);
+
         return $this->render('admin/users.html.twig', [
             'users' => $usersData,
-        ]);
-    }
-
-    #[Route('/admin/users/create', name: 'admin_user_create_page')]
-    public function createPage(): Response
-    {
-        $this->denyAccessUnlessGranted('administration.users:create');
-
-        $roles = $this->entityManager->getRepository(Role::class)->findBy([], ['name' => 'ASC']);
-
-        return $this->render('admin/user_form.html.twig', [
-            'user' => null,
-            'roles' => $roles,
-        ]);
-    }
-
-    #[Route('/admin/users/{id}/edit', name: 'admin_user_edit_page')]
-    public function editPage(string $id): Response
-    {
-        $this->denyAccessUnlessGranted('administration.users:edit');
-
-        $user = $this->entityManager->getRepository(User::class)->find($id);
-
-        if (!$user) {
-            throw $this->createNotFoundException('User not found');
-        }
-
-        $roles = $this->entityManager->getRepository(Role::class)->findBy([], ['name' => 'ASC']);
-
-        return $this->render('admin/user_form.html.twig', [
-            'user' => $user,
-            'roles' => $roles,
+            'roles' => $rolesData,
         ]);
     }
 
@@ -86,6 +61,12 @@ class UserController extends AbstractController
     public function store(Request $request, UserPasswordHasherInterface $passwordHasher): Response
     {
         $this->denyAccessUnlessGranted('administration.users:create');
+
+        try {
+            $this->validateCsrfToken();
+        } catch (\RuntimeException $e) {
+            return $this->json(['error' => $e->getMessage()], 400);
+        }
 
         $data = json_decode($request->getContent(), true);
 
@@ -127,6 +108,12 @@ class UserController extends AbstractController
     public function update(string $id, Request $request, UserPasswordHasherInterface $passwordHasher): Response
     {
         $this->denyAccessUnlessGranted('administration.users:edit');
+
+        try {
+            $this->validateCsrfToken();
+        } catch (\RuntimeException $e) {
+            return $this->json(['error' => $e->getMessage()], 400);
+        }
 
         $user = $this->entityManager->getRepository(User::class)->find($id);
 
@@ -171,6 +158,12 @@ class UserController extends AbstractController
     {
         $this->denyAccessUnlessGranted('administration.users:delete');
 
+        try {
+            $this->validateCsrfToken();
+        } catch (\RuntimeException $e) {
+            return $this->json(['error' => $e->getMessage()], 400);
+        }
+
         $user = $this->entityManager->getRepository(User::class)->find($id);
 
         if (!$user) {
@@ -187,6 +180,12 @@ class UserController extends AbstractController
     public function toggleStatus(string $id): Response
     {
         $this->denyAccessUnlessGranted('administration.users:status');
+
+        try {
+            $this->validateCsrfToken();
+        } catch (\RuntimeException $e) {
+            return $this->json(['error' => $e->getMessage()], 400);
+        }
 
         $user = $this->entityManager->getRepository(User::class)->find($id);
 

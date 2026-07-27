@@ -1,136 +1,141 @@
 {% extends 'admin_layout.html.twig' %}
 
-{% block title %}{{ role is defined and role ? 'Editar' : 'Crear' }} Rol - SaldoGrin{% endblock %}
+
+{% block javascripts %}
+	{{ parent() }}
+	{{ vite_entry_script_tags('roles') }}
+{% endblock %}
+
+{% block title %}
+	{{ role is defined and role ? 'Editar' : 'Crear' }}
+	Rol - SaldoGrin
+{% endblock %}
 
 {% block body %}
-{% set flatPerms = flatPermissions is defined ? flatPermissions : [] %}
+	{% set flatPerms = flatPermissions is defined ? flatPermissions : [] %}
 
-<div class="max-w-4xl mx-auto">
-    <div class="flex items-center justify-between mb-6">
-        <h1 class="text-2xl font-bold text-gray-800">{{ role is defined and role ? 'Editar' : 'Crear' }} Rol</h1>
-        <a href="{{ path('admin_roles_page') }}" class="text-gray-500 hover:text-gray-700 flex items-center gap-1">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
-            Volver
-        </a>
-    </div>
+	<div class="max-w-4xl mx-auto">
+		<div class="flex items-center justify-between mb-6">
+			<h1 class="text-2xl font-bold text-gray-800">{{ role is defined and role ? 'Editar' : 'Crear' }}
+				Rol</h1>
+			<a href="{{ path('admin_roles_page') }}" class="text-gray-500 hover:text-gray-700 flex items-center gap-1">
+				<svg class="w-4 h-4" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+				Volver
+			</a>
+		</div>
 
-    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-        <div class="grid grid-cols-2 gap-6 mb-6">
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Nombre Interno *</label>
-                <input type="text" id="role-name" required
-                       value="{{ role is defined and role ? role.name : '' }}"
-                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 font-mono"
-                       placeholder="Ej: manager, cashier"
-                       {{ role is defined and role and role.isSystem ? 'disabled' : '' }}>
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Etiqueta (Nombre visible) *</label>
-                <input type="text" id="role-label" required
-                       value="{{ role is defined and role ? role.label : '' }}"
-                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                       placeholder="EJ: Gerente, Cajero">
-            </div>
-        </div>
+		<div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+			<div class="grid grid-cols-2 gap-6 mb-6">
+				<div>
+					<label class="block text-sm font-medium text-gray-700 mb-2">Nombre Interno *</label>
+					<input type="text" id="role-name" required value="{{ role is defined and role ? role.name : '' }}" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 font-mono" placeholder="Ej: manager, cashier" {{ role is defined and role and role.isSystem ? 'disabled' : '' }}>
+				</div>
+				<div>
+					<label class="block text-sm font-medium text-gray-700 mb-2">Etiqueta (Nombre visible) *</label>
+					<input type="text" id="role-label" required value="{{ role is defined and role ? role.label : '' }}" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" placeholder="EJ: Gerente, Cajero">
+				</div>
+			</div>
 
-        <div class="border-t border-gray-200 pt-6">
-            <div class="flex items-center justify-between mb-4">
-                <h2 class="text-lg font-semibold text-gray-800">Permisos</h2>
-                <div class="flex gap-2">
-                    <button type="button" onclick="selectAll()" class="px-3 py-1 text-xs bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors">
-                        Seleccionar Todos
-                    </button>
-                    <button type="button" onclick="deselectAll()" class="px-3 py-1 text-xs bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors">
-                        Limpiar
-                    </button>
-                </div>
-            </div>
+			<div class="border-t border-gray-200 pt-6">
+				<div class="flex items-center justify-between mb-4">
+					<h2 class="text-lg font-semibold text-gray-800">Permisos</h2>
+					<div class="flex gap-2">
+						<button type="button" onclick="selectAll()" class="px-3 py-1 text-xs bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors">
+							Seleccionar Todos
+						</button>
+						<button type="button" onclick="deselectAll()" class="px-3 py-1 text-xs bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors">
+							Limpiar
+						</button>
+					</div>
+				</div>
 
-            <div class="space-y-6" id="permissions-container">
-                {% for group in permissions %}
-                <div class="bg-gray-50 rounded-xl p-4">
-                    <div class="flex items-center gap-3 mb-3">
-                        <input type="checkbox" id="group-{{ group.key }}" 
-                               onchange="toggleGroup('{{ group.key }}', this.checked)"
-                               class="h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-gray-300 rounded">
-                        <label for="group-{{ group.key }}" class="text-sm font-semibold text-gray-700">{{ group.label }}</label>
-                    </div>
-                    <div class="ml-7 grid grid-cols-2 md:grid-cols-3 gap-2">
-                        {% for perm in group.permissions %}
-                        <label class="flex items-center gap-2 p-2 bg-white rounded-lg border border-gray-200 hover:border-emerald-300 transition-colors cursor-pointer">
-                            <input type="checkbox" name="permissions[]" value="{{ perm.key }}"
-                                   data-group="{{ group.key }}"
-                                   {% if perm.key in flatPerms %}checked{% endif %}
-                                   class="h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-gray-300 rounded perm-checkbox">
-                            <span class="text-sm text-gray-600">{{ perm.label }}</span>
-                        </label>
-                        {% endfor %}
-                    </div>
-                </div>
-                {% endfor %}
-            </div>
-        </div>
+				<div class="space-y-6" id="permissions-container">
+					{% for group in permissions %}
+						<div class="bg-gray-50 rounded-xl p-4">
+							<div class="flex items-center gap-3 mb-3">
+								<input type="checkbox" id="group-{{ group.key }}" onchange="toggleGroup('{{ group.key }}', this.checked)" class="h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-gray-300 rounded">
+								<label for="group-{{ group.key }}" class="text-sm font-semibold text-gray-700">{{ group.label }}</label>
+							</div>
+							<div class="ml-7 grid grid-cols-2 md:grid-cols-3 gap-2">
+								{% for perm in group.permissions %}
+									<label class="flex items-center gap-2 p-2 bg-white rounded-lg border border-gray-200 hover:border-emerald-300 transition-colors cursor-pointer">
+										<input type="checkbox" name="permissions[]" value="{{ perm.key }}" data-group="{{ group.key }}" {% if perm.key in flatPerms %} checked {% endif %} class="h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-gray-300 rounded perm-checkbox">
+										<span class="text-sm text-gray-600">{{ perm.label }}</span>
+									</label>
+								{% endfor %}
+							</div>
+						</div>
+					{% endfor %}
+				</div>
+			</div>
 
-        <div class="flex justify-end gap-3 pt-6 border-t border-gray-200 mt-6">
-            <a href="{{ path('admin_roles_page') }}" class="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">
-                Cancelar
-            </a>
-            <button type="button" onclick="saveRole()" class="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors flex items-center gap-2">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                Guardar
-            </button>
-        </div>
-    </div>
-</div>
+			<div class="flex justify-end gap-3 pt-6 border-t border-gray-200 mt-6">
+				<a href="{{ path('admin_roles_page') }}" class="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">
+					Cancelar
+				</a>
+				<button type="button" onclick="saveRole()" class="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors flex items-center gap-2">
+					<svg class="w-4 h-4" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+					Guardar
+				</button>
+			</div>
+		</div>
+	</div>
 
-<script>
-const roleId = '{{ role is defined and role ? role.id.toRfc4122() : '' }}';
+	<script>
+		const roleId = '{{ role is defined and role ? role.id.toRfc4122() : '' }}';
 
 function toggleGroup(groupKey, checked) {
-    document.querySelectorAll(`input[data-group="${groupKey}"]`).forEach(cb => {
-        cb.checked = checked;
-    });
+document.querySelectorAll (`input[data-group="${groupKey}"]`).forEach(cb => {
+cb.checked = checked;
+});
 }
 
 function selectAll() {
-    document.querySelectorAll('.perm-checkbox').forEach(cb => cb.checked = true);
-    document.querySelectorAll('[id^="group-"]').forEach(cb => cb.checked = true);
+document.querySelectorAll('.perm-checkbox').forEach(cb => cb.checked = true);
+document.querySelectorAll('[id^="group-"]').forEach(cb => cb.checked = true);
 }
 
 function deselectAll() {
-    document.querySelectorAll('.perm-checkbox').forEach(cb => cb.checked = false);
-    document.querySelectorAll('[id^="group-"]').forEach(cb => cb.checked = false);
+document.querySelectorAll('.perm-checkbox').forEach(cb => cb.checked = false);
+document.querySelectorAll('[id^="group-"]').forEach(cb => cb.checked = false);
 }
 
 async function saveRole() {
-    const name = document.getElementById('role-name').value.trim();
-    const label = document.getElementById('role-label').value.trim();
-    const permissions = Array.from(document.querySelectorAll('.perm-checkbox:checked')).map(cb => cb.value);
+const name = document.getElementById('role-name').value.trim();
+const label = document.getElementById('role-label').value.trim();
+const permissions = Array.from(document.querySelectorAll('.perm-checkbox:checked')).map(cb => cb.value);
 
-    if (!name || !label) {
-        alert('Nombre y etiqueta son requeridos');
-        return;
-    }
-
-    const url = roleId ? `/admin/roles/${roleId}/update` : '/admin/roles/store';
-
-    try {
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, label, permissions })
-        });
-
-        const data = await response.json();
-
-        if (data.success) {
-            window.location.href = '{{ path("admin_roles_page") }}';
-        } else {
-            alert('Error: ' + (data.error || 'Unknown error'));
-        }
-    } catch (error) {
-        alert('Error al guardar: ' + error.message);
-    }
+if (! name || ! label) {
+alert('Nombre y etiqueta son requeridos');
+return;
 }
-</script>
+
+const url = roleId ? `/admin/roles/${roleId}/update` : '/admin/roles/store';
+
+try {
+const response = await fetch(url, {
+method: 'POST',
+headers: {
+'Content-Type': 'application/json',
+'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content
+},
+body: JSON.stringify(
+{name, label, permissions}
+)
+});
+
+const data = await response.json();
+
+if (data.success) {
+window.location.href = '{{ path("admin_roles_page") }}';
+} else {
+alert('Error: ' + (
+data.error || 'Unknown error'
+));
+}
+} catch (error) {
+alert('Error al guardar: ' + error.message);
+}
+}
+	</script>
 {% endblock %}

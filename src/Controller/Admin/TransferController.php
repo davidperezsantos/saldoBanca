@@ -5,6 +5,7 @@ namespace App\Controller\Admin;
 use App\Controller\BaseController;
 use App\DTO\Balance\TransferDto;
 use App\Services\Balance\TransferService;
+use App\Services\ExchangeRate\APIExchangeRate;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
@@ -14,16 +15,40 @@ use Symfony\Component\Routing\Attribute\Route;
 class TransferController extends BaseController
 {
     public function __construct(
-        private TransferService $transferService
+        private TransferService $transferService,
+        private APIExchangeRate $apiExchangeRate,
     ) {
     }
 
-    #[Route('', name: 'admin_transfers_page')]
+    #[Route('', name: 'admin_transfers_page', methods: ['GET'])]
     public function transfersPage(): Response
     {
         $this->denyAccessUnlessGranted('transfers:view');
 
         return $this->render('admin/transfers.html.twig');
+    }
+
+    /**
+     * Convertidor de moneda para el formulario de creación de transferencia — las transferencias
+     * pueden pedirse en una moneda distinta a la base del sistema, igual que las recargas.
+     */
+    #[Route('/convert', name: 'admin_transfer_convert', methods: ['GET'])]
+    public function convert(Request $request): JsonResponse
+    {
+        $this->denyAccessUnlessGranted('transfers:create');
+
+        try {
+            $amount = $request->query->get('amount');
+            $currency = strtoupper($request->query->get('currency', ''));
+
+            if (!$amount || !$currency) {
+                return $this->error('amount y currency son requeridos');
+            }
+
+            return $this->success($this->apiExchangeRate->convertToBase((string) $amount, $currency));
+        } catch (\Exception $e) {
+            return $this->handleException($e);
+        }
     }
 
     #[Route('/list', name: 'admin_transfer_index', methods: ['GET'])]
@@ -49,12 +74,16 @@ class TransferController extends BaseController
         $data = array_map(function ($transfer) {
             return [
                 'id' => $transfer->getId(),
+                'receiptNumber' => $transfer->getReceiptNumber(),
                 'originAccountId' => $transfer->getOriginAccount()->getId(),
                 'originAccountNumber' => $transfer->getOriginAccountNumber(),
                 'destinationAccountId' => $transfer->getDestinationAccount()->getId(),
                 'destAccountNumber' => $transfer->getDestAccountNumber(),
                 'amount' => $transfer->getAmount(),
                 'currency' => $transfer->getCurrency(),
+                'originalAmount' => $transfer->getOriginalAmount(),
+                'originalCurrency' => $transfer->getOriginalCurrency(),
+                'exchangeRate' => $transfer->getExchangeRate(),
                 'status' => $transfer->getStatus(),
                 'notes' => $transfer->getNotes(),
                 'createdAt' => $transfer->getCreatedAt()?->format('Y-m-d H:i:s'),
@@ -70,20 +99,24 @@ class TransferController extends BaseController
         $this->denyAccessUnlessGranted('transfers:create');
 
         try {
+            $this->validateCsrfToken();
             $data = $this->getJsonContent($request);
             $dto = TransferDto::fromJson($data);
-            $transfer = $this->transferService->createTransfer($dto);
+            $transfer = $this->transferService->createTransfer($dto, $this->getUser()?->getUserIdentifier());
 
             return $this->success([
                 'id' => $transfer->getId(),
+                'receiptNumber' => $transfer->getReceiptNumber(),
                 'amount' => $transfer->getAmount(),
                 'currency' => $transfer->getCurrency(),
+                'originalAmount' => $transfer->getOriginalAmount(),
+                'originalCurrency' => $transfer->getOriginalCurrency(),
                 'status' => $transfer->getStatus(),
                 'originAccountNumber' => $transfer->getOriginAccountNumber(),
                 'destAccountNumber' => $transfer->getDestAccountNumber(),
             ], 'Transfer created successfully', 201);
         } catch (\Exception $e) {
-            return $this->error($e->getMessage(), 400);
+            return $this->handleException($e);
         }
     }
 
@@ -100,12 +133,16 @@ class TransferController extends BaseController
 
         return $this->success([
             'id' => $transfer->getId(),
+            'receiptNumber' => $transfer->getReceiptNumber(),
             'originAccountId' => $transfer->getOriginAccount()->getId(),
             'originAccountNumber' => $transfer->getOriginAccountNumber(),
             'destinationAccountId' => $transfer->getDestinationAccount()->getId(),
             'destAccountNumber' => $transfer->getDestAccountNumber(),
             'amount' => $transfer->getAmount(),
             'currency' => $transfer->getCurrency(),
+            'originalAmount' => $transfer->getOriginalAmount(),
+            'originalCurrency' => $transfer->getOriginalCurrency(),
+            'exchangeRate' => $transfer->getExchangeRate(),
             'status' => $transfer->getStatus(),
             'authorizedBy' => $transfer->getAuthorizedBy(),
             'notes' => $transfer->getNotes(),
@@ -120,14 +157,15 @@ class TransferController extends BaseController
         $this->denyAccessUnlessGranted('transfers:process');
 
         try {
-            $transfer = $this->transferService->processTransfer($id);
+            $this->validateCsrfToken();
+            $transfer = $this->transferService->processTransfer($id, $this->getUser()?->getUserIdentifier());
 
             return $this->success([
                 'id' => $transfer->getId(),
                 'status' => $transfer->getStatus(),
             ], 'Transfer processed successfully');
         } catch (\Exception $e) {
-            return $this->error($e->getMessage(), 400);
+            return $this->handleException($e);
         }
     }
 
@@ -137,14 +175,15 @@ class TransferController extends BaseController
         $this->denyAccessUnlessGranted('transfers:cancel');
 
         try {
-            $transfer = $this->transferService->cancelTransfer($id);
+            $this->validateCsrfToken();
+            $transfer = $this->transferService->cancelTransfer($id, $this->getUser()?->getUserIdentifier());
 
             return $this->success([
                 'id' => $transfer->getId(),
                 'status' => $transfer->getStatus(),
             ], 'Transfer cancelled successfully');
         } catch (\Exception $e) {
-            return $this->error($e->getMessage(), 400);
+            return $this->handleException($e);
         }
     }
 
@@ -158,7 +197,7 @@ class TransferController extends BaseController
 
             return $this->success($limits);
         } catch (\Exception $e) {
-            return $this->error($e->getMessage(), 400);
+            return $this->handleException($e);
         }
     }
 

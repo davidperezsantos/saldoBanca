@@ -4,6 +4,7 @@ namespace App\Controller\Api;
 
 use App\Controller\BaseController;
 use App\Entity\Balance\PaymentGateway;
+use App\Security\Attribute\RequireScope;
 use Doctrine\ORM\EntityManagerInterface;
 use OpenApi\Attributes as OA;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -43,6 +44,7 @@ class PaymentGatewayController extends BaseController
             ]
         )
     )]
+    #[RequireScope('payment_gateways.read')]
     #[Route('/payment-gateways', name: 'api_payment_gateway_list', methods: ['GET'])]
     public function list(): JsonResponse
     {

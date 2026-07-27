@@ -10,6 +10,8 @@ class TransferDto
         public readonly string $amount,
         public readonly string $currency = 'USD',
         public readonly ?string $notes = null,
+        public readonly ?string $originalAmount = null,
+        public readonly ?string $originalCurrency = null,
     ) {
     }
 
@@ -21,6 +23,8 @@ class TransferDto
             amount: $data['amount'],
             currency: $data['currency'] ?? 'USD',
             notes: $data['notes'] ?? null,
+            originalAmount: $data['originalAmount'] ?? null,
+            originalCurrency: $data['originalCurrency'] ?? null,
         );
     }
 
@@ -32,6 +36,8 @@ class TransferDto
             'amount' => $this->amount,
             'currency' => $this->currency,
             'notes' => $this->notes,
+            'originalAmount' => $this->originalAmount,
+            'originalCurrency' => $this->originalCurrency,
         ];
     }
 }

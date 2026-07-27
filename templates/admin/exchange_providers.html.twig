@@ -3,7 +3,12 @@
 {% block title %}Proveedores de Tasa de Cambio - Saldo Banca{% endblock %}
 
 {% block body %}
-<div id="vue-app"></div>
+<div id="vue-app"
+    data-list-url="{{ path('admin_exchange_providers_list') }}"
+    data-create-url="{{ path('admin_exchange_provider_create') }}"
+    data-detail-url="{{ path('admin_exchange_provider_update', {id: '__ID__'}) }}"
+    data-status-url="{{ path('admin_exchange_provider_status', {id: '__ID__'}) }}"
+></div>
 {% endblock %}
 
 {% block javascripts %}

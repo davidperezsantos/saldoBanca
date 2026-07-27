@@ -4,8 +4,9 @@ namespace App\Controller\Api;
 
 use App\Controller\BaseController;
 use App\Entity\Balance\ExchangeRate;
+use App\Repository\Balance\CurrencyRepository;
+use App\Security\Attribute\RequireScope;
 use App\Services\ExchangeRate\APIExchangeRate;
-use App\Services\SystemCurrencyService;
 use Doctrine\ORM\EntityManagerInterface;
 use OpenApi\Attributes as OA;
 use Symfony\Component\HttpFoundation\Request;
@@ -18,7 +19,7 @@ class ExchangeRateController extends BaseController
     public function __construct(
         private EntityManagerInterface $entityManager,
         private APIExchangeRate $apiExchangeRate,
-        private SystemCurrencyService $systemCurrencyService,
+        private CurrencyRepository $currencyRepository,
     ) {
     }
 
@@ -52,27 +53,38 @@ class ExchangeRateController extends BaseController
             ]
         )
     )]
+    #[RequireScope('exchange_rates.read')]
     #[Route('/exchange-rates', name: 'api_exchange_rate_list', methods: ['GET'])]
     public function list(Request $request): JsonResponse
     {
         $providerId = $request->query->get('providerId');
-        $criteria = $providerId ? ['provider' => $providerId] : [];
+        $activeCodes = $this->currencyRepository->findActiveCodes();
+        if (empty($activeCodes)) {
+            return $this->success([]);
+        }
+
+        // Solo se muestran tasas de monedas activas en el nomenclador (App\Entity\Balance\Currency).
+        // El filtro por toCurrency va en la query, antes del limit (ver Admin\ExchangeRateController::list).
+        $criteria = ['toCurrency' => $activeCodes];
+        if ($providerId) {
+            $criteria['provider'] = $providerId;
+        }
         $rates = $this->entityManager->getRepository(ExchangeRate::class)->findBy(
             $criteria,
             ['fetchedAt' => 'DESC'],
             $request->query->getInt('limit', 100)
         );
-        $data = array_map(fn($r) => [
+        $data = array_values(array_map(fn($r) => [
             'id' => $r->getId(),
-            'providerId' => $r->getProvider()->getId(),
-            'providerName' => $r->getProvider()->getName(),
+            'providerId' => $r->getProvider()?->getId(),
+            'providerName' => $r->getProvider()?->getName() ?? 'Manual',
             'fromCurrency' => $r->getFromCurrency(),
             'toCurrency' => $r->getToCurrency(),
             'rate' => $r->getRate(),
             'inverseRate' => $r->getInverseRate(),
             'fetchedAt' => $r->getFetchedAt()->format('Y-m-d H:i:s'),
             'isActive' => $r->isActive(),
-        ], $rates);
+        ], $rates));
         return $this->success($data);
     }
 
@@ -85,52 +97,21 @@ class ExchangeRateController extends BaseController
     #[OA\Parameter(name: 'amount', in: 'query', description: 'Monto a convertir', required: true, schema: new OA\Schema(type: 'number'))]
     #[OA\Parameter(name: 'currency', in: 'query', description: 'Código de moneda origen', required: true, schema: new OA\Schema(type: 'string'))]
     #[OA\Response(response: 200, description: 'Resultado de la conversión')]
+    #[RequireScope('exchange_rates.read')]
     #[Route('/exchange-rate/convert', name: 'api_exchange_rate_convert', methods: ['GET'])]
     public function convert(Request $request): JsonResponse
     {
         try {
             $amount = $request->query->get('amount');
             $currency = strtoupper($request->query->get('currency', ''));
-            $baseCurrency = $this->systemCurrencyService->getBaseCurrency();
 
             if (!$amount || !$currency) {
                 return $this->error('amount y currency son requeridos');
             }
 
-            if ($currency === $baseCurrency) {
-                return $this->success([
-                    'originalAmount' => $amount,
-                    'originalCurrency' => $currency,
-                    'convertedAmount' => $amount,
-                    'baseCurrency' => $baseCurrency,
-                    'rate' => '1.00',
-                ]);
-            }
-
-            $rate = $this->apiExchangeRate->getRate($currency);
-
-            if ($rate === null) {
-                $refreshed = $this->apiExchangeRate->refreshRates();
-                if (!$refreshed['success']) {
-                    return $this->error('No se pudo obtener la tasa de cambio: ' . ($refreshed['error'] ?? 'error desconocido'));
-                }
-                $rate = $this->apiExchangeRate->getRate($currency);
-                if ($rate === null) {
-                    return $this->error("No se encontró tasa para {$currency} ni después de consultar el proveedor");
-                }
-            }
-
-            $convertedAmount = bcdiv((string)$amount, (string)$rate, 2);
-
-            return $this->success([
-                'originalAmount' => $amount,
-                'originalCurrency' => $currency,
-                'convertedAmount' => $convertedAmount,
-                'baseCurrency' => $baseCurrency,
-                'rate' => (string)$rate,
-            ]);
+            return $this->success($this->apiExchangeRate->convertToBase((string) $amount, $currency));
         } catch (\Exception $e) {
-            return $this->error($e->getMessage(), 400);
+            return $this->handleException($e);
         }
     }
 }

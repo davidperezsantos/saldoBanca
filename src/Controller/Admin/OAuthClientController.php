@@ -2,19 +2,19 @@
 
 namespace App\Controller\Admin;
 
+use App\Controller\BaseController;
 use League\Bundle\OAuth2ServerBundle\Manager\ClientManagerInterface;
 use League\Bundle\OAuth2ServerBundle\Model\Client;
 use League\Bundle\OAuth2ServerBundle\ValueObject\Grant;
 use League\Bundle\OAuth2ServerBundle\ValueObject\RedirectUri;
 use League\Bundle\OAuth2ServerBundle\ValueObject\Scope;
-use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
 
 #[Route('/oauth-clients')]
-class OAuthClientController extends AbstractController
+class OAuthClientController extends BaseController
 {
     public function __construct(
         private ClientManagerInterface $clientManager,
@@ -38,7 +38,9 @@ class OAuthClientController extends AbstractController
         $data = array_map(fn(Client $c) => [
             'identifier' => $c->getIdentifier(),
             'name' => $c->getName(),
-            'secret' => $c->getSecret(),
+            // El secreto real NO viaja en el listado — solo al crear el cliente (una vez) o bajo
+            // demanda vía GET .../secret (ver revealSecret()). Acá solo se indica si tiene uno.
+            'secret' => $c->getSecret() ? '••••••••' : null,
             'redirectUris' => array_map(fn(RedirectUri $r) => (string) $r, $c->getRedirectUris()),
             'grants' => array_map(fn(Grant $g) => (string) $g, $c->getGrants()),
             'scopes' => array_map(fn(Scope $s) => (string) $s, $c->getScopes()),
@@ -50,12 +52,26 @@ class OAuthClientController extends AbstractController
         return $this->json(['success' => true, 'data' => $data]);
     }
 
+    #[Route('/{identifier}/secret', name: 'admin_oauth_client_secret', methods: ['GET'])]
+    public function revealSecret(string $identifier): JsonResponse
+    {
+        $this->denyAccessUnlessGranted('oauth_clients:view');
+
+        $client = $this->clientManager->find($identifier);
+        if (!$client) {
+            return $this->json(['success' => false, 'message' => 'Client not found'], 404);
+        }
+
+        return $this->json(['success' => true, 'data' => ['secret' => $client->getSecret()]]);
+    }
+
     #[Route('', name: 'admin_oauth_client_create', methods: ['POST'])]
     public function create(Request $request): JsonResponse
     {
         $this->denyAccessUnlessGranted('oauth_clients:create');
 
         try {
+            $this->validateCsrfToken();
             $body = json_decode($request->getContent(), true);
             $name = $body['name'] ?? '';
             $identifier = hash('md5', random_bytes(16));
@@ -106,6 +122,7 @@ class OAuthClientController extends AbstractController
         $this->denyAccessUnlessGranted('oauth_clients:edit');
 
         try {
+            $this->validateCsrfToken();
             $client = $this->clientManager->find($identifier);
             if (!$client) {
                 return $this->json(['success' => false, 'message' => 'Client not found'], 404);
@@ -149,6 +166,7 @@ class OAuthClientController extends AbstractController
         $this->denyAccessUnlessGranted('oauth_clients:delete');
 
         try {
+            $this->validateCsrfToken();
             $client = $this->clientManager->find($identifier);
             if (!$client) {
                 return $this->json(['success' => false, 'message' => 'Client not found'], 404);
@@ -168,6 +186,7 @@ class OAuthClientController extends AbstractController
         $this->denyAccessUnlessGranted('oauth_clients:status');
 
         try {
+            $this->validateCsrfToken();
             $client = $this->clientManager->find($identifier);
             if (!$client) {
                 return $this->json(['success' => false, 'message' => 'Client not found'], 404);

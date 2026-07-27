@@ -5,22 +5,38 @@ namespace App\Entity;
 use App\Entity\Base\BaseEntity;
 use Doctrine\ORM\Mapping as ORM;
 use App\Repository\RoleRepository;
+use Gedmo\Mapping\Annotation as Gedmo;
 
 #[ORM\Entity(repositoryClass: RoleRepository::class)]
 #[ORM\Table(name: 'roles')]
+#[Gedmo\Loggable(logEntryClass: LogEntry::class)]
 class Role extends BaseEntity
 {
     #[ORM\Column(length: 50, unique: true)]
+    #[Gedmo\Versioned]
     private string $name = '';
 
     #[ORM\Column(length: 100)]
+    #[Gedmo\Versioned]
     private string $label = '';
 
     #[ORM\Column(type: 'json')]
+    #[Gedmo\Versioned]
     private array $permissions = [];
 
     #[ORM\Column(type: 'boolean')]
+    #[Gedmo\Versioned]
     private bool $isSystem = false;
+
+    /**
+     * Si este rol puede iniciar sesión en el panel admin (firewall "main", cookie de sesión).
+     * En false para los roles que RoleSeedService asigna al autorregistro público (cliente,
+     * emprendedor) — esos usuarios reciben un JWT pensado para otra API/app propia del cliente,
+     * nunca para entrar a este panel de staff. Lo aplica RestrictPanelLoginSubscriber.
+     */
+    #[ORM\Column(type: 'boolean', options: ['default' => true])]
+    #[Gedmo\Versioned]
+    private bool $allowPanelLogin = true;
 
     public function getName(): string
     {
@@ -96,8 +112,51 @@ class Role extends BaseEntity
         return $this;
     }
 
+    public function isAllowPanelLogin(): bool
+    {
+        return $this->allowPanelLogin;
+    }
+
+    public function setAllowPanelLogin(bool $allowPanelLogin): static
+    {
+        $this->allowPanelLogin = $allowPanelLogin;
+        return $this;
+    }
+
     public function getSymfonyRole(): string
     {
         return 'ROLE_' . strtoupper($this->name);
+    }
+
+    /**
+     * Aplana los permisos anidados al mismo formato de clave que usa PermissionVoter
+     * ("modulo:accion" o "modulo.submodulo:accion") — para exponerle al frontend (SPA Vue)
+     * la lista exacta de acciones que puede hacer el usuario, y así ocultar botones de
+     * acciones que el backend igual va a rechazar.
+     *
+     * @return list<string>
+     */
+    public function getFlatPermissions(): array
+    {
+        $flat = [];
+        $this->flatten($this->permissions, '', $flat);
+        return $flat;
+    }
+
+    private function flatten(array $perms, string $prefix, array &$result): void
+    {
+        foreach ($perms as $key => $value) {
+            if (is_array($value)) {
+                if (!empty($value) && array_is_list($value)) {
+                    foreach ($value as $action) {
+                        $result[] = $prefix . $key . ':' . $action;
+                    }
+                } else {
+                    $this->flatten($value, $prefix . $key . '.', $result);
+                }
+            } else {
+                $result[] = $prefix . $key . ':' . $value;
+            }
+        }
     }
 }

@@ -7,7 +7,11 @@
     window.__ROLES_DATA__ = {{ rolesData|json_encode|raw }};
     window.__PERM_LABELS__ = {{ permLabels|json_encode|raw }};
 </script>
-<div id="vue-app"></div>
+<div id="vue-app"
+    data-create-page-url="{{ path('admin_role_create_page') }}"
+    data-edit-page-url="{{ path('admin_role_edit_page', {id: '__ID__'}) }}"
+    data-delete-url="{{ path('admin_role_delete', {id: '__ID__'}) }}"
+></div>
 {% endblock %}
 
 {% block javascripts %}

@@ -3,7 +3,16 @@
 {% block title %}Transferencias - SaldoGrin{% endblock %}
 
 {% block body %}
-<div id="vue-app"></div>
+<div id="vue-app"
+    data-accounts-list-url="{{ path('admin_account_index') }}"
+    data-currencies-list-url="{{ path('admin_currency_list') }}"
+    data-limits-url="{{ path('admin_transfer_limits', {accountId: '__ID__'}) }}"
+    data-list-url="{{ path('admin_transfer_index') }}"
+    data-convert-url="{{ path('admin_transfer_convert') }}"
+    data-create-url="{{ path('admin_transfer_create') }}"
+    data-process-url="{{ path('admin_transfer_process', {id: '__ID__'}) }}"
+    data-cancel-url="{{ path('admin_transfer_cancel', {id: '__ID__'}) }}"
+></div>
 {% endblock %}
 
 {% block javascripts %}

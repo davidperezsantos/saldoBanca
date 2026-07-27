@@ -1,64 +1,265 @@
 <!DOCTYPE html>
 <html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - SaldoGrin</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💚</text></svg>">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <style>
-        * { font-family: 'Inter', sans-serif; margin: 0; padding: 0; box-sizing: border-box; }
-        body { background: #f8fafc; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
-        .login-card { background: white; border-radius: 16px; box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08); padding: 48px; width: 100%; max-width: 420px; border: 1px solid #e5e7eb; }
-        .login-logo { display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 32px; }
-        .login-logo .icon { width: 48px; height: 48px; background: linear-gradient(135deg, #34d399 0%, #14b8a6 100%); border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 24px; color: white; font-weight: bold; box-shadow: 0 8px 16px rgba(52, 211, 153, 0.3); }
-        .login-logo h1 { font-size: 28px; font-weight: 700; color: #0f172a; }
-        .form-group { margin-bottom: 20px; }
-        .form-label { display: block; font-size: 14px; font-weight: 500; color: #374151; margin-bottom: 8px; }
-        .form-input { width: 100%; padding: 14px 16px; border: 2px solid #e5e7eb; border-radius: 12px; font-size: 15px; transition: all 0.2s; outline: none; }
-        .form-input:focus { border-color: #34d399; box-shadow: 0 0 0 4px rgba(52, 211, 153, 0.1); }
-        .btn-login { width: 100%; padding: 14px; background: linear-gradient(135deg, #34d399 0%, #14b8a6 100%); color: white; border: none; border-radius: 12px; font-size: 16px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
-        .btn-login:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(52, 211, 153, 0.4); }
-        .error-message { background: #fef2f2; color: #dc2626; padding: 14px; border-radius: 12px; margin-bottom: 20px; font-size: 14px; text-align: center; border: 1px solid #fecaca; }
-        .footer { text-align: center; margin-top: 24px; color: #9ca3af; font-size: 13px; }
-    </style>
-</head>
-<body>
-    <div class="login-card">
-        <div class="login-logo">
-            <div class="icon">G</div>
-            <h1>SaldoGrin</h1>
-        </div>
+	<head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<title>Login - SaldoGrin</title>
+		<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💚</text></svg>">
+		<style>
+			@font-face {
+				font-family: 'Inter';
+				font-style: normal;
+				font-weight: 400;
+				font-display: swap;
+				src: url('/fonts/inter/inter-latin-400-normal.woff2') format('woff2');
+			}
+			@font-face {
+				font-family: 'Inter';
+				font-style: normal;
+				font-weight: 500;
+				font-display: swap;
+				src: url('/fonts/inter/inter-latin-500-normal.woff2') format('woff2');
+			}
+			@font-face {
+				font-family: 'Inter';
+				font-style: normal;
+				font-weight: 600;
+				font-display: swap;
+				src: url('/fonts/inter/inter-latin-600-normal.woff2') format('woff2');
+			}
+			@font-face {
+				font-family: 'Inter';
+				font-style: normal;
+				font-weight: 700;
+				font-display: swap;
+				src: url('/fonts/inter/inter-latin-700-normal.woff2') format('woff2');
+			}
+			* {
+				font-family: 'Inter', sans-serif;
+				margin: 0;
+				padding: 0;
+				box-sizing: border-box;
+			}
+			body {
+				background: #f8fafc;
+				min-height: 100vh;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+			}
+			.card {
+				background: white;
+				border-radius: 16px;
+				box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+				padding: 48px;
+				width: 100%;
+				max-width: 420px;
+				border: 1px solid #e5e7eb;
+			}
+			.logo {
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				gap: 12px;
+				margin-bottom: 32px;
+			}
+			.logo .icon {
+				width: 48px;
+				height: 48px;
+				background: linear-gradient(135deg, #34d399 0%, #14b8a6 100%);
+				border-radius: 14px;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				font-size: 24px;
+				color: white;
+				font-weight: bold;
+				box-shadow: 0 8px 16px rgba(52, 211, 153, 0.3);
+			}
+			.logo h1 {
+				font-size: 28px;
+				font-weight: 700;
+				color: #0f172a;
+			}
+			.section-title {
+				font-size: 18px;
+				font-weight: 600;
+				color: #0f172a;
+				margin-bottom: 4px;
+			}
+			.section-desc {
+				font-size: 14px;
+				color: #6b7280;
+				margin-bottom: 24px;
+			}
+			.form-group {
+				margin-bottom: 20px;
+			}
+			.form-label {
+				display: block;
+				font-size: 14px;
+				font-weight: 500;
+				color: #374151;
+				margin-bottom: 8px;
+			}
+			.form-input {
+				width: 100%;
+				padding: 14px 16px;
+				border: 2px solid #e5e7eb;
+				border-radius: 12px;
+				font-size: 15px;
+				transition: all 0.2s;
+				outline: none;
+			}
+			.form-input:focus {
+				border-color: #34d399;
+				box-shadow: 0 0 0 4px rgba(52, 211, 153, 0.1);
+			}
+			.btn {
+				width: 100%;
+				padding: 14px;
+				color: white;
+				border: none;
+				border-radius: 12px;
+				font-size: 16px;
+				font-weight: 600;
+				cursor: pointer;
+				transition: all 0.2s;
+			}
+			.btn:hover {
+				transform: translateY(-2px);
+			}
+			.btn-primary {
+				background: linear-gradient(135deg, #34d399 0%, #14b8a6 100%);
+			}
+			.btn-primary:hover {
+				box-shadow: 0 8px 20px rgba(52, 211, 153, 0.4);
+			}
+			.btn-reset {
+				background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+			}
+			.btn-reset:hover {
+				box-shadow: 0 8px 20px rgba(99, 102, 241, 0.4);
+			}
+			.error-message {
+				background: #fef2f2;
+				color: #dc2626;
+				padding: 14px;
+				border-radius: 12px;
+				margin-bottom: 20px;
+				font-size: 14px;
+				text-align: center;
+				border: 1px solid #fecaca;
+			}
+			.flash {
+				padding: 14px;
+				border-radius: 12px;
+				margin-bottom: 20px;
+				font-size: 14px;
+				text-align: center;
+			}
+			.flash-error {
+				background: #fef2f2;
+				color: #dc2626;
+				border: 1px solid #fecaca;
+			}
+			.flash-success {
+				background: #f0fdf4;
+				color: #16a34a;
+				border: 1px solid #bbf7d0;
+			}
+			.footer {
+				text-align: center;
+				margin-top: 24px;
+				color: #9ca3af;
+				font-size: 13px;
+			}
+			.text-center {
+				text-align: center;
+			}
+			.text-sm {
+				font-size: 14px;
+			}
+			.link {
+				cursor: pointer;
+				transition: all 0.2s;
+			}
+			.link:hover {
+				text-decoration: underline;
+			}
+		</style>
+	</head>
+	<body>
+		<div class="card">
+			<div class="logo">
+				<div class="icon">G</div>
+				<h1>SaldoGrin</h1>
+			</div>
 
-        {% if error %}
-            <div class="error-message">
-                {{ error.messageKey|trans(error.messageData, 'security') }}
-            </div>
-        {% endif %}
+			{% for label, messages in app.flashes %}
+				{% for message in messages %}
+					<div class="flash flash-{{ label == 'error' ? 'error' : 'success' }}">{{ message }}</div>
+				{% endfor %}
+			{% endfor %}
 
-        <form method="post">
-            <div class="form-group">
-                <label class="form-label" for="username">Username</label>
-                <input type="text" id="username" name="_username" class="form-input" value="{{ last_username }}" required autofocus placeholder="david.perez">
-            </div>
+			<!-- Login Panel -->
+			<div id="loginPanel">
+				{% if error %}
+					<div class="error-message">
+						{{ error.messageKey|trans(error.messageData, 'security') }}
+					</div>
+				{% endif %}
 
-            <div class="form-group">
-                <label class="form-label" for="password">Contraseña</label>
-                <input type="password" id="password" name="_password" class="form-input" required placeholder="••••••••">
-            </div>
+				<form method="post">
+					<div class="form-group">
+						<label class="form-label" for="username">Usuario</label>
+						<input type="text" id="username" name="_username" class="form-input" value="{{ last_username }}" required autofocus>
+					</div>
+					<div class="form-group">
+						<label class="form-label" for="password">Contraseña</label>
+						<input type="password" id="password" name="_password" class="form-input" required placeholder="••••••••">
+					</div>
+					<input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
+					<button type="submit" class="btn btn-primary">Iniciar Sesión</button>
+				</form>
 
-            <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
+				<div class="text-center mt-4">
+					<a href="#" onclick="showReset(); return false;" class="text-sm text-emerald-600 link no-underline">¿Olvidaste tu contraseña?</a>
+				</div>
+			</div>
 
-            <button type="submit" class="btn-login">
-                Iniciar Sesión
-            </button>
-        </form>
+			<!-- Reset Panel -->
+			<div id="resetPanel" style="display: none;">
+				<div class="section-title">Restablecer Contraseña</div>
+				<div class="section-desc">Ingresa tu usuario y te enviaremos un enlace para restablecer tu contraseña.</div>
+				<form method="post" action="{{ path('app_reset_password') }}">
+					<div class="form-group">
+						<label class="form-label" for="reset_username">Usuario</label>
+						<input type="text" id="reset_username" name="_username" class="form-input" placeholder="david.perez" required>
+					</div>
+					<input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
+					<button type="submit" class="btn btn-primary">Enviar Enlace</button>
+				</form>
+				<div class="text-center mt-4">
+					<a href="#" onclick="showLogin(); return false;" class="text-sm text-gray-500 link no-underline">← Volver atrás</a>
+				</div>
+			</div>
 
-        <div class="footer">
-            <p>Sistema de Gestión de Saldo v2.0</p>
-        </div>
-    </div>
-</body>
+			<script>
+				function showReset() {
+document.getElementById('loginPanel').style.display = 'none';
+document.getElementById('resetPanel').style.display = 'block';
+}
+function showLogin() {
+document.getElementById('loginPanel').style.display = 'block';
+document.getElementById('resetPanel').style.display = 'none';
+}
+			</script>
+
+			<div class="footer">
+				<p>Sistema de Gestión de Saldo v2.0</p>
+			</div>
+		</div>
+	</body>
 </html>
+

@@ -6,37 +6,52 @@ use App\Entity\Balance\Account;
 use App\Entity\Base\BaseEntity;
 use Doctrine\ORM\Mapping as ORM;
 use App\Repository\UserRepository;
+use Gedmo\Mapping\Annotation as Gedmo;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
 
+/**
+ * Auditada con Gedmo Loggable (ver App\Entity\LogEntry) — password/resetToken quedan fuera a
+ * propósito de #[Gedmo\Versioned] para no dejar credenciales en la tabla de auditoría.
+ */
 #[ORM\Entity(repositoryClass: UserRepository::class)]
 #[ORM\Table(name: 'users')]
 #[ORM\HasLifecycleCallbacks]
+#[Gedmo\Loggable(logEntryClass: LogEntry::class)]
 class User extends BaseEntity implements UserInterface, PasswordAuthenticatedUserInterface
 {
     #[ORM\Column(length: 180, unique: true)]
+    #[Gedmo\Versioned]
     private ?string $email = null;
 
     #[ORM\Column(length: 50, unique: true, nullable: true)]
+    #[Gedmo\Versioned]
     private ?string $username = null;
 
     #[ORM\Column(type: 'string')]
     private ?string $password = null;
 
     #[ORM\Column(length: 255, nullable: true)]
+    #[Gedmo\Versioned]
     private ?string $name = null;
 
     #[ORM\Column(length: 20, nullable: true)]
+    #[Gedmo\Versioned]
     private ?string $phone = null;
 
     #[ORM\Column(type: 'boolean')]
+    #[Gedmo\Versioned]
     private bool $isActive = true;
 
     #[ORM\Column(type: 'datetime_immutable', nullable: true)]
     private ?\DateTimeImmutable $lastLoginAt = null;
 
+    #[ORM\Column(length: 64, nullable: true)]
+    private ?string $resetToken = null;
+
     #[ORM\ManyToOne(targetEntity: Role::class)]
     #[ORM\JoinColumn(nullable: true)]
+    #[Gedmo\Versioned]
     private ?Role $role = null;
 
     #[ORM\OneToOne(mappedBy: 'user', targetEntity: Account::class)]
@@ -134,6 +149,17 @@ class User extends BaseEntity implements UserInterface, PasswordAuthenticatedUse
     public function setLastLoginAt(?\DateTimeImmutable $lastLoginAt): static
     {
         $this->lastLoginAt = $lastLoginAt;
+        return $this;
+    }
+
+    public function getResetToken(): ?string
+    {
+        return $this->resetToken;
+    }
+
+    public function setResetToken(?string $resetToken): static
+    {
+        $this->resetToken = $resetToken;
         return $this;
     }
 

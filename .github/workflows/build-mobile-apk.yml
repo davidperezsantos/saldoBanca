@@ -1,0 +1,86 @@
+name: Build mobile APK
+
+on:
+  push:
+    paths:
+      - 'mobile/**'
+      - '.github/workflows/build-mobile-apk.yml'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: mobile/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build web assets
+        env:
+          VITE_API_URL: ${{ vars.MOBILE_API_URL }}
+        run: npm run build
+
+      - name: Sync Capacitor android project
+        run: npx cap sync android
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Decode signing keystore
+        working-directory: mobile/android/app
+        run: echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > release.keystore.p12
+
+      - name: Build release APK
+        working-directory: mobile/android
+        env:
+          ANDROID_KEYSTORE_PATH: release.keystore.p12
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease \
+            -PappVersionCode=${{ github.run_number }} \
+            -PappVersionName=1.0.${{ github.run_number }}
+
+      - name: Rename APK for the release asset
+        run: cp android/app/build/outputs/apk/release/app-release.apk saldogrin.apk
+
+      - name: Write version.json (la app lo lee para saber si hay una versión más nueva)
+        run: |
+          cat > version.json <<EOF
+          {"versionCode": ${{ github.run_number }}, "versionName": "1.0.${{ github.run_number }}"}
+          EOF
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: saldogrin-apk
+          path: mobile/saldogrin.apk
+
+      - name: Publish/update the "latest" release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: mobile-latest
+          name: SaldoGrin v1.0.${{ github.run_number }}
+          body: Build automático desde ${{ github.sha }}.
+          prerelease: false
+          files: |
+            mobile/saldogrin.apk
+            mobile/version.json

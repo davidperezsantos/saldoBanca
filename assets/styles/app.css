@@ -1,3 +1,7 @@
+@import "@fontsource/inter/400.css";
+@import "@fontsource/inter/500.css";
+@import "@fontsource/inter/600.css";
+@import "@fontsource/inter/700.css";
 @import "tailwindcss";
 
 :root {
@@ -5,37 +9,46 @@
     --primary-dark: #14b8a6;
 }
 
-body {
-    font-family: 'Inter', sans-serif;
+
+#loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(255, 255, 255, 0.8);
+    display: none;
+    /* Oculto por defecto */
+    justify-content: center;
+    align-items: center;
+    z-index: 99999;
 }
 
-/* Custom scrollbar */
-::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+.spinner {
+    width: 100px;
+    height: 100px;
+    border: 6px solid #ccc;
+    border-top-color: rgba(13, 71, 161, 0.9);
+    border-bottom-color: rgba(13, 71, 161, 0.9);
+    border-right-color: red;
+    border-left-color: red;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
 }
 
-::-webkit-scrollbar-track {
-    background: #f1f5f9;
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
 }
 
-::-webkit-scrollbar-thumb {
-    background: #cbd5e1;
-    border-radius: 3px;
-}
 
-::-webkit-scrollbar-thumb:hover {
-    background: #94a3b8;
-}
 
-/* Table styles */
-table {
-    border-collapse: collapse;
-}
-
-th {
-    white-space: nowrap;
-}
 
 /* Transition utilities */
 .transition-all {

@@ -7,19 +7,24 @@
         "php": ">=8.2",
         "ext-ctype": "*",
         "ext-iconv": "*",
-        "doctrine/doctrine-bundle": "^3.2",
-        "doctrine/doctrine-migrations-bundle": "^4.0",
-        "doctrine/orm": "^3.6",
-        "league/oauth2-server-bundle": "*",
-        "lexik/jwt-authentication-bundle": "*",
-        "nelmio/api-doc-bundle": "^5.10",
-        "pentatrion/vite-bundle": "^8.2",
+        "doctrine/doctrine-bundle": "^2.18.3",
+        "doctrine/doctrine-migrations-bundle": "^3.7",
+        "doctrine/orm": "^3.6.7",
+        "dompdf/dompdf": "^3.1",
+        "league/oauth2-server-bundle": ">=1.1.1",
+        "lexik/jwt-authentication-bundle": ">=3.2",
+        "nelmio/api-doc-bundle": "^4.0 || ^5.10.3",
+        "nelmio/cors-bundle": "^2.6",
+        "pentatrion/vite-bundle": "^8.2.4",
+        "stof/doctrine-extensions-bundle": "^1.15",
         "symfony/console": "7.4.*",
         "symfony/dotenv": "7.4.*",
-        "symfony/flex": "^2",
+        "symfony/flex": "^2.11",
         "symfony/form": "7.4.*",
         "symfony/framework-bundle": "7.4.*",
         "symfony/mailer": "7.4.*",
+        "symfony/monolog-bundle": "^4.0",
+        "symfony/rate-limiter": "7.4.*",
         "symfony/runtime": "7.4.*",
         "symfony/security-bundle": "7.4.*",
         "symfony/translation": "7.4.*",
@@ -30,13 +35,19 @@
         "twig/extra-bundle": "^3.24"
     },
     "config": {
+        "platform": {
+            "php": "8.3"
+        },
         "allow-plugins": {
             "php-http/discovery": true,
             "symfony/flex": true,
             "symfony/runtime": true
         },
         "bump-after-update": true,
-        "sort-packages": true
+        "sort-packages": true,
+        "audit": {
+            "block-insecure": false
+        }
     },
     "autoload": {
         "psr-4": {

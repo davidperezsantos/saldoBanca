@@ -3,7 +3,16 @@
 {% block title %}Facturas - SaldoGrin{% endblock %}
 
 {% block body %}
-<div id="vue-app"></div>
+<div id="vue-app"
+    data-accounts-list-url="{{ path('admin_account_index') }}"
+    data-currencies-list-url="{{ path('admin_currency_list') }}"
+    data-convert-url="{{ path('admin_invoice_convert') }}"
+    data-list-url="{{ path('admin_invoice_index') }}"
+    data-create-url="{{ path('admin_invoice_create') }}"
+    data-pay-url="{{ path('admin_invoice_pay', {id: '__ID__'}) }}"
+    data-cancel-url="{{ path('admin_invoice_cancel', {id: '__ID__'}) }}"
+    data-refund-url="{{ path('admin_invoice_refund', {id: '__ID__'}) }}"
+></div>
 {% endblock %}
 
 {% block javascripts %}

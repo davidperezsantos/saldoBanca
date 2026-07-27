@@ -54,6 +54,13 @@ class Recharge extends BaseEntity
     #[ORM\Column(length: 100, nullable: true)]
     private ?string $transactionId = null;
 
+    /**
+     * Numeración correlativa propia del sistema (ej. "REC-00000001"), asignada al crear la
+     * recarga — distinto de referenceNumber/externalSystem, que vienen de afuera.
+     */
+    #[ORM\Column(length: 30, nullable: true, unique: true)]
+    private ?string $receiptNumber = null;
+
     public function getAccount(): ?Account
     {
         return $this->account;
@@ -205,6 +212,17 @@ class Recharge extends BaseEntity
     public function setTransactionId(?string $transactionId): static
     {
         $this->transactionId = $transactionId;
+        return $this;
+    }
+
+    public function getReceiptNumber(): ?string
+    {
+        return $this->receiptNumber;
+    }
+
+    public function setReceiptNumber(?string $receiptNumber): static
+    {
+        $this->receiptNumber = $receiptNumber;
         return $this;
     }
 }

@@ -4,15 +4,19 @@
 /.env.local.php
 /.env.*.local
 /config/secrets/prod/prod.decrypt.private.php
+/node_modules/
+/public/build/
 /public/bundles/
 /var/
 /vendor/
 ###< symfony/framework-bundle ###
 
 ###> league/oauth2-server-bundle ###
-/config/jwt/*.pem
+/config/oauth/*.key
 ###< league/oauth2-server-bundle ###
 
 ###> lexik/jwt-authentication-bundle ###
 /config/jwt/*.pem
 ###< lexik/jwt-authentication-bundle ###
+
+/secrets-android/

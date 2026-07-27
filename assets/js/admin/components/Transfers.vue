@@ -1,119 +1,175 @@
 <template>
-    <div class="container mx-auto px-4 py-8">
-        <div class="flex items-center justify-between mb-6">
+    <Card>
+        <template #title>
             <h1 class="text-2xl font-bold text-gray-800">{{ $t('transfers.title') }}</h1>
-            <Button :label="$t('transfers.create')" icon="pi pi-plus" @click="openCreateModal" />
-        </div>
-
-        <div class="card mb-6">
-            <div class="flex flex-wrap gap-4 items-center justify-between">
-                <div class="flex gap-2">
-                    <Select v-model="filters.status" :options="statusOptions" optionLabel="label" optionValue="value" class="w-40" :placeholder="$t('common.status')" @change="loadTransfers" />
-                    <InputText v-model="filters.search" :placeholder="$t('common.search')" @keyup.enter="loadTransfers" />
-                    <Button :label="$t('common.search')" @click="loadTransfers" />
-                </div>
-            </div>
-        </div>
-
-        <div class="card">
-            <DataTable :value="transfers" :loading="loading" stripedRows responsiveLayout="scroll">
-                <Column field="originAccountNumber" :header="$t('transfers.originAccount')" />
-                <Column field="destAccountNumber" :header="$t('transfers.destinationAccount')" />
-                <Column field="amount" :header="$t('transfers.amount')">
-                    <template #body="{ data }">
-                        {{ formatCurrency(data.amount, data.currency) }}
-                    </template>
-                </Column>
-                <Column field="fee" :header="$t('transfers.fee')">
-                    <template #body="{ data }">
-                        {{ data.fee ? formatCurrency(data.fee, data.currency) : '—' }}
-                    </template>
-                </Column>
-                <Column field="status" :header="$t('common.status')">
-                    <template #body="{ data }">
-                        <span :class="['px-2 py-1 text-xs rounded-full font-medium',
-                            data.status === 'completed' ? 'bg-emerald-100 text-emerald-800' :
-                            data.status === 'pending' ? 'bg-amber-100 text-amber-800' :
-                            data.status === 'failed' ? 'bg-red-100 text-red-800' :
-                            'bg-gray-100 text-gray-800']">
-                            {{ $t('transfers.' + data.status) }}
-                        </span>
-                    </template>
-                </Column>
-                <Column field="createdAt" :header="$t('common.createdAt')">
-                    <template #body="{ data }">
-                        {{ formatDate(data.createdAt) }}
-                    </template>
-                </Column>
-                <Column :header="$t('common.actions')" style="width: 10rem">
-                    <template #body="{ data }">
-                        <div class="flex gap-1">
-                            <Button icon="pi pi-check" class="p-button-rounded p-button-success p-button-text" v-if="data.status === 'pending'" @click="processTransfer(data)" :disabled="actionLoading" />
-                            <Button icon="pi pi-ban" class="p-button-rounded p-button-warning p-button-text" v-if="data.status === 'pending'" @click="cancelTransfer(data)" :disabled="actionLoading" />
-                            <Button icon="pi pi-eye" class="p-button-rounded p-button-info p-button-text" @click="showDetail(data)" />
+        </template>
+        <template #content>
+            <div class="container mx-auto px-4 py-8">
+                <div class="card mb-6">
+                    <div class="flex flex-wrap gap-4 items-center justify-between">
+                    <Button v-if="common.can('transfers:create')" :label="$t('transfers.create')" icon="pi pi-plus" @click="openCreateModal" />
+                        <div class="flex gap-2">
+                            <Select v-model="filters.status" :options="statusOptions" optionLabel="label"
+                                optionValue="value" class="w-40" :placeholder="$t('common.status')"
+                                @change="loadTransfers" />
+                            <InputText v-model="filters.search" :placeholder="$t('common.search')"
+                                @keyup.enter="loadTransfers" />
+                            <Button :label="$t('common.search')" @click="loadTransfers" />
                         </div>
+                    </div>
+                </div>
+                    <DataTable :value="transfers" :loading="loading" size="small" :paginator="true" :rows="10"
+                        responsiveLayout="scroll">
+                        <Column field="receiptNumber" :header="$t('common.code')" />
+                        <Column field="originAccountNumber" :header="$t('transfers.originAccount')" />
+                        <Column field="destAccountNumber" :header="$t('transfers.destinationAccount')" />
+                        <Column field="amount" :header="$t('transfers.amount')">
+                            <template #body="{ data }">
+                                {{ formatCurrency(data.amount, data.currency) }}
+                            </template>
+                        </Column>
+                        <Column field="fee" :header="$t('transfers.fee')">
+                            <template #body="{ data }">
+                                {{ data.fee ? formatCurrency(data.fee, data.currency) : '—' }}
+                            </template>
+                        </Column>
+                        <Column field="status" :header="$t('common.status')">
+                            <template #body="{ data }">
+                                <span :class="['px-2 py-1 text-xs rounded-full font-medium',
+                                    data.status === 'completed' ? 'bg-emerald-100 text-emerald-800' :
+                                        data.status === 'pending' ? 'bg-amber-100 text-amber-800' :
+                                            data.status === 'failed' ? 'bg-red-100 text-red-800' :
+                                                'bg-gray-100 text-gray-800']">
+                                    {{ $t('transfers.' + data.status) }}
+                                </span>
+                            </template>
+                        </Column>
+                        <Column field="createdAt" :header="$t('common.createdAt')">
+                            <template #body="{ data }">
+                                {{ formatDate(data.createdAt) }}
+                            </template>
+                        </Column>
+                        <Column :header="$t('common.actions')" style="width: 10rem">
+                            <template #body="{ data }">
+                                <div class="flex gap-1">
+                                    <Button icon="pi pi-check" class="p-button-rounded p-button-success p-button-text"
+                                        v-if="data.status === 'pending' && common.can('transfers:process')" @click="processTransfer(data)"
+                                        :disabled="actionLoading" />
+                                    <Button icon="pi pi-ban" class="p-button-rounded p-button-warning p-button-text"
+                                        v-if="data.status === 'pending' && common.can('transfers:cancel')" @click="cancelTransfer(data)"
+                                        :disabled="actionLoading" />
+                                    <Button v-if="common.can('transfers:details')" icon="pi pi-eye" class="p-button-rounded p-button-info p-button-text"
+                                        @click="showDetail(data)" />
+                                </div>
+                            </template>
+                        </Column>
+                    </DataTable>
+
+                <Dialog v-model:visible="showModal" :header="$t('transfers.create')" :modal="true"
+                    :style="{ width: '550px' }">
+                    <div class="flex flex-col gap-4">
+                        <div class="form-group">
+                            <label class="form-label">{{ $t('transfers.originAccount') }}</label>
+                            <Select v-model="form.originAccountId" :options="accounts" optionLabel="businessName"
+                                optionValue="id" class="w-full" filter @change="onOriginChange" />
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">{{ $t('transfers.destinationAccount') }}</label>
+                            <Select v-model="form.destinationAccountNumber" :options="destinationAccounts"
+                                optionLabel="businessName" optionValue="accountNumber" class="w-full" filter
+                                :disabled="!form.originAccountId"
+                                :placeholder="!form.originAccountId ? $t('transfers.selectOriginFirst') : undefined" />
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="form-group">
+                                <label class="form-label">{{ $t('transfers.amount') }}</label>
+                                <InputNumber v-model="form.amount" class="w-full" :min="0" :max="99999999" />
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">{{ $t('recharges.currency') }}</label>
+                                <Select v-model="form.currency" :options="currencyOptions" optionLabel="label"
+                                    optionValue="value" class="w-full" />
+                            </div>
+                        </div>
+
+                        <Button label="Calcular conversión" icon="pi pi-calculator" class="w-full p-button-sm"
+                            @click="calcularConversion" :loading="calculating"
+                            :disabled="!form.amount || !form.currency" />
+
+                        <div v-if="conversionResult" class="p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <span class="text-gray-600">Monto ingresado:</span>
+                                    <strong class="ml-1">{{ formatCurrency(conversionResult.originalAmount,
+                                        conversionResult.originalCurrency) }}</strong>
+                                    <span class="mx-2 text-gray-400">→</span>
+                                    <span class="text-gray-600">Monto a transferir ({{ conversionResult.baseCurrency
+                                    }}):</span>
+                                    <strong class="ml-1 text-blue-700">{{
+                                        formatCurrency(conversionResult.convertedAmount,
+                                            conversionResult.baseCurrency) }}</strong>
+                                    <div v-if="conversionResult.rate" class="text-xs text-gray-400 mt-1">
+                                        Tasa: 1 {{ conversionResult.originalCurrency }} = {{ conversionResult.rate }} {{
+                                            conversionResult.baseCurrency }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div v-if="limits" class="text-sm text-gray-500 p-3 bg-gray-50 rounded">
+                            {{ $t('common.available') }}: {{ formatCurrency(limits.available, limits.currency) }}
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">{{ $t('common.notes') }}</label>
+                            <Textarea v-model="form.notes" class="w-full" rows="2" />
+                        </div>
+                    </div>
+                    <template #footer>
+                        <Button :label="$t('common.cancel')" class="p-button-text" @click="closeModal" />
+                        <Button :label="$t('common.save')" @click="saveTransfer" :loading="saving" />
                     </template>
-                </Column>
-            </DataTable>
-            <div v-if="!transfers.length && !loading" class="text-center py-8 text-gray-500">
-                {{ $t('common.no_data') }}
-            </div>
-        </div>
+                </Dialog>
 
-        <Dialog v-model:visible="showModal" :header="$t('transfers.create')" :modal="true" :style="{ width: '550px' }">
-            <div class="flex flex-col gap-4">
-                <div class="form-group">
-                    <label class="form-label">{{ $t('transfers.originAccount') }}</label>
-                    <Select v-model="form.originAccountId" :options="accounts" optionLabel="businessName" optionValue="id" class="w-full" filter @change="loadLimits" />
-                </div>
-                <div class="form-group">
-                    <label class="form-label">{{ $t('transfers.destinationAccount') }}</label>
-                    <InputText v-model="form.destinationAccountNumber" class="w-full" :placeholder="$t('accounts.accountNumber')" />
-                </div>
-                <div class="grid grid-cols-2 gap-4">
-                    <div class="form-group">
-                        <label class="form-label">{{ $t('transfers.amount') }}</label>
-                        <InputNumber v-model="form.amount" class="w-full" :min="0" :max="99999999" />
+                <Dialog v-model:visible="showDetailModal" :header="$t('common.details')" :modal="true"
+                    :style="{ width: '600px' }">
+                    <div v-if="selectedTransfer" class="grid grid-cols-2 gap-4 text-sm">
+                        <div><span class="font-medium text-gray-600">{{ $t('transfers.originAccount') }}:</span> {{
+                            selectedTransfer.originAccountNumber }}</div>
+                        <div><span class="font-medium text-gray-600">{{ $t('transfers.destinationAccount') }}:</span> {{
+                            selectedTransfer.destAccountNumber }}</div>
+                        <div><span class="font-medium text-gray-600">{{ $t('transfers.amount') }}:</span>
+                            <span v-if="selectedTransfer.originalAmount && selectedTransfer.originalCurrency">
+                                {{ formatCurrency(selectedTransfer.originalAmount, selectedTransfer.originalCurrency) }}
+                                → {{
+                                    formatCurrency(selectedTransfer.amount, selectedTransfer.currency) }}
+                            </span>
+                            <span v-else>{{ formatCurrency(selectedTransfer.amount, selectedTransfer.currency) }}</span>
+                        </div>
+                        <div><span class="font-medium text-gray-600">{{ $t('transfers.fee') }}:</span> {{
+                            selectedTransfer.fee ?
+                                formatCurrency(selectedTransfer.fee, selectedTransfer.currency) : '—' }}</div>
+                        <div><span class="font-medium text-gray-600">{{ $t('common.status') }}:</span> {{
+                            $t('transfers.' +
+                                selectedTransfer.status) }}</div>
+                        <div><span class="font-medium text-gray-600">{{ $t('common.createdAt') }}:</span> {{
+                            formatDate(selectedTransfer.createdAt) }}</div>
+                        <div v-if="selectedTransfer.authorizedBy" class="col-span-2"><span
+                                class="font-medium text-gray-600">{{
+                                    $t('recharges.authorizedBy') }}:</span> {{ selectedTransfer.authorizedBy }}</div>
+                        <div v-if="selectedTransfer.notes" class="col-span-2"><span class="font-medium text-gray-600">{{
+                            $t('common.notes') }}:</span> {{ selectedTransfer.notes }}</div>
                     </div>
-                    <div class="form-group">
-                        <label class="form-label">{{ $t('recharges.currency') }}</label>
-                        <Select v-model="form.currency" :options="[{label:'USD',value:'USD'},{label:'EUR',value:'EUR'},{label:'VES',value:'VES'},{label:'COP',value:'COP'}]" optionLabel="label" optionValue="value" class="w-full" />
-                    </div>
-                </div>
-                <div v-if="limits" class="text-sm text-gray-500 p-3 bg-gray-50 rounded">
-                    {{ $t('common.available') }}: {{ formatCurrency(limits.available, limits.currency) }}
-                </div>
-                <div class="form-group">
-                    <label class="form-label">{{ $t('common.notes') }}</label>
-                    <Textarea v-model="form.notes" class="w-full" rows="2" />
-                </div>
+                    <template #footer>
+                        <Button :label="$t('common.close')" class="p-button-text" @click="showDetailModal = false" />
+                    </template>
+                </Dialog>
             </div>
-            <template #footer>
-                <Button :label="$t('common.cancel')" class="p-button-text" @click="closeModal" />
-                <Button :label="$t('common.save')" @click="saveTransfer" :loading="saving" />
-            </template>
-        </Dialog>
-
-        <Dialog v-model:visible="showDetailModal" :header="$t('common.details')" :modal="true" :style="{ width: '600px' }">
-            <div v-if="selectedTransfer" class="grid grid-cols-2 gap-4 text-sm">
-                <div><span class="font-medium text-gray-600">{{ $t('transfers.originAccount') }}:</span> {{ selectedTransfer.originAccountNumber }}</div>
-                <div><span class="font-medium text-gray-600">{{ $t('transfers.destinationAccount') }}:</span> {{ selectedTransfer.destAccountNumber }}</div>
-                <div><span class="font-medium text-gray-600">{{ $t('transfers.amount') }}:</span> {{ formatCurrency(selectedTransfer.amount, selectedTransfer.currency) }}</div>
-                <div><span class="font-medium text-gray-600">{{ $t('transfers.fee') }}:</span> {{ selectedTransfer.fee ? formatCurrency(selectedTransfer.fee, selectedTransfer.currency) : '—' }}</div>
-                <div><span class="font-medium text-gray-600">{{ $t('common.status') }}:</span> {{ $t('transfers.' + selectedTransfer.status) }}</div>
-                <div><span class="font-medium text-gray-600">{{ $t('common.createdAt') }}:</span> {{ formatDate(selectedTransfer.createdAt) }}</div>
-                <div v-if="selectedTransfer.authorizedBy" class="col-span-2"><span class="font-medium text-gray-600">{{ $t('recharges.authorizedBy') }}:</span> {{ selectedTransfer.authorizedBy }}</div>
-                <div v-if="selectedTransfer.notes" class="col-span-2"><span class="font-medium text-gray-600">{{ $t('common.notes') }}:</span> {{ selectedTransfer.notes }}</div>
-            </div>
-            <template #footer>
-                <Button :label="$t('common.close')" class="p-button-text" @click="showDetailModal = false" />
-            </template>
-        </Dialog>
-    </div>
+        </template>
+    </Card>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
 import DataTable from 'primevue/datatable';
 import Column from 'primevue/column';
@@ -124,12 +180,20 @@ import Select from 'primevue/select';
 import Textarea from 'primevue/textarea';
 import Dialog from 'primevue/dialog';
 import { useToast } from 'primevue/usetoast';
+import common from '../../common/common.js';
+import Card from 'primevue/card';
 
 const { t } = useI18n();
 const toast = useToast();
 
+const urls = document.getElementById('vue-app').dataset;
+const onAjaxError = (jqXHR, textStatus, errorThrown) => {
+    toast.add({ severity: 'error', summary: t('common.error'), detail: jqXHR?.responseJSON?.message || errorThrown || textStatus });
+};
+
 const transfers = ref([]);
 const accounts = ref([]);
+const currencyOptions = ref([]);
 const loading = ref(false);
 const saving = ref(false);
 const actionLoading = ref(false);
@@ -137,6 +201,8 @@ const showModal = ref(false);
 const showDetailModal = ref(false);
 const limits = ref(null);
 const selectedTransfer = ref(null);
+const conversionResult = ref(null);
+const calculating = ref(false);
 
 const filters = ref({ status: '', search: '' });
 
@@ -154,73 +220,105 @@ const form = ref({
     amount: null,
     currency: 'USD',
     notes: '',
+    originalAmount: null,
+    originalCurrency: null,
 });
 
-const loadAccounts = async () => {
-    try {
-        const response = await fetch('/accounts/list?limit=200');
-        const data = await response.json();
+const loadAccounts = () => {
+    common.ajax(urls.accountsListUrl, 'GET', { limit: 200 }, (data) => {
         if (data.success) accounts.value = data.data;
-    } catch (error) {
-        toast.add({ severity: 'error', summary: t('common.error'), detail: error.message });
+    }, onAjaxError);
+};
+
+// Solo ofrece en el select las monedas activas del nomenclador (antes era un array fijo
+// [USD, EUR, VES, COP] hardcodeado en el propio componente).
+const loadCurrencies = () => {
+    common.ajax(urls.currenciesListUrl, 'GET', { active: 1 }, (data) => {
+        if (data.success) currencyOptions.value = data.data.map(c => ({ label: c.code, value: c.code }));
+    }, onAjaxError);
+};
+
+const loadLimits = () => {
+    if (!form.value.originAccountId) { limits.value = null; return; }
+    common.ajax(urls.limitsUrl.replace('__ID__', form.value.originAccountId), 'GET', null, (data) => {
+        if (data.success) limits.value = data.data;
+    }, () => { limits.value = null; });
+};
+
+// Excluye la cuenta origen seleccionada para que no se pueda elegir como destino (evita el
+// ciclo de transferirse a sí misma).
+const destinationAccounts = computed(() => accounts.value.filter(a => a.id !== form.value.originAccountId));
+
+const onOriginChange = () => {
+    loadLimits();
+    const originAccount = accounts.value.find(a => a.id === form.value.originAccountId);
+    if (originAccount && originAccount.accountNumber === form.value.destinationAccountNumber) {
+        form.value.destinationAccountNumber = '';
     }
 };
 
-const loadLimits = async () => {
-    if (!form.value.originAccountId) { limits.value = null; return; }
-    try {
-        const response = await fetch(`/transfers/limits/${form.value.originAccountId}`);
-        const data = await response.json();
-        if (data.success) limits.value = data.data;
-    } catch (e) { limits.value = null; }
-};
-
-const loadTransfers = async () => {
+const loadTransfers = () => {
     loading.value = true;
-    try {
-        const params = new URLSearchParams();
-        if (filters.value.status) params.append('status', filters.value.status);
+    const params = {};
+    if (filters.value.status) params.status = filters.value.status;
 
-        const response = await fetch(`/transfers/list?${params}`);
-        const data = await response.json();
-
+    common.ajax(urls.listUrl, 'GET', params, (data) => {
         if (data.success) {
             transfers.value = data.data;
         } else {
             toast.add({ severity: 'error', summary: t('common.error'), detail: data.message });
         }
-    } catch (error) {
-        toast.add({ severity: 'error', summary: t('common.error'), detail: error.message });
-    } finally {
         loading.value = false;
-    }
+    }, (...args) => {
+        onAjaxError(...args);
+        loading.value = false;
+    });
 };
 
 const openCreateModal = () => {
-    form.value = { originAccountId: '', destinationAccountNumber: '', amount: null, currency: 'USD', notes: '' };
+    form.value = { originAccountId: '', destinationAccountNumber: '', amount: null, currency: 'USD', notes: '', originalAmount: null, originalCurrency: null };
     limits.value = null;
+    conversionResult.value = null;
     showModal.value = true;
 };
 
 const closeModal = () => {
     showModal.value = false;
+    conversionResult.value = null;
 };
 
-const saveTransfer = async () => {
+const calcularConversion = () => {
+    if (!form.value.amount || !form.value.currency) return;
+    calculating.value = true;
+    common.ajax(urls.convertUrl, 'GET', { amount: form.value.amount, currency: form.value.currency }, (data) => {
+        if (data.success) {
+            conversionResult.value = data.data;
+            form.value.originalAmount = String(form.value.amount);
+            form.value.originalCurrency = form.value.currency;
+            form.value.amount = parseFloat(data.data.convertedAmount);
+            form.value.currency = data.data.baseCurrency;
+        } else {
+            toast.add({ severity: 'error', summary: t('common.error'), detail: data.message });
+        }
+        calculating.value = false;
+    }, (...args) => {
+        onAjaxError(...args);
+        calculating.value = false;
+    });
+};
+
+const saveTransfer = () => {
     saving.value = true;
-    try {
-        const response = await fetch('/transfers', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                originAccountId: form.value.originAccountId,
-                destinationAccountNumber: form.value.destinationAccountNumber,
-                amount: String(form.value.amount),
-                currency: form.value.currency,
-                notes: form.value.notes,
-            }),
-        });
-        const data = await response.json();
+    const payload = {
+        originAccountId: form.value.originAccountId,
+        destinationAccountNumber: form.value.destinationAccountNumber,
+        amount: String(form.value.amount),
+        currency: form.value.currency,
+        notes: form.value.notes,
+        originalAmount: form.value.originalAmount,
+        originalCurrency: form.value.originalCurrency,
+    };
+    common.ajax(urls.createUrl, 'POST', JSON.stringify(payload), (data) => {
         if (data.success) {
             toast.add({ severity: 'success', summary: t('common.success'), detail: data.message });
             closeModal();
@@ -228,49 +326,45 @@ const saveTransfer = async () => {
         } else {
             toast.add({ severity: 'error', summary: t('common.error'), detail: data.message });
         }
-    } catch (error) {
-        toast.add({ severity: 'error', summary: t('common.error'), detail: error.message });
-    } finally {
         saving.value = false;
-    }
+    }, (...args) => {
+        onAjaxError(...args);
+        saving.value = false;
+    });
 };
 
-const processTransfer = async (transfer) => {
+const processTransfer = (transfer) => {
     if (!confirm(`¿Procesar transferencia de ${formatCurrency(transfer.amount, transfer.currency)}?`)) return;
     actionLoading.value = true;
-    try {
-        const response = await fetch(`/transfers/${transfer.id}/process`, { method: 'PUT' });
-        const data = await response.json();
+    common.ajax(urls.processUrl.replace('__ID__', transfer.id), 'PUT', null, (data) => {
         if (data.success) {
             toast.add({ severity: 'success', summary: t('common.success'), detail: data.message });
             loadTransfers();
         } else {
             toast.add({ severity: 'error', summary: t('common.error'), detail: data.message });
         }
-    } catch (error) {
-        toast.add({ severity: 'error', summary: t('common.error'), detail: error.message });
-    } finally {
         actionLoading.value = false;
-    }
+    }, (...args) => {
+        onAjaxError(...args);
+        actionLoading.value = false;
+    });
 };
 
-const cancelTransfer = async (transfer) => {
+const cancelTransfer = (transfer) => {
     if (!confirm(`¿Cancelar transferencia de ${formatCurrency(transfer.amount, transfer.currency)}?`)) return;
     actionLoading.value = true;
-    try {
-        const response = await fetch(`/transfers/${transfer.id}/cancel`, { method: 'PUT' });
-        const data = await response.json();
+    common.ajax(urls.cancelUrl.replace('__ID__', transfer.id), 'PUT', null, (data) => {
         if (data.success) {
             toast.add({ severity: 'success', summary: t('common.success'), detail: data.message });
             loadTransfers();
         } else {
             toast.add({ severity: 'error', summary: t('common.error'), detail: data.message });
         }
-    } catch (error) {
-        toast.add({ severity: 'error', summary: t('common.error'), detail: error.message });
-    } finally {
         actionLoading.value = false;
-    }
+    }, (...args) => {
+        onAjaxError(...args);
+        actionLoading.value = false;
+    });
 };
 
 const showDetail = (transfer) => {
@@ -290,6 +384,7 @@ const formatDate = (dateStr) => {
 
 onMounted(() => {
     loadAccounts();
+    loadCurrencies();
     loadTransfers();
 });
 </script>

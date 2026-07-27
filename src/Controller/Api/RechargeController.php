@@ -3,6 +3,8 @@
 namespace App\Controller\Api;
 
 use App\Controller\BaseController;
+use App\Security\Attribute\RequireScope;
+use App\Security\ScopeAuthorizationService;
 use App\Services\Balance\RechargeService;
 use OpenApi\Attributes as OA;
 use Symfony\Component\HttpFoundation\Request;
@@ -14,6 +16,7 @@ class RechargeController extends BaseController
 {
     public function __construct(
         private RechargeService $rechargeService,
+        private ScopeAuthorizationService $scopeAuthorizationService,
     ) {
     }
 
@@ -52,6 +55,7 @@ class RechargeController extends BaseController
             ]
         )
     )]
+    #[RequireScope('recharges.read')]
     #[Route('/recharges', name: 'api_recharge_list', methods: ['GET'])]
     public function list(Request $request): JsonResponse
     {
@@ -59,7 +63,12 @@ class RechargeController extends BaseController
             'limit' => $request->query->getInt('limit', 20),
             'offset' => $request->query->getInt('offset', 0),
         ];
-        if ($request->query->has('accountId')) {
+        $selfServiceUser = $this->scopeAuthorizationService->getSelfServiceUser();
+        if ($selfServiceUser !== null) {
+            // Usuario final (JWT): solo sus propias recargas, ignorando cualquier accountId que
+            // venga en la query — mismo criterio que AccountController::list().
+            $filters['accountId'] = (string) $selfServiceUser->getAccount()?->getId();
+        } elseif ($request->query->has('accountId')) {
             $filters['accountId'] = $request->query->get('accountId');
         }
         if ($request->query->has('status')) {
@@ -72,10 +81,14 @@ class RechargeController extends BaseController
         $recharges = $this->rechargeService->listRecharges($filters);
         $data = array_map(fn($r) => [
             'id' => $r->getId(),
+            'receiptNumber' => $r->getReceiptNumber(),
             'accountId' => $r->getAccount()->getId(),
             'accountNumber' => $r->getAccount()->getAccountNumber(),
             'amount' => $r->getAmount(),
             'currency' => $r->getCurrency(),
+            'originalAmount' => $r->getOriginalAmount(),
+            'originalCurrency' => $r->getOriginalCurrency(),
+            'exchangeRate' => $r->getExchangeRate(),
             'rechargeType' => $r->getRechargeType(),
             'referenceNumber' => $r->getReferenceNumber(),
             'status' => $r->getStatus(),
@@ -123,23 +136,23 @@ class RechargeController extends BaseController
         )
     )]
     #[OA\Response(response: 400, description: 'Error de validación')]
-    #[OA\Response(response: 401, description: 'Invalid API key')]
+    #[OA\Response(response: 401, description: 'Token OAuth2 inválido o ausente')]
+    #[OA\Response(response: 403, description: 'Scope insuficiente (requiere "recharges")')]
+    #[RequireScope('recharges.create')]
     #[Route('/recharges', name: 'api_recharge_create', methods: ['POST'])]
     public function create(Request $request): JsonResponse
     {
-        if (!$this->checkApiKey($request)) {
-            return $this->error('Invalid API key', 401);
-        }
         try {
             $data = $this->getJsonContent($request);
             $recharge = $this->rechargeService->processExternalRecharge($data);
             return $this->success([
                 'id' => $recharge->getId(),
+                'receiptNumber' => $recharge->getReceiptNumber(),
                 'amount' => $recharge->getAmount(),
                 'status' => $recharge->getStatus(),
             ], 'Recharge created', 201);
         } catch (\Exception $e) {
-            return $this->error($e->getMessage(), 400);
+            return $this->handleException($e);
         }
     }
 
@@ -172,6 +185,7 @@ class RechargeController extends BaseController
         )
     )]
     #[OA\Response(response: 404, description: 'Recharge not found')]
+    #[RequireScope('recharges.read')]
     #[Route('/recharges/{id}', name: 'api_recharge_show', methods: ['GET'])]
     public function show(string $id): JsonResponse
     {
@@ -180,12 +194,19 @@ class RechargeController extends BaseController
             if (!$recharge) {
                 return $this->error('Recharge not found', 404);
             }
+            if (!$this->scopeAuthorizationService->selfServiceOwnsAccount($recharge->getAccount())) {
+                return $this->error('Recharge not found', 404);
+            }
             return $this->success([
                 'id' => $recharge->getId(),
+                'receiptNumber' => $recharge->getReceiptNumber(),
                 'accountId' => $recharge->getAccount()->getId(),
                 'accountNumber' => $recharge->getAccount()->getAccountNumber(),
                 'amount' => $recharge->getAmount(),
                 'currency' => $recharge->getCurrency(),
+                'originalAmount' => $recharge->getOriginalAmount(),
+                'originalCurrency' => $recharge->getOriginalCurrency(),
+                'exchangeRate' => $recharge->getExchangeRate(),
                 'rechargeType' => $recharge->getRechargeType(),
                 'referenceNumber' => $recharge->getReferenceNumber(),
                 'status' => $recharge->getStatus(),
@@ -194,7 +215,7 @@ class RechargeController extends BaseController
                 'createdAt' => $recharge->getCreatedAt()?->format('Y-m-d H:i:s'),
             ]);
         } catch (\Exception $e) {
-            return $this->error($e->getMessage(), 400);
+            return $this->handleException($e);
         }
     }
 
@@ -207,6 +228,7 @@ class RechargeController extends BaseController
     #[OA\Parameter(name: 'id', in: 'path', description: 'ID de la recarga', required: true, schema: new OA\Schema(type: 'string'))]
     #[OA\Response(response: 200, description: 'Recharge completed')]
     #[OA\Response(response: 400, description: 'Error al completar recarga')]
+    #[RequireScope('recharges.complete')]
     #[Route('/recharges/{id}/complete', name: 'api_recharge_complete', methods: ['PUT'])]
     public function complete(string $id): JsonResponse
     {
@@ -217,7 +239,7 @@ class RechargeController extends BaseController
                 'status' => $recharge->getStatus(),
             ], 'Recharge completed');
         } catch (\Exception $e) {
-            return $this->error($e->getMessage(), 400);
+            return $this->handleException($e);
         }
     }
 
@@ -230,6 +252,7 @@ class RechargeController extends BaseController
     #[OA\Parameter(name: 'id', in: 'path', description: 'ID de la recarga', required: true, schema: new OA\Schema(type: 'string'))]
     #[OA\Response(response: 200, description: 'Recharge cancelled')]
     #[OA\Response(response: 400, description: 'Error al cancelar recarga')]
+    #[RequireScope('recharges.cancel')]
     #[Route('/recharges/{id}/cancel', name: 'api_recharge_cancel', methods: ['PUT'])]
     public function cancel(string $id): JsonResponse
     {
@@ -240,7 +263,7 @@ class RechargeController extends BaseController
                 'status' => $recharge->getStatus(),
             ], 'Recharge cancelled');
         } catch (\Exception $e) {
-            return $this->error($e->getMessage(), 400);
+            return $this->handleException($e);
         }
     }
 
@@ -261,6 +284,7 @@ class RechargeController extends BaseController
     )]
     #[OA\Response(response: 200, description: 'Recharge marked as failed')]
     #[OA\Response(response: 400, description: 'Error al marcar recarga como fallida')]
+    #[RequireScope('recharges.fail')]
     #[Route('/recharges/{id}/fail', name: 'api_recharge_fail', methods: ['PUT'])]
     public function fail(string $id, Request $request): JsonResponse
     {
@@ -273,7 +297,7 @@ class RechargeController extends BaseController
                 'status' => $recharge->getStatus(),
             ], 'Recharge marked as failed');
         } catch (\Exception $e) {
-            return $this->error($e->getMessage(), 400);
+            return $this->handleException($e);
         }
     }
 }

@@ -4,7 +4,11 @@ namespace App\Services;
 
 use App\Entity\Balance\Account;
 use App\Entity\User;
+use App\Exception\BusinessException;
+use App\Exception\NotFoundException;
+use App\Exception\ValidationException;
 use App\Repository\Balance\AccountRepository;
+use App\Services\Balance\AuthorizedService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 
@@ -16,6 +20,8 @@ class RegistrationService
         private UsernameGenerator $usernameGenerator,
         private RoleSeedService $roleSeedService,
         private AccountRepository $accountRepository,
+        private AuthorizedService $authorizedService,
+        private LoggableSystemActor $systemActor,
     ) {
     }
 
@@ -29,12 +35,12 @@ class RegistrationService
         $documentNumber = $data['documentNumber'] ?? '';
 
         if (empty($name) || empty($email) || empty($password)) {
-            throw new \InvalidArgumentException('name, email and password are required');
+            throw new ValidationException('name, email and password are required');
         }
 
         $existing = $this->entityManager->getRepository(User::class)->findOneBy(['email' => $email]);
         if ($existing) {
-            throw new \RuntimeException('Email already exists');
+            throw new BusinessException('Email already exists');
         }
 
         $username = $this->usernameGenerator->generate($name);
@@ -60,7 +66,12 @@ class RegistrationService
         $account->setUser($user);
 
         $this->entityManager->persist($account);
+        // Siempre público/sin token (autorregistro) — a diferencia de approveBusiness() más abajo,
+        // que sí corre con un admin logueado y no debe perder ese actor real.
+        $this->systemActor->actAsSystem('autorregistro');
         $this->entityManager->flush();
+
+        $this->authorizedService->ensureSelfAuthorized($account);
 
         return ['user' => $user, 'account' => $account];
     }
@@ -74,7 +85,7 @@ class RegistrationService
         $documentNumber = $data['documentNumber'] ?? '';
 
         if (empty($businessName)) {
-            throw new \InvalidArgumentException('businessName is required');
+            throw new ValidationException('businessName is required');
         }
 
         $account = new Account();
@@ -97,7 +108,7 @@ class RegistrationService
     {
         $account = $this->accountRepository->find($accountId);
         if (!$account) {
-            throw new \RuntimeException('Account not found');
+            throw new NotFoundException('Account not found');
         }
 
         $name = $data['name'] ?? $account->getBusinessName();
@@ -106,12 +117,12 @@ class RegistrationService
         $password = $data['password'] ?? '';
 
         if (empty($email) || empty($password)) {
-            throw new \InvalidArgumentException('email and password are required');
+            throw new ValidationException('email and password are required');
         }
 
         $existing = $this->entityManager->getRepository(User::class)->findOneBy(['email' => $email]);
         if ($existing) {
-            throw new \RuntimeException('Email already exists');
+            throw new BusinessException('Email already exists');
         }
 
         $username = $this->usernameGenerator->generate($name);
@@ -137,6 +148,8 @@ class RegistrationService
         }
 
         $this->entityManager->flush();
+
+        $this->authorizedService->ensureSelfAuthorized($account);
 
         return $user;
     }

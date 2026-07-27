@@ -25,6 +25,20 @@ class Transfer extends BaseEntity
     #[ORM\Column(length: 3)]
     private string $currency = 'USD';
 
+    /**
+     * Monto/moneda tal como los tecleó quien pidió la transferencia, antes de convertirlos a la
+     * moneda base del sistema (igual que Recharge.originalAmount/originalCurrency) — null si ya
+     * se pidió directamente en la moneda base, sin conversión de por medio.
+     */
+    #[ORM\Column(name: 'original_amount', type: 'decimal', precision: 18, scale: 2, nullable: true)]
+    private ?string $originalAmount = null;
+
+    #[ORM\Column(name: 'original_currency', length: 3, nullable: true)]
+    private ?string $originalCurrency = null;
+
+    #[ORM\Column(name: 'exchange_rate', type: 'decimal', precision: 18, scale: 8, nullable: true)]
+    private ?string $exchangeRate = null;
+
     #[ORM\Column(length: 20)]
     private string $status = 'pending';
 
@@ -42,6 +56,13 @@ class Transfer extends BaseEntity
 
     #[ORM\Column(length: 50, nullable: true)]
     private ?string $destAccountNumber = null;
+
+    /**
+     * Numeración correlativa propia del sistema (ej. "TRA-00000001"), asignada al crear la
+     * transferencia.
+     */
+    #[ORM\Column(length: 30, nullable: true, unique: true)]
+    private ?string $receiptNumber = null;
 
     public function getOriginAccount(): ?Account
     {
@@ -84,6 +105,39 @@ class Transfer extends BaseEntity
     public function setCurrency(string $currency): static
     {
         $this->currency = $currency;
+        return $this;
+    }
+
+    public function getOriginalAmount(): ?string
+    {
+        return $this->originalAmount;
+    }
+
+    public function setOriginalAmount(?string $originalAmount): static
+    {
+        $this->originalAmount = $originalAmount;
+        return $this;
+    }
+
+    public function getOriginalCurrency(): ?string
+    {
+        return $this->originalCurrency;
+    }
+
+    public function setOriginalCurrency(?string $originalCurrency): static
+    {
+        $this->originalCurrency = $originalCurrency;
+        return $this;
+    }
+
+    public function getExchangeRate(): ?string
+    {
+        return $this->exchangeRate;
+    }
+
+    public function setExchangeRate(?string $exchangeRate): static
+    {
+        $this->exchangeRate = $exchangeRate;
         return $this;
     }
 
@@ -150,6 +204,17 @@ class Transfer extends BaseEntity
     public function setDestAccountNumber(?string $destAccountNumber): static
     {
         $this->destAccountNumber = $destAccountNumber;
+        return $this;
+    }
+
+    public function getReceiptNumber(): ?string
+    {
+        return $this->receiptNumber;
+    }
+
+    public function setReceiptNumber(?string $receiptNumber): static
+    {
+        $this->receiptNumber = $receiptNumber;
         return $this;
     }
 }
