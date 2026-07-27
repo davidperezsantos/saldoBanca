@@ -3,6 +3,7 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 COPY assets ./assets
+COPY templates ./templates
 COPY vite.config.js ./
 RUN npm run build
 
