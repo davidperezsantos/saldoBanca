@@ -271,7 +271,7 @@
 					</nav>
 
 					<div class="px-4 py-4 border-t border-gray-100 relative"
-						x-data="userMenu({{ app.user.name|json_encode|raw }}, '{{ path('admin_profile_update_name') }}')">
+						x-data="userMenu({{ app.user.name|json_encode }}, '{{ path('admin_profile_update_name') }}')">
 						<div class="flex items-center gap-3">
 							<button type="button" class="flex items-center gap-3 flex-1 min-w-0 text-left" @click="menuOpen = !menuOpen">
 								<div class="w-9 h-9 bg-gradient-to-br from-indigo-400 to-purple-500 rounded-full flex items-center justify-center text-white text-sm font-semibold shadow-lg">
