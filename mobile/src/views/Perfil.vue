@@ -2,11 +2,12 @@
 import { ref, onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { Browser } from '@capacitor/browser';
-import { apiClient } from '../api/client';
+import { apiClient, setUser } from '../api/client';
 import { useUser, initials } from '../composables/user';
 import { useAccount, loadAccount } from '../composables/account';
 import { hasScope } from '../api/permissions';
 import { checkForUpdate } from '../api/updateCheck';
+import PhoneInput from '../components/PhoneInput.vue';
 
 const { t } = useI18n();
 const emit = defineEmits(['logged-out']);
@@ -37,6 +38,38 @@ async function openUpdate() {
         await Browser.open({ url: updateInfo.value.downloadUrl });
     } catch (e) {
         updateError.value = t('profile.updateError');
+    }
+}
+
+const nameInput = ref(user.value?.name || '');
+const phoneInput = ref(user.value?.phone || '');
+const editError = ref('');
+const editSuccess = ref('');
+const editSubmitting = ref(false);
+
+async function saveProfile() {
+    editError.value = '';
+    editSuccess.value = '';
+
+    if (!nameInput.value.trim()) {
+        editError.value = t('profile.nameRequired');
+        return;
+    }
+
+    editSubmitting.value = true;
+    try {
+        const { data } = await apiClient.put('/me', {
+            name: nameInput.value.trim(),
+            phone: phoneInput.value,
+        });
+        const updatedUser = { ...user.value, name: data.data.name, phone: data.data.phone };
+        user.value = updatedUser;
+        await setUser(updatedUser);
+        editSuccess.value = t('profile.editSuccess');
+    } catch (e) {
+        editError.value = e.response?.data?.message || t('profile.editError');
+    } finally {
+        editSubmitting.value = false;
     }
 }
 
@@ -108,6 +141,25 @@ function handleLogout() {
       <p class="name">{{ user?.name || user?.username }}</p>
       <p class="detail">@{{ user?.username }}</p>
       <p class="detail">{{ user?.email }}</p>
+    </div>
+
+    <div class="card">
+      <h2>{{ t('profile.editTitle') }}</h2>
+      <form class="form" @submit.prevent="saveProfile">
+        <label>
+          {{ t('profile.nameLabel') }}
+          <input v-model="nameInput" type="text" required />
+        </label>
+        <label>
+          {{ t('profile.phoneLabel') }}
+          <PhoneInput v-model="phoneInput" />
+        </label>
+        <p v-if="editError" class="error">{{ editError }}</p>
+        <p v-if="editSuccess" class="success">{{ editSuccess }}</p>
+        <button type="submit" :disabled="editSubmitting">
+          {{ editSubmitting ? t('common.saving') : t('common.save') }}
+        </button>
+      </form>
     </div>
 
     <div v-if="updateInfo" class="card update-card">

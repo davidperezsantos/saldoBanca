@@ -3,8 +3,10 @@
 namespace App\Controller\Api;
 
 use App\Controller\BaseController;
+use App\DTO\ProfileDto;
 use App\Security\Attribute\RequireScope;
 use App\Security\ScopeAuthorizationService;
+use App\Services\ProfileService;
 use Doctrine\ORM\EntityManagerInterface;
 use OpenApi\Attributes as OA;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -24,7 +26,48 @@ class ProfileController extends BaseController
         private EntityManagerInterface $entityManager,
         private UserPasswordHasherInterface $passwordHasher,
         private ScopeAuthorizationService $scopeAuthorizationService,
+        private ProfileService $profileService,
     ) {
+    }
+
+    #[OA\Put(
+        path: '/api/v1/me',
+        summary: 'Actualizar mi perfil',
+        description: 'Actualiza mi nombre y teléfono. Si soy dueño de una cuenta (cliente/negocio), el teléfono se sincroniza también ahí.',
+        tags: ['Profile'],
+    )]
+    #[OA\RequestBody(
+        required: true,
+        content: new OA\JsonContent(
+            required: ['name'],
+            properties: [
+                new OA\Property(property: 'name', type: 'string', example: 'Alejandra Perez Gonzalez'),
+                new OA\Property(property: 'phone', type: 'string', example: '+5353026713'),
+            ]
+        )
+    )]
+    #[OA\Response(response: 200, description: 'Perfil actualizado')]
+    #[OA\Response(response: 400, description: 'name vacío')]
+    #[RequireScope('profile.update')]
+    #[Route('/me', name: 'api_profile_update', methods: ['PUT'])]
+    public function updateProfile(Request $request): JsonResponse
+    {
+        $user = $this->scopeAuthorizationService->getSelfServiceUser();
+        if ($user === null) {
+            return $this->error('Esta acción no aplica a este tipo de credencial', 400);
+        }
+
+        try {
+            $dto = ProfileDto::fromJson($this->getJsonContent($request));
+            $this->profileService->updateProfile($user, $dto);
+
+            return $this->success([
+                'name' => $user->getName(),
+                'phone' => $user->getPhone(),
+            ], 'Perfil actualizado');
+        } catch (\Exception $e) {
+            return $this->handleException($e);
+        }
     }
 
     #[OA\Put(

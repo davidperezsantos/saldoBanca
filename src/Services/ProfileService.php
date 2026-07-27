@@ -24,13 +24,29 @@ class ProfileService extends BaseService
         parent::__construct($entityManager);
     }
 
-    public function updateName(User $user, ProfileDto $dto): User
+    /**
+     * Si el usuario es dueño de una cuenta (cliente/negocio, User->account inverso de
+     * Account->user), el teléfono se sincroniza también ahí — hasta ahora esa sincronización
+     * solo pasaba en sentido cuenta -> usuario (ver AccountService::createAccount(),
+     * AuthorizedService::updateAuthorized()), nunca al revés.
+     */
+    public function updateProfile(User $user, ProfileDto $dto): User
     {
         if ($dto->name === '') {
             throw new ValidationException('El nombre es requerido');
         }
 
         $user->setName($dto->name);
+
+        if ($dto->phone !== null) {
+            $user->setPhone($dto->phone);
+
+            $account = $user->getAccount();
+            if ($account !== null) {
+                $account->setPhone($dto->phone);
+            }
+        }
+
         $this->flush();
 
         return $user;

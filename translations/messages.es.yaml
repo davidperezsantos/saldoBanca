@@ -31,6 +31,7 @@ menu:
     edit_profile: Editar perfil
     username: Usuario
     full_name: Nombre completo
+    phone: Teléfono
     change_password: Cambiar contraseña
     current_password: Contraseña actual
     new_password: Contraseña nueva

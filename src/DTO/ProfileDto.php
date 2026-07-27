@@ -6,6 +6,7 @@ class ProfileDto
 {
     public function __construct(
         public readonly string $name,
+        public readonly ?string $phone = null,
     ) {
     }
 
@@ -13,6 +14,7 @@ class ProfileDto
     {
         return new self(
             name: trim($data['name'] ?? ''),
+            phone: isset($data['phone']) ? trim((string) $data['phone']) : null,
         );
     }
 }

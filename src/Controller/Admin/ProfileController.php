@@ -19,8 +19,8 @@ class ProfileController extends BaseController
     ) {
     }
 
-    #[Route('/name', name: 'admin_profile_update_name', methods: ['PUT'])]
-    public function updateName(Request $request): JsonResponse
+    #[Route('', name: 'admin_profile_update', methods: ['PUT'])]
+    public function update(Request $request): JsonResponse
     {
         try {
             $this->validateCsrfToken();
@@ -29,9 +29,9 @@ class ProfileController extends BaseController
             $user = $this->getUser();
             $dto = ProfileDto::fromJson($this->getJsonContent($request));
 
-            $this->profileService->updateName($user, $dto);
+            $this->profileService->updateProfile($user, $dto);
 
-            return $this->success(['name' => $user->getName()], 'Nombre actualizado');
+            return $this->success(['name' => $user->getName(), 'phone' => $user->getPhone()], 'Perfil actualizado');
         } catch (\Exception $e) {
             return $this->handleException($e);
         }
