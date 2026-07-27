@@ -21,6 +21,8 @@ class DocumentNumberService extends BaseService
 
     public function next(string $documentType, string $prefix): string
     {
+        $this->ensureSequenceExists($documentType);
+
         return $this->entityManager->wrapInTransaction(function () use ($documentType, $prefix) {
             $sequence = $this->sequenceRepository->findForUpdate($documentType);
             if (!$sequence) {
@@ -33,5 +35,22 @@ class DocumentNumberService extends BaseService
 
             return $prefix . str_pad($next, 8, '0', STR_PAD_LEFT);
         });
+    }
+
+    /**
+     * Autocura un tipo de documento que nunca quedó pre-sembrado — ej. una DB "desde cero"
+     * bootstrapeada con doctrine:schema:create (docker/entrypoint.sh) en vez de correr las
+     * migraciones viejas que insertaban estas filas a mano. INSERT...ON CONFLICT DO NOTHING vía
+     * DBAL en vez de persist()/flush() del entity manager a propósito: si dos requests pisan el
+     * primerísimo uso del mismo tipo a la vez, un fallo de constraint durante un flush() puede
+     * dejar el EntityManager en un estado no reusable por el resto del request — la resolución de
+     * conflicto de Postgres es atómica y no necesita capturar nada acá.
+     */
+    private function ensureSequenceExists(string $documentType): void
+    {
+        $this->entityManager->getConnection()->executeStatement(
+            'INSERT INTO balance_document_sequence (documentType, lastValue) VALUES (:type, 0) ON CONFLICT (documentType) DO NOTHING',
+            ['type' => $documentType]
+        );
     }
 }
