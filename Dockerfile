@@ -17,7 +17,8 @@ RUN install-php-extensions \
     opcache \
     zip \
     gd \
-    apcu
+    apcu \
+    bcmath
 
 WORKDIR /app
 

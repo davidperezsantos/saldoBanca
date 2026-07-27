@@ -5,6 +5,7 @@ namespace App\Services\Balance;
 use App\DTO\Balance\AccountDto;
 use App\Entity\Balance\Account;
 use App\Entity\Balance\AccountBalance;
+use App\Entity\User;
 use App\Exception\BusinessException;
 use App\Exception\NotFoundException;
 use App\Exception\ValidationException;
@@ -13,7 +14,9 @@ use App\Repository\Balance\AccountBalanceRepository;
 use App\Services\BaseService;
 use App\Services\ExchangeRate\APIExchangeRate;
 use App\Services\Notifications\OpenWaService;
+use App\Services\RoleSeedService;
 use App\Services\SystemCurrencyService;
+use App\Services\UsernameGenerator;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Twig\Environment;
@@ -34,6 +37,8 @@ class AccountService extends BaseService
         private UserPasswordHasherInterface $passwordHasher,
         private OpenWaService $openWa,
         private Environment $twig,
+        private UsernameGenerator $usernameGenerator,
+        private RoleSeedService $roleSeedService,
     ) {
         parent::__construct($entityManager);
         $this->accountRepository = $accountRepository;
@@ -46,6 +51,18 @@ class AccountService extends BaseService
     {
         $this->validatePayoutPercents($dto->payoutCurrencyPercent, $dto->payoutSecondaryCurrencyPercent);
         $isBusiness = $dto->accountType === 'business';
+
+        // Las cuentas 'business' se activan vía RegistrationService::approveBusiness() (el User
+        // se crea recién ahí, con datos que ingresa el admin en ese paso). Acá solo aplica al
+        // crear directo una cuenta 'cliente': login automático desde el vamos, sin paso aparte.
+        if (!$isBusiness) {
+            if (empty($dto->email)) {
+                throw new ValidationException('email is required for client accounts');
+            }
+            if ($this->entityManager->getRepository(User::class)->findOneBy(['email' => $dto->email])) {
+                throw new BusinessException('Email already exists');
+            }
+        }
 
         $account = new Account();
         $account->setAccountNumber($this->generateAccountNumber());
@@ -78,9 +95,40 @@ class AccountService extends BaseService
         $balance->setTotalInvoiced('0.00');
 
         $this->persist($balance);
+
+        $credentials = null;
+        if (!$isBusiness) {
+            $password = bin2hex(random_bytes(8));
+            $username = $this->usernameGenerator->generate($dto->businessName);
+
+            $user = new User();
+            $user->setEmail($dto->email);
+            $user->setUsername($username);
+            $user->setName($dto->businessName);
+            $user->setPhone($dto->phone ?? '');
+            $user->setPassword($this->passwordHasher->hashPassword($user, $password));
+            $user->setIsActive(true);
+            $user->setRole($this->roleSeedService->ensureRoleExists('cliente'));
+
+            $this->persist($user);
+            $account->setUser($user);
+
+            $credentials = ['username' => $username, 'password' => $password];
+        }
+
         $this->flush();
 
-        $this->rotatePin($account);
+        // Primer PIN de la cuenta: se guarda igual que en rotatePin(), pero se avisa con la
+        // plantilla de bienvenida (new_account_pin), no la de "tu compra se procesó" — todavía no
+        // compró nada, ver hallazgo real en var/log/prod.log del 2026-07-27.
+        $newPin = $this->generateNewPin();
+        $account->setPinCode($this->passwordHasher->hashPassword($account, $newPin));
+        $this->flush();
+
+        if ($credentials !== null) {
+            $this->sendWelcomeCredentials($account, $credentials['username'], $credentials['password']);
+        }
+        $this->notifyFirstPin($account, $newPin);
 
         return $account;
     }
@@ -115,9 +163,10 @@ class AccountService extends BaseService
     }
 
     /**
-     * Genera un PIN nuevo, lo guarda hasheado y lo manda por WhatsApp — mismo mecanismo que
-     * AuthorizedService::generateNewPin()/notifyNewPin(), ahora para la cuenta misma. Se llama al
-     * crear la cuenta (primer PIN) y después de cada pago exitoso (rotación, un solo uso).
+     * Genera un PIN nuevo, lo guarda hasheado y lo manda por WhatsApp con la plantilla de "tu
+     * compra se procesó" — solo tiene sentido después de un pago real (rotación post-pago) o de
+     * una solicitud explícita del cliente. El PIN inicial al crear la cuenta usa
+     * notifyFirstPin() en su lugar, ver createAccount().
      */
     public function rotatePin(Account $account): void
     {
@@ -147,6 +196,50 @@ class AccountService extends BaseService
         } catch (\Exception $e) {
             // Silently fail - notification is best-effort, mismo criterio que
             // AuthorizedService::notifyNewPin().
+        }
+    }
+
+    /**
+     * PIN inicial al crear la cuenta — mismo código que notifyNewPin() pero con una plantilla
+     * de bienvenida en vez de "tu compra se procesó", porque acá todavía no compró nada.
+     */
+    private function notifyFirstPin(Account $account, string $plainPin): void
+    {
+        if (!$account->getPhone()) {
+            return;
+        }
+
+        try {
+            $message = $this->twig->render('emails/whatsapp/new_account_pin.txt.twig', [
+                'name' => $account->getBusinessName(),
+                'pinCode' => $plainPin,
+            ]);
+            $this->openWa->sendMessage($account->getPhone(), $message);
+        } catch (\Exception $e) {
+            // Silently fail - notification is best-effort, mismo criterio que notifyNewPin().
+        }
+    }
+
+    /**
+     * Usuario+contraseña del login recién creado (cuenta tipo cliente) — mismo mecanismo que
+     * AuthorizedService::sendCredentialsWhatsApp(), mensaje separado del PIN de compra.
+     */
+    private function sendWelcomeCredentials(Account $account, string $username, string $password): void
+    {
+        if (!$account->getPhone()) {
+            return;
+        }
+
+        try {
+            $message = $this->twig->render('emails/whatsapp/welcome.txt.twig', [
+                'name' => $account->getBusinessName(),
+                'username' => $username,
+                'password' => $password,
+                'roleName' => null,
+            ]);
+            $this->openWa->sendMessage($account->getPhone(), $message);
+        } catch (\Exception $e) {
+            // Silently fail - notification is best-effort, mismo criterio que notifyNewPin().
         }
     }
 
