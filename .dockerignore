@@ -1,0 +1,15 @@
+.git
+.github
+var/cache
+var/log
+var/sessions
+node_modules
+mobile/node_modules
+mobile/dist
+mobile/android/app/build
+secrets-android
+.env.local
+.env.*.local
+.env.local.php
+config/jwt/*.pem
+config/oauth/*.key

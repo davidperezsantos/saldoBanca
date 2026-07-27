@@ -70,6 +70,15 @@ composer install --no-interaction
 step "Dependencias frontend (npm install)"
 npm install
 
+step "Build de assets del panel admin (npm run build -> public/build/)"
+npm run build
+
+step "Dependencias app móvil (mobile/npm install)"
+(cd mobile && npm install)
+
+step "Build de la app móvil (mobile/npm run build -> mobile/dist/)"
+(cd mobile && npm run build)
+
 if [[ "$MODE" == "create" ]]; then
     step "Generando llaves JWT (lexik/jwt-authentication-bundle)"
     php bin/console lexik:jwt:generate-keypair --skip-if-exists
