@@ -136,6 +136,8 @@
                 </div>
             </div>
         </div>
+
+        <Toast />
     </div>
         </template>
     </Card>
@@ -148,6 +150,7 @@ import Button from 'primevue/button';
 import InputText from 'primevue/inputtext';
 import Select from 'primevue/select';
 import Card from 'primevue/card';
+import Toast from 'primevue/toast';
 import { useToast } from 'primevue/usetoast';
 import common from '../../common/common.js';
 

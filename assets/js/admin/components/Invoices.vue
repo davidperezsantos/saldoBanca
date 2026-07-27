@@ -197,6 +197,9 @@
                         <Button :label="$t('common.close')" class="p-button-text" @click="showDetailModal = false" />
                     </template>
                 </Dialog>
+
+                <ConfirmDialog />
+                <Toast />
             </div>
         </template>
     </Card>
@@ -213,11 +216,15 @@ import InputNumber from 'primevue/inputnumber';
 import Select from 'primevue/select';
 import Textarea from 'primevue/textarea';
 import Dialog from 'primevue/dialog';
+import ConfirmDialog from 'primevue/confirmdialog';
+import Toast from 'primevue/toast';
+import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
 import Card from 'primevue/card';
 import common from '../../common/common.js';
 
 const { t } = useI18n();
+const confirm = useConfirm();
 const toast = useToast();
 
 const urls = document.getElementById('vue-app').dataset;
@@ -390,36 +397,50 @@ const payInvoice = (invoice) => {
 };
 
 const cancelInvoice = (invoice) => {
-    if (!confirm(`¿Cancelar factura ${invoice.invoiceNumber}?`)) return;
-    actionLoading.value = true;
-    common.ajax(urls.cancelUrl.replace('__ID__', invoice.id), 'PUT', null, (data) => {
-        if (data.success) {
-            toast.add({ severity: 'success', summary: t('common.success'), detail: data.message });
-            loadInvoices();
-        } else {
-            toast.add({ severity: 'error', summary: t('common.error'), detail: data.message });
+    confirm.require({
+        message: `¿Cancelar factura ${invoice.invoiceNumber}?`,
+        header: 'Confirmar',
+        icon: 'pi pi-exclamation-triangle',
+        acceptClass: 'p-button-danger',
+        accept: () => {
+            actionLoading.value = true;
+            common.ajax(urls.cancelUrl.replace('__ID__', invoice.id), 'PUT', null, (data) => {
+                if (data.success) {
+                    toast.add({ severity: 'success', summary: t('common.success'), detail: data.message });
+                    loadInvoices();
+                } else {
+                    toast.add({ severity: 'error', summary: t('common.error'), detail: data.message });
+                }
+                actionLoading.value = false;
+            }, (...args) => {
+                onAjaxError(...args);
+                actionLoading.value = false;
+            });
         }
-        actionLoading.value = false;
-    }, (...args) => {
-        onAjaxError(...args);
-        actionLoading.value = false;
     });
 };
 
 const refundInvoice = (invoice) => {
-    if (!confirm(`¿Reembolsar factura ${invoice.invoiceNumber}?`)) return;
-    actionLoading.value = true;
-    common.ajax(urls.refundUrl.replace('__ID__', invoice.id), 'PUT', null, (data) => {
-        if (data.success) {
-            toast.add({ severity: 'success', summary: t('common.success'), detail: data.message });
-            loadInvoices();
-        } else {
-            toast.add({ severity: 'error', summary: t('common.error'), detail: data.message });
+    confirm.require({
+        message: `¿Reembolsar factura ${invoice.invoiceNumber}?`,
+        header: 'Confirmar',
+        icon: 'pi pi-exclamation-triangle',
+        acceptClass: 'p-button-warning',
+        accept: () => {
+            actionLoading.value = true;
+            common.ajax(urls.refundUrl.replace('__ID__', invoice.id), 'PUT', null, (data) => {
+                if (data.success) {
+                    toast.add({ severity: 'success', summary: t('common.success'), detail: data.message });
+                    loadInvoices();
+                } else {
+                    toast.add({ severity: 'error', summary: t('common.error'), detail: data.message });
+                }
+                actionLoading.value = false;
+            }, (...args) => {
+                onAjaxError(...args);
+                actionLoading.value = false;
+            });
         }
-        actionLoading.value = false;
-    }, (...args) => {
-        onAjaxError(...args);
-        actionLoading.value = false;
     });
 };
 

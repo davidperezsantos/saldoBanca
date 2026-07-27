@@ -97,6 +97,9 @@
                         <Button :label="$t('common.save')" @click="saveGateway" :loading="saving" />
                     </template>
                 </Dialog>
+
+                <ConfirmDialog />
+                <Toast />
             </div>
         </template>
     </Card>
@@ -112,11 +115,15 @@ import InputText from 'primevue/inputtext';
 import Select from 'primevue/select';
 import Textarea from 'primevue/textarea';
 import Dialog from 'primevue/dialog';
+import ConfirmDialog from 'primevue/confirmdialog';
+import Toast from 'primevue/toast';
+import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
 import common from '../../common/common.js';
 import Card from 'primevue/card';
 
 const { t } = useI18n();
+const confirm = useConfirm();
 const toast = useToast();
 
 const urls = document.getElementById('vue-app').dataset;
@@ -202,16 +209,22 @@ const saveGateway = () => {
 
 const toggleStatus = (gateway) => {
     const newStatus = gateway.status === 'active' ? 'inactive' : 'active';
-    if (!confirm(`¿${newStatus === 'active' ? 'Activar' : 'Desactivar'} "${gateway.name}"?`)) return;
-
-    common.ajax(urls.statusUrl.replace('__ID__', gateway.id), 'PUT', JSON.stringify({ status: newStatus }), (data) => {
-        if (data.success) {
-            toast.add({ severity: 'success', summary: t('common.success'), detail: 'Estado cambiado' });
-            loadGateways();
-        } else {
-            toast.add({ severity: 'error', summary: t('common.error'), detail: data.message });
+    confirm.require({
+        message: `¿${newStatus === 'active' ? 'Activar' : 'Desactivar'} "${gateway.name}"?`,
+        header: 'Confirmar',
+        icon: 'pi pi-question-circle',
+        acceptClass: newStatus === 'active' ? 'p-button-success' : 'p-button-danger',
+        accept: () => {
+            common.ajax(urls.statusUrl.replace('__ID__', gateway.id), 'PUT', JSON.stringify({ status: newStatus }), (data) => {
+                if (data.success) {
+                    toast.add({ severity: 'success', summary: t('common.success'), detail: 'Estado cambiado' });
+                    loadGateways();
+                } else {
+                    toast.add({ severity: 'error', summary: t('common.error'), detail: data.message });
+                }
+            }, onAjaxError);
         }
-    }, onAjaxError);
+    });
 };
 
 onMounted(() => {

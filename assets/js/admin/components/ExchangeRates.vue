@@ -82,6 +82,8 @@
                     <Button :label="$t('common.save')" @click="saveManualRate" :loading="savingManual" />
                 </template>
             </Dialog>
+
+            <Toast />
         </template>
     </Card>
 </template>
@@ -95,6 +97,7 @@ import Button from 'primevue/button';
 import Select from 'primevue/select';
 import InputNumber from 'primevue/inputnumber';
 import Dialog from 'primevue/dialog';
+import Toast from 'primevue/toast';
 import { useToast } from 'primevue/usetoast';
 import Card from 'primevue/card';
 import common from '../../common/common.js';

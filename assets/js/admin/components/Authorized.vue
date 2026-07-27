@@ -156,6 +156,9 @@
                         <Button :label="$t('common.save')" @click="saveAuthorized" :loading="saving" />
                     </template>
                 </Dialog>
+
+                <ConfirmDialog />
+                <Toast />
             </div>
         </template>
 
@@ -173,6 +176,9 @@ import InputText from 'primevue/inputtext';
 import InputGroup from 'primevue/inputgroup';
 import Select from 'primevue/select';
 import Dialog from 'primevue/dialog';
+import ConfirmDialog from 'primevue/confirmdialog';
+import Toast from 'primevue/toast';
+import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
 import Card from 'primevue/card';
 import countries from '../../../static/countries.json';
@@ -180,6 +186,7 @@ import typeDocumentOptions from '../../../static/type_document.json';
 import common from '../../common/common.js';
 
 const { t } = useI18n();
+const confirm = useConfirm();
 const toast = useToast();
 
 const urls = document.getElementById('vue-app').dataset;
@@ -334,29 +341,41 @@ const saveAuthorized = () => {
 
 const toggleStatus = (auth) => {
     const newStatus = auth.status === 'active' ? 'inactive' : 'active';
-    if (!confirm(`¿${newStatus === 'active' ? 'Activar' : 'Desactivar'} a "${auth.userName}"?`)) return;
-
-    common.ajax(urls.statusUrl.replace('__ID__', auth.id), 'PUT', JSON.stringify({ status: newStatus }), async (data) => {
-        if (data.success) {
-            toast.add({ severity: 'success', summary: t('common.success'), detail: 'Estado cambiado' });
-            await loadAccounts();
-            loadAuthorized();
-        } else {
-            toast.add({ severity: 'error', summary: t('common.error'), detail: data.message });
+    confirm.require({
+        message: `¿${newStatus === 'active' ? 'Activar' : 'Desactivar'} a "${auth.userName}"?`,
+        header: 'Confirmar',
+        icon: 'pi pi-question-circle',
+        acceptClass: newStatus === 'active' ? 'p-button-success' : 'p-button-danger',
+        accept: () => {
+            common.ajax(urls.statusUrl.replace('__ID__', auth.id), 'PUT', JSON.stringify({ status: newStatus }), async (data) => {
+                if (data.success) {
+                    toast.add({ severity: 'success', summary: t('common.success'), detail: 'Estado cambiado' });
+                    await loadAccounts();
+                    loadAuthorized();
+                } else {
+                    toast.add({ severity: 'error', summary: t('common.error'), detail: data.message });
+                }
+            }, onAjaxError);
         }
-    }, onAjaxError);
+    });
 };
 
 const resetPassword = (auth) => {
-    if (!confirm(`¿Restablecer contraseña de "${auth.userName}"? Se enviará una nueva por WhatsApp.`)) return;
-
-    common.ajax(urls.resetPasswordUrl.replace('__ID__', auth.id), 'POST', null, (data) => {
-        if (data.success) {
-            toast.add({ severity: 'success', summary: 'Enlace enviado', detail: 'Enlace de restablecimiento enviado por WhatsApp' });
-        } else {
-            toast.add({ severity: 'error', summary: t('common.error'), detail: data.message });
+    confirm.require({
+        message: `¿Restablecer contraseña de "${auth.userName}"? Se enviará una nueva por WhatsApp.`,
+        header: 'Confirmar',
+        icon: 'pi pi-exclamation-triangle',
+        acceptClass: 'p-button-warning',
+        accept: () => {
+            common.ajax(urls.resetPasswordUrl.replace('__ID__', auth.id), 'POST', null, (data) => {
+                if (data.success) {
+                    toast.add({ severity: 'success', summary: 'Enlace enviado', detail: 'Enlace de restablecimiento enviado por WhatsApp' });
+                } else {
+                    toast.add({ severity: 'error', summary: t('common.error'), detail: data.message });
+                }
+            }, onAjaxError);
         }
-    }, onAjaxError);
+    });
 };
 
 onMounted(() => {

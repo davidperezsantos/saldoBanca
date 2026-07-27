@@ -211,6 +211,9 @@
                         <Button :label="$t('common.close')" class="p-button-text" @click="showDetail = false" />
                     </template>
                 </Dialog>
+
+                <ConfirmDialog />
+                <Toast />
             </div>
         </template>
     </Card>
@@ -224,6 +227,9 @@ import Column from 'primevue/column';
 import Button from 'primevue/button';
 import InputText from 'primevue/inputtext';
 import Dialog from 'primevue/dialog';
+import ConfirmDialog from 'primevue/confirmdialog';
+import Toast from 'primevue/toast';
+import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
 import Card from 'primevue/card';
 import availableGrants from '@/static/availableGrants.json';
@@ -231,6 +237,7 @@ import availableScopes from '@/static/availableScopes.json';
 import common from '../../common/common.js';
 
 const { t } = useI18n();
+const confirm = useConfirm();
 const toast = useToast();
 
 const urls = document.getElementById('vue-app').dataset;
@@ -402,28 +409,42 @@ const saveClient = () => {
 };
 
 const deleteClient = (client) => {
-    if (!confirm(`${t('oauth_clients.confirm_delete')} "${client.name}"?`)) return;
-    common.ajax(urls.detailUrl.replace('__ID__', client.identifier), 'DELETE', null, (data) => {
-        if (data.success) {
-            toast.add({ severity: 'success', summary: t('common.success'), detail: data.message });
-            loadClients();
-        } else {
-            toast.add({ severity: 'error', summary: t('common.error'), detail: data.message });
+    confirm.require({
+        message: `${t('oauth_clients.confirm_delete')} "${client.name}"?`,
+        header: 'Confirmar',
+        icon: 'pi pi-exclamation-triangle',
+        acceptClass: 'p-button-danger',
+        accept: () => {
+            common.ajax(urls.detailUrl.replace('__ID__', client.identifier), 'DELETE', null, (data) => {
+                if (data.success) {
+                    toast.add({ severity: 'success', summary: t('common.success'), detail: data.message });
+                    loadClients();
+                } else {
+                    toast.add({ severity: 'error', summary: t('common.error'), detail: data.message });
+                }
+            }, onAjaxError);
         }
-    }, onAjaxError);
+    });
 };
 
 const toggleStatus = (client) => {
     const newActive = !client.active;
-    if (!confirm(`${newActive ? t('oauth_clients.confirm_activate') : t('oauth_clients.confirm_deactivate')} "${client.name}"?`)) return;
-    common.ajax(urls.statusUrl.replace('__ID__', client.identifier), 'PUT', JSON.stringify({ active: newActive }), (data) => {
-        if (data.success) {
-            toast.add({ severity: 'success', summary: t('common.success'), detail: data.message });
-            loadClients();
-        } else {
-            toast.add({ severity: 'error', summary: t('common.error'), detail: data.message });
+    confirm.require({
+        message: `${newActive ? t('oauth_clients.confirm_activate') : t('oauth_clients.confirm_deactivate')} "${client.name}"?`,
+        header: 'Confirmar',
+        icon: 'pi pi-question-circle',
+        acceptClass: newActive ? 'p-button-success' : 'p-button-danger',
+        accept: () => {
+            common.ajax(urls.statusUrl.replace('__ID__', client.identifier), 'PUT', JSON.stringify({ active: newActive }), (data) => {
+                if (data.success) {
+                    toast.add({ severity: 'success', summary: t('common.success'), detail: data.message });
+                    loadClients();
+                } else {
+                    toast.add({ severity: 'error', summary: t('common.error'), detail: data.message });
+                }
+            }, onAjaxError);
         }
-    }, onAjaxError);
+    });
 };
 
 onMounted(() => {

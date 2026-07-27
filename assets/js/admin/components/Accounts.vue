@@ -232,6 +232,9 @@
                         <Button :label="$t('common.close')" class="p-button-text" @click="showPayoutModal = false" />
                     </template>
                 </Dialog>
+
+                <ConfirmDialog />
+                <Toast />
             </div>
         </template>
 
@@ -249,12 +252,16 @@ import Select from 'primevue/select';
 import InputGroup from 'primevue/inputgroup';
 import Dialog from 'primevue/dialog';
 import Card from 'primevue/card';
+import ConfirmDialog from 'primevue/confirmdialog';
+import Toast from 'primevue/toast';
+import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
 import countries from '../../../static/countries.json';
 import typeDocumentOptions from '../../../static/type_document.json';
 import common from '../../common/common.js';
 
 const { t } = useI18n();
+const confirm = useConfirm();
 const toast = useToast();
 
 const urls = document.getElementById('vue-app').dataset;
@@ -512,31 +519,43 @@ const savePayoutAccount = () => {
 };
 
 const deletePayoutAccount = (payoutAccount) => {
-    if (!confirm(`¿Eliminar la cuenta de pago "${payoutAccount.alias}"?`)) return;
-
-    const url = `${urls.payoutAccountsUrl.replace('__ACCOUNT_ID__', payoutAccountId.value)}/${payoutAccount.id}`;
-    common.ajax(url, 'DELETE', {}, (data) => {
-        if (data.success) {
-            toast.add({ severity: 'success', summary: t('common.success'), detail: data.message });
-            loadPayoutAccounts();
-        } else {
-            toast.add({ severity: 'error', summary: t('common.error'), detail: data.message });
+    confirm.require({
+        message: `¿Eliminar la cuenta de pago "${payoutAccount.alias}"?`,
+        header: 'Confirmar',
+        icon: 'pi pi-exclamation-triangle',
+        acceptClass: 'p-button-danger',
+        accept: () => {
+            const url = `${urls.payoutAccountsUrl.replace('__ACCOUNT_ID__', payoutAccountId.value)}/${payoutAccount.id}`;
+            common.ajax(url, 'DELETE', {}, (data) => {
+                if (data.success) {
+                    toast.add({ severity: 'success', summary: t('common.success'), detail: data.message });
+                    loadPayoutAccounts();
+                } else {
+                    toast.add({ severity: 'error', summary: t('common.error'), detail: data.message });
+                }
+            }, onAjaxError);
         }
-    }, onAjaxError);
+    });
 };
 
 const toggleStatus = (account) => {
     const newStatus = account.status === 'active' ? 'inactive' : 'active';
-    if (!confirm(`¿${newStatus === 'active' ? 'Activar' : 'Desactivar'} "${account.businessName}"?`)) return;
-
-    common.ajax(urls.statusUrl.replace('__ID__', account.id), 'PUT', JSON.stringify({ status: newStatus }), (data) => {
-        if (data.success) {
-            toast.add({ severity: 'success', summary: t('common.success'), detail: 'Estado cambiado' });
-            loadAccounts();
-        } else {
-            toast.add({ severity: 'error', summary: t('common.error'), detail: data.message });
+    confirm.require({
+        message: `¿${newStatus === 'active' ? 'Activar' : 'Desactivar'} "${account.businessName}"?`,
+        header: 'Confirmar',
+        icon: 'pi pi-question-circle',
+        acceptClass: newStatus === 'active' ? 'p-button-success' : 'p-button-danger',
+        accept: () => {
+            common.ajax(urls.statusUrl.replace('__ID__', account.id), 'PUT', JSON.stringify({ status: newStatus }), (data) => {
+                if (data.success) {
+                    toast.add({ severity: 'success', summary: t('common.success'), detail: 'Estado cambiado' });
+                    loadAccounts();
+                } else {
+                    toast.add({ severity: 'error', summary: t('common.error'), detail: data.message });
+                }
+            }, onAjaxError);
         }
-    }, onAjaxError);
+    });
 };
 
 onMounted(() => {

@@ -58,6 +58,9 @@
                         {{ $t('common.no_data') }}
                     </div>
                 </div>
+
+                <ConfirmDialog />
+                <Toast />
             </div>
         </template>
     </Card>
@@ -69,8 +72,14 @@ import { useI18n } from 'vue-i18n';
 import Button from 'primevue/button';
 import common from '../../common/common.js';
 import Card from 'primevue/card';
+import ConfirmDialog from 'primevue/confirmdialog';
+import Toast from 'primevue/toast';
+import { useConfirm } from 'primevue/useconfirm';
+import { useToast } from 'primevue/usetoast';
 
 const { t } = useI18n();
+const confirm = useConfirm();
+const toast = useToast();
 
 const urls = document.getElementById('vue-app').dataset;
 const rolesData = ref([]);
@@ -85,16 +94,22 @@ const editRole = (role) => {
 };
 
 const confirmDelete = (role) => {
-    if (!confirm(`¿Eliminar el rol "${role.label}"?`)) return;
-
-    common.ajax(urls.deleteUrl.replace('__ID__', role.id), 'POST', null, (data) => {
-        if (data.success) {
-            window.location.reload();
-        } else {
-            alert(data.error || 'Error al eliminar');
+    confirm.require({
+        message: `¿Eliminar el rol "${role.label}"?`,
+        header: 'Confirmar',
+        icon: 'pi pi-exclamation-triangle',
+        acceptClass: 'p-button-danger',
+        accept: () => {
+            common.ajax(urls.deleteUrl.replace('__ID__', role.id), 'POST', null, (data) => {
+                if (data.success) {
+                    window.location.reload();
+                } else {
+                    toast.add({ severity: 'error', summary: t('common.error'), detail: data.error || 'Error al eliminar' });
+                }
+            }, (jqXHR, textStatus, errorThrown) => {
+                toast.add({ severity: 'error', summary: t('common.error'), detail: jqXHR?.responseJSON?.message || errorThrown || textStatus });
+            });
         }
-    }, (jqXHR, textStatus, errorThrown) => {
-        alert('Error: ' + (jqXHR?.responseJSON?.message || errorThrown || textStatus));
     });
 };
 

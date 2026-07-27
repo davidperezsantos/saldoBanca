@@ -98,6 +98,9 @@
                     <Button :label="$t('common.save')" @click="saveUser" :loading="saving" />
                 </template>
             </Dialog>
+
+            <ConfirmDialog />
+            <Toast />
         </template>
     </Card>
 </template>
@@ -111,11 +114,15 @@ import Button from 'primevue/button';
 import InputText from 'primevue/inputtext';
 import Select from 'primevue/select';
 import Dialog from 'primevue/dialog';
+import ConfirmDialog from 'primevue/confirmdialog';
+import Toast from 'primevue/toast';
+import { useConfirm } from 'primevue/useconfirm';
 import Card from 'primevue/card';
 import { useToast } from 'primevue/usetoast';
 import common from '../../common/common.js';
 
 const { t } = useI18n();
+const confirm = useConfirm();
 const toast = useToast();
 
 const urls = document.getElementById('vue-app').dataset;
@@ -203,29 +210,41 @@ const saveUser = () => {
 };
 
 const toggleUser = (user) => {
-    if (!confirm(`¿Cambiar estado de "${user.email}"?`)) return;
-
-    common.ajax(urls.toggleStatusUrl.replace('__ID__', user.id), 'POST', null, (data) => {
-        if (data.success) {
-            toast.add({ severity: 'success', summary: 'Éxito', detail: 'Estado cambiado' });
-            window.location.reload();
-        } else {
-            toast.add({ severity: 'error', summary: t('common.error'), detail: data.error || 'Error' });
+    confirm.require({
+        message: `¿Cambiar estado de "${user.email}"?`,
+        header: 'Confirmar',
+        icon: 'pi pi-question-circle',
+        acceptClass: 'p-button-warning',
+        accept: () => {
+            common.ajax(urls.toggleStatusUrl.replace('__ID__', user.id), 'POST', null, (data) => {
+                if (data.success) {
+                    toast.add({ severity: 'success', summary: 'Éxito', detail: 'Estado cambiado' });
+                    window.location.reload();
+                } else {
+                    toast.add({ severity: 'error', summary: t('common.error'), detail: data.error || 'Error' });
+                }
+            }, onAjaxError);
         }
-    }, onAjaxError);
+    });
 };
 
 const confirmDelete = (user) => {
-    if (!confirm(`¿Eliminar el usuario "${user.email}"?`)) return;
-
-    common.ajax(urls.deleteUrl.replace('__ID__', user.id), 'POST', null, (data) => {
-        if (data.success) {
-            toast.add({ severity: 'success', summary: t('common.success'), detail: 'Usuario eliminado' });
-            window.location.reload();
-        } else {
-            toast.add({ severity: 'error', summary: t('common.error'), detail: data.error || 'Error' });
+    confirm.require({
+        message: `¿Eliminar el usuario "${user.email}"?`,
+        header: 'Confirmar',
+        icon: 'pi pi-exclamation-triangle',
+        acceptClass: 'p-button-danger',
+        accept: () => {
+            common.ajax(urls.deleteUrl.replace('__ID__', user.id), 'POST', null, (data) => {
+                if (data.success) {
+                    toast.add({ severity: 'success', summary: t('common.success'), detail: 'Usuario eliminado' });
+                    window.location.reload();
+                } else {
+                    toast.add({ severity: 'error', summary: t('common.error'), detail: data.error || 'Error' });
+                }
+            }, onAjaxError);
         }
-    }, onAjaxError);
+    });
 };
 
 const formatDate = (dateStr) => {

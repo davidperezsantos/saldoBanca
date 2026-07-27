@@ -296,6 +296,8 @@
                 <Button :label="$t('common.close')" class="p-button-text" @click="showDetailModal = false" />
             </template>
         </Dialog>
+
+        <Toast />
     </div>
         </template>
     </Card>
@@ -311,6 +313,7 @@ import InputText from 'primevue/inputtext';
 import Select from 'primevue/select';
 import Textarea from 'primevue/textarea';
 import Dialog from 'primevue/dialog';
+import Toast from 'primevue/toast';
 import { useToast } from 'primevue/usetoast';
 import common from '../../common/common.js';
 import Card from 'primevue/card';

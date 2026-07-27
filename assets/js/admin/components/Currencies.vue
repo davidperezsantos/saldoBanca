@@ -75,6 +75,9 @@
                         <Button :label="$t('common.save')" @click="saveCurrency" :loading="saving" />
                     </template>
                 </Dialog>
+
+                <ConfirmDialog />
+                <Toast />
             </div>
         </template>
 
@@ -89,11 +92,15 @@ import Column from 'primevue/column';
 import Button from 'primevue/button';
 import InputText from 'primevue/inputtext';
 import Dialog from 'primevue/dialog';
+import ConfirmDialog from 'primevue/confirmdialog';
+import Toast from 'primevue/toast';
+import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
 import Card from 'primevue/card';
 import common from '../../common/common.js';
 
 const { t } = useI18n();
+const confirm = useConfirm();
 const toast = useToast();
 
 const urls = document.getElementById('vue-app').dataset;
@@ -159,16 +166,22 @@ const saveCurrency = () => {
 
 const toggleStatus = (currency) => {
     const newActive = !currency.isActive;
-    if (!confirm(`¿${newActive ? 'Activar' : 'Desactivar'} "${currency.name}"?`)) return;
-
-    common.ajax(urls.statusUrl.replace('__ID__', currency.id), 'PUT', JSON.stringify({ isActive: newActive }), (data) => {
-        if (data.success) {
-            toast.add({ severity: 'success', summary: t('common.success'), detail: data.message });
-            loadCurrencies();
-        } else {
-            toast.add({ severity: 'error', summary: t('common.error'), detail: data.message });
+    confirm.require({
+        message: `¿${newActive ? 'Activar' : 'Desactivar'} "${currency.name}"?`,
+        header: 'Confirmar',
+        icon: 'pi pi-question-circle',
+        acceptClass: newActive ? 'p-button-success' : 'p-button-danger',
+        accept: () => {
+            common.ajax(urls.statusUrl.replace('__ID__', currency.id), 'PUT', JSON.stringify({ isActive: newActive }), (data) => {
+                if (data.success) {
+                    toast.add({ severity: 'success', summary: t('common.success'), detail: data.message });
+                    loadCurrencies();
+                } else {
+                    toast.add({ severity: 'error', summary: t('common.error'), detail: data.message });
+                }
+            }, onAjaxError);
         }
-    }, onAjaxError);
+    });
 };
 
 onMounted(() => {

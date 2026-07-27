@@ -163,6 +163,9 @@
                         <Button :label="$t('common.close')" class="p-button-text" @click="showDetailModal = false" />
                     </template>
                 </Dialog>
+
+                <ConfirmDialog />
+                <Toast />
             </div>
         </template>
     </Card>
@@ -179,11 +182,15 @@ import InputNumber from 'primevue/inputnumber';
 import Select from 'primevue/select';
 import Textarea from 'primevue/textarea';
 import Dialog from 'primevue/dialog';
+import ConfirmDialog from 'primevue/confirmdialog';
+import Toast from 'primevue/toast';
+import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
 import common from '../../common/common.js';
 import Card from 'primevue/card';
 
 const { t } = useI18n();
+const confirm = useConfirm();
 const toast = useToast();
 
 const urls = document.getElementById('vue-app').dataset;
@@ -334,36 +341,50 @@ const saveTransfer = () => {
 };
 
 const processTransfer = (transfer) => {
-    if (!confirm(`¿Procesar transferencia de ${formatCurrency(transfer.amount, transfer.currency)}?`)) return;
-    actionLoading.value = true;
-    common.ajax(urls.processUrl.replace('__ID__', transfer.id), 'PUT', null, (data) => {
-        if (data.success) {
-            toast.add({ severity: 'success', summary: t('common.success'), detail: data.message });
-            loadTransfers();
-        } else {
-            toast.add({ severity: 'error', summary: t('common.error'), detail: data.message });
+    confirm.require({
+        message: `¿Procesar transferencia de ${formatCurrency(transfer.amount, transfer.currency)}?`,
+        header: 'Confirmar',
+        icon: 'pi pi-question-circle',
+        acceptClass: 'p-button-success',
+        accept: () => {
+            actionLoading.value = true;
+            common.ajax(urls.processUrl.replace('__ID__', transfer.id), 'PUT', null, (data) => {
+                if (data.success) {
+                    toast.add({ severity: 'success', summary: t('common.success'), detail: data.message });
+                    loadTransfers();
+                } else {
+                    toast.add({ severity: 'error', summary: t('common.error'), detail: data.message });
+                }
+                actionLoading.value = false;
+            }, (...args) => {
+                onAjaxError(...args);
+                actionLoading.value = false;
+            });
         }
-        actionLoading.value = false;
-    }, (...args) => {
-        onAjaxError(...args);
-        actionLoading.value = false;
     });
 };
 
 const cancelTransfer = (transfer) => {
-    if (!confirm(`¿Cancelar transferencia de ${formatCurrency(transfer.amount, transfer.currency)}?`)) return;
-    actionLoading.value = true;
-    common.ajax(urls.cancelUrl.replace('__ID__', transfer.id), 'PUT', null, (data) => {
-        if (data.success) {
-            toast.add({ severity: 'success', summary: t('common.success'), detail: data.message });
-            loadTransfers();
-        } else {
-            toast.add({ severity: 'error', summary: t('common.error'), detail: data.message });
+    confirm.require({
+        message: `¿Cancelar transferencia de ${formatCurrency(transfer.amount, transfer.currency)}?`,
+        header: 'Confirmar',
+        icon: 'pi pi-exclamation-triangle',
+        acceptClass: 'p-button-danger',
+        accept: () => {
+            actionLoading.value = true;
+            common.ajax(urls.cancelUrl.replace('__ID__', transfer.id), 'PUT', null, (data) => {
+                if (data.success) {
+                    toast.add({ severity: 'success', summary: t('common.success'), detail: data.message });
+                    loadTransfers();
+                } else {
+                    toast.add({ severity: 'error', summary: t('common.error'), detail: data.message });
+                }
+                actionLoading.value = false;
+            }, (...args) => {
+                onAjaxError(...args);
+                actionLoading.value = false;
+            });
         }
-        actionLoading.value = false;
-    }, (...args) => {
-        onAjaxError(...args);
-        actionLoading.value = false;
     });
 };
 

@@ -117,6 +117,9 @@
                         <Button :label="$t('common.save')" @click="saveProvider" :loading="saving" />
                     </template>
                 </Dialog>
+
+                <ConfirmDialog />
+                <Toast />
             </div>
         </template>
     </Card>
@@ -132,10 +135,14 @@ import Button from 'primevue/button';
 import InputText from 'primevue/inputtext';
 import Select from 'primevue/select';
 import Dialog from 'primevue/dialog';
+import ConfirmDialog from 'primevue/confirmdialog';
+import Toast from 'primevue/toast';
+import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
 import common from '../../common/common.js';
 
 const { t } = useI18n();
+const confirm = useConfirm();
 const toast = useToast();
 
 const urls = document.getElementById('vue-app').dataset;
@@ -246,16 +253,22 @@ const saveProvider = () => {
 
 const toggleStatus = (provider) => {
     const newStatus = provider.status === 'active' ? 'inactive' : 'active';
-    if (!confirm(`¿${newStatus === 'active' ? 'Activar' : 'Desactivar'} "${provider.name}"?`)) return;
-
-    common.ajax(urls.statusUrl.replace('__ID__', provider.id), 'PUT', JSON.stringify({ status: newStatus }), (data) => {
-        if (data.success) {
-            toast.add({ severity: 'success', summary: t('common.success'), detail: 'Estado cambiado' });
-            loadProviders();
-        } else {
-            toast.add({ severity: 'error', summary: t('common.error'), detail: data.message });
+    confirm.require({
+        message: `¿${newStatus === 'active' ? 'Activar' : 'Desactivar'} "${provider.name}"?`,
+        header: 'Confirmar',
+        icon: 'pi pi-question-circle',
+        acceptClass: newStatus === 'active' ? 'p-button-success' : 'p-button-danger',
+        accept: () => {
+            common.ajax(urls.statusUrl.replace('__ID__', provider.id), 'PUT', JSON.stringify({ status: newStatus }), (data) => {
+                if (data.success) {
+                    toast.add({ severity: 'success', summary: t('common.success'), detail: 'Estado cambiado' });
+                    loadProviders();
+                } else {
+                    toast.add({ severity: 'error', summary: t('common.error'), detail: data.message });
+                }
+            }, onAjaxError);
         }
-    }, onAjaxError);
+    });
 };
 
 onMounted(() => {
