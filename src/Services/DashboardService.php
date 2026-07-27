@@ -62,17 +62,26 @@ class DashboardService
     }
 
     /**
-     * Saldo disponible y reservado del sistema, agrupado por moneda (nunca sumado entre monedas).
+     * Saldo disponible y reservado del sistema, en la moneda base. Recharge/Transfer/Invoice
+     * fuerzan la conversión a la moneda base antes de tocar el saldo (ver
+     * RechargeService/TransferService/InvoiceService::createXxx()) — ninguna otra moneda mueve
+     * plata nunca, aunque una cuenta tenga una fila de AccountBalance en otra moneda por su
+     * defaultCurrency. Mostrar esas filas en el dashboard como si fueran a llenarse alguna vez es
+     * engañoso (confirmado real: una recarga de $100 USD terminó en ~92 EUR, la fila de USD siguió
+     * en 0 para siempre) — filtrar acá a la moneda base en vez de agrupar por todas.
      */
     private function getBalancesByCurrency(): array
     {
+        $baseCurrency = $this->systemCurrencyService->getBaseCurrency();
+
         return $this->entityManager->createQueryBuilder()
             ->select('ab.currency AS currency')
             ->addSelect('COALESCE(SUM(ab.availableBalance), 0) AS available')
             ->addSelect('COALESCE(SUM(ab.reservedBalance), 0) AS reserved')
             ->from(AccountBalance::class, 'ab')
+            ->where('ab.currency = :baseCurrency')
+            ->setParameter('baseCurrency', $baseCurrency)
             ->groupBy('ab.currency')
-            ->orderBy('ab.currency')
             ->getQuery()
             ->getResult();
     }
