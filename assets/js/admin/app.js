@@ -8,12 +8,14 @@ import i18n from '../translations';
 import Alpine from 'alpinejs';
 import 'primeicons/primeicons.css';
 import '../../styles/app.css';
+import { userMenu } from './userMenu.js';
 
 // El sidebar de admin_layout.html.twig usa x-data/x-show para los desplegables — antes venía de
 // un <script> suelto apuntando a jsdelivr sin versión fijada ni integrity hash (riesgo de cadena
 // de suministro para un script con acceso total al DOM en cada pantalla). Empaquetado acá con el
 // resto de los assets, con la versión que fija package.json.
 window.Alpine = Alpine;
+Alpine.data('userMenu', userMenu);
 Alpine.start();
 
 export function createSaldoApp(rootComponent) {
