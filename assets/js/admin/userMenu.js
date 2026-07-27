@@ -18,6 +18,15 @@ function putJson(url, body) {
     }).then((response) => response.json());
 }
 
+// Mismo criterio que mobile/src/components/PhoneInput.vue: bandera como emoji Unicode (par de
+// "Regional Indicator Symbols" a partir del código ISO de 2 letras) en vez del nombre del país —
+// un <option> no puede renderizar un <img>, y así queda igual que en la app móvil.
+function flagEmoji(isoCode) {
+    return isoCode
+        .toUpperCase()
+        .replace(/./g, (char) => String.fromCodePoint(char.charCodeAt(0) + 127397));
+}
+
 // Mismo criterio que Accounts.vue: el teléfono se guarda como "{dial}{número}" pegado
 // (ej. "+5353026713"); acá lo separamos para mostrar el select de país + el número solo.
 function splitPhone(fullPhone) {
@@ -47,6 +56,10 @@ export function userMenu(initialName, initialPhone, updateProfileUrl, changePass
         currentPassword: '',
         newPassword: '',
         newPasswordConfirm: '',
+
+        countryLabel(c) {
+            return `${flagEmoji(c.code)} ${c.dial}`;
+        },
 
         openEdit() {
             this.menuOpen = false;

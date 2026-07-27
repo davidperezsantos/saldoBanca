@@ -270,8 +270,7 @@
 						{% endif %}
 					</nav>
 
-					<div class="px-4 py-4 border-t border-gray-100 relative"
-						x-data="userMenu({{ app.user.name|json_encode }}, {{ (app.user.phone ?? '')|json_encode }}, '{{ path('admin_profile_update') }}', '{{ path('admin_profile_change_password') }}')">
+					<div class="px-4 py-4 border-t border-gray-100 relative" x-data="userMenu({{ app.user.name|json_encode }}, {{ (app.user.phone ?? '')|json_encode }}, '{{ path('admin_profile_update') }}', '{{ path('admin_profile_change_password') }}')">
 						<div class="flex items-center gap-3">
 							<button type="button" class="flex items-center gap-3 flex-1 min-w-0 text-left" @click="menuOpen = !menuOpen">
 								<div class="w-9 h-9 bg-gradient-to-br from-indigo-400 to-purple-500 rounded-full flex items-center justify-center text-white text-sm font-semibold shadow-lg">
@@ -287,49 +286,40 @@
 							</a>
 						</div>
 
-						<div x-show="menuOpen" x-transition @click.outside="menuOpen = false" style="display: none"
-							class="absolute bottom-full left-4 right-4 mb-2 bg-white rounded-lg shadow-lg border border-gray-100 py-1 z-40">
-							<button type="button" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
-								@click="openEdit()">
+						<div x-show="menuOpen" x-transition @click.outside="menuOpen = false" style="display: none" class="absolute bottom-full left-4 right-4 mb-2 bg-white rounded-lg shadow-lg border border-gray-100 py-1 z-40">
+							<button type="button" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2" @click="openEdit()">
 								<svg class="w-4 h-4" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
 								{{ 'menu.edit_profile'|trans }}
 							</button>
-							<button type="button" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
-								@click="openChangePassword()">
+							<button type="button" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2" @click="openChangePassword()">
 								<svg class="w-4 h-4" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
 								{{ 'menu.change_password'|trans }}
 							</button>
 						</div>
 
-						<div x-show="editOpen" x-transition style="display: none"
-							class="fixed inset-0 bg-gray-900/40 z-50 flex items-center justify-center p-4"
-							@keydown.escape.window="editOpen = false">
+						<div x-show="editOpen" x-transition style="display: none" class="fixed inset-0 bg-gray-900/40 z-50 flex items-center justify-center p-4" @keydown.escape.window="editOpen = false">
 							<div class="bg-white rounded-xl shadow-xl w-full max-w-sm p-6" @click.outside="editOpen = false">
 								<h3 class="text-lg font-semibold text-gray-800 mb-4">{{ 'menu.edit_profile'|trans }}</h3>
 
 								<div class="mb-4">
 									<label class="block text-xs font-medium text-gray-500 mb-1">{{ 'menu.username'|trans }}</label>
-									<input type="text" value="{{ app.user.username }}" disabled
-										class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-gray-50 text-gray-500" />
+									<input type="text" value="{{ app.user.username }}" disabled class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-gray-50 text-gray-500"/>
 								</div>
 
 								<div class="mb-4">
 									<label class="block text-xs font-medium text-gray-500 mb-1">{{ 'menu.full_name'|trans }}</label>
-									<input type="text" x-model="nameInput"
-										class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+									<input type="text" x-model="nameInput" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"/>
 								</div>
 
 								<div class="mb-4">
 									<label class="block text-xs font-medium text-gray-500 mb-1">{{ 'menu.phone'|trans }}</label>
 									<div class="flex gap-2">
-										<select x-model="phoneDial"
-											class="px-2 py-2 border border-gray-300 rounded-lg text-sm w-28 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+										<select x-model="phoneDial" class="px-2 py-2 border border-gray-300 rounded-lg text-sm w-28 focus:outline-none focus:ring-2 focus:ring-emerald-500">
 											<template x-for="c in countries" :key="c.code">
-												<option :value="c.dial" x-text="c.name + ' (' + c.dial + ')'"></option>
+												<option :value="c.dial" x-text="countryLabel(c)"></option>
 											</template>
 										</select>
-										<input type="text" x-model="phoneNumber"
-											class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+										<input type="text" x-model="phoneNumber" class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"/>
 									</div>
 								</div>
 
@@ -339,9 +329,7 @@
 									<button type="button" class="px-4 py-2 text-sm rounded-lg text-gray-600 hover:bg-gray-100" @click="editOpen = false">
 										{{ 'common.cancel'|trans }}
 									</button>
-									<button type="button" :disabled="saving"
-										class="px-4 py-2 text-sm rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50"
-										@click="save()">
+									<button type="button" :disabled="saving" class="px-4 py-2 text-sm rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50" @click="save()">
 										<span x-show="!saving">{{ 'common.save'|trans }}</span>
 										<span x-show="saving" style="display: none">{{ 'common.saving'|trans }}</span>
 									</button>
@@ -349,28 +337,23 @@
 							</div>
 						</div>
 
-						<div x-show="passwordOpen" x-transition style="display: none"
-							class="fixed inset-0 bg-gray-900/40 z-50 flex items-center justify-center p-4"
-							@keydown.escape.window="passwordOpen = false">
+						<div x-show="passwordOpen" x-transition style="display: none" class="fixed inset-0 bg-gray-900/40 z-50 flex items-center justify-center p-4" @keydown.escape.window="passwordOpen = false">
 							<div class="bg-white rounded-xl shadow-xl w-full max-w-sm p-6" @click.outside="passwordOpen = false">
 								<h3 class="text-lg font-semibold text-gray-800 mb-4">{{ 'menu.change_password'|trans }}</h3>
 
 								<div class="mb-4">
 									<label class="block text-xs font-medium text-gray-500 mb-1">{{ 'menu.current_password'|trans }}</label>
-									<input type="password" x-model="currentPassword" autocomplete="current-password"
-										class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+									<input type="password" x-model="currentPassword" autocomplete="current-password" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"/>
 								</div>
 
 								<div class="mb-4">
 									<label class="block text-xs font-medium text-gray-500 mb-1">{{ 'menu.new_password'|trans }}</label>
-									<input type="password" x-model="newPassword" autocomplete="new-password"
-										class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+									<input type="password" x-model="newPassword" autocomplete="new-password" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"/>
 								</div>
 
 								<div class="mb-4">
 									<label class="block text-xs font-medium text-gray-500 mb-1">{{ 'menu.confirm_password'|trans }}</label>
-									<input type="password" x-model="newPasswordConfirm" autocomplete="new-password"
-										class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+									<input type="password" x-model="newPasswordConfirm" autocomplete="new-password" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"/>
 								</div>
 
 								<p x-show="pwErrorMsg" x-text="pwErrorMsg" style="display: none" class="text-sm text-red-600 mb-3"></p>
@@ -379,9 +362,7 @@
 									<button type="button" class="px-4 py-2 text-sm rounded-lg text-gray-600 hover:bg-gray-100" @click="passwordOpen = false">
 										{{ 'common.cancel'|trans }}
 									</button>
-									<button type="button" :disabled="pwSaving"
-										class="px-4 py-2 text-sm rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50"
-										@click="savePassword()">
+									<button type="button" :disabled="pwSaving" class="px-4 py-2 text-sm rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50" @click="savePassword()">
 										<span x-show="!pwSaving">{{ 'common.save'|trans }}</span>
 										<span x-show="pwSaving" style="display: none">{{ 'common.saving'|trans }}</span>
 									</button>
@@ -429,3 +410,4 @@ window.__PERMISSIONS__ = {{ app.user and app.user.role ? app.user.role.flatPermi
 				{% block javascripts %}{% endblock %}
 			</body>
 		</html>
+
