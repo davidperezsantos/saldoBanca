@@ -45,10 +45,6 @@ services:
 
 
 
-    App\EventSubscriber\:
-        resource: '../src/EventSubscriber/'
-        tags: ['kernel.event_subscriber']
-
     App\EventListener\:
         resource: '../src/EventListener/'
         exclude:
