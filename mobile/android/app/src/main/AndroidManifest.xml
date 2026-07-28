@@ -38,4 +38,9 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Requerido desde Android 8 (API 26) para poder disparar el instalador de APKs desde la
+         app (ver ApkInstallerPlugin) — sin este permiso el sistema bloquea el Intent.ACTION_VIEW
+         sobre un archivo .apk aunque la persona ya tenga habilitado "instalar apps desconocidas"
+         para esta app. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 </manifest>

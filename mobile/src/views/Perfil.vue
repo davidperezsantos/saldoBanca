@@ -1,11 +1,13 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { Filesystem, Directory } from '@capacitor/filesystem';
 import { apiClient, setUser, getAvailableRoles, getActiveRole, getDefaultRoleId, setDefaultRoleId } from '../api/client';
 import { useUser, initials } from '../composables/user';
 import { useAccount, loadAccount } from '../composables/account';
 import { hasScope } from '../api/permissions';
 import { checkForUpdate } from '../api/updateCheck';
+import { installApk } from '../api/apkInstaller';
 import PhoneInput from '../components/PhoneInput.vue';
 
 const { t } = useI18n();
@@ -18,6 +20,7 @@ const hasAccount = ref(false);
 
 const updateInfo = ref(null);
 const updateError = ref('');
+const downloadingUpdate = ref(false);
 
 const availableRoles = ref([]);
 const activeRole = ref(null);
@@ -54,19 +57,44 @@ async function makeActiveRoleDefault() {
     }
 }
 
+// Antes se delegaba la descarga entera a Chrome (Custom Tab, y después navegador del sistema —
+// ver git log) y en los dos casos la barra de progreso de Chrome se quedaba trabada en 100% sin
+// pasar nunca a "Descarga completa" — confirmado con una descarga manual por fuera de Chrome que
+// el archivo en sí está bien (se baja completo y es un APK válido), así que el problema está en
+// cómo Chrome maneja esa descarga puntual, no en el archivo. Ahora la app baja el APK ella misma
+// con fetch() y solo le pide a Android el paso de instalar (ApkInstallerPlugin, nativo).
 async function openUpdate() {
     updateError.value = '';
+    downloadingUpdate.value = true;
     try {
-        // @capacitor/browser abre siempre un Chrome Custom Tab en Android, que tiene un problema
-        // conocido con descargas de archivos redirigidos (como los assets de GitHub Releases,
-        // que redirigen a objects.githubusercontent.com): la barra de progreso avanza pero el
-        // archivo nunca termina de guardarse. window.open(url, '_system') hace que el bridge de
-        // Capacitor lance un Intent ACTION_VIEW real — el navegador del sistema (no un Custom
-        // Tab embebido) — donde la descarga sí funciona.
-        window.open(updateInfo.value.downloadUrl, '_system');
+        const response = await fetch(updateInfo.value.downloadUrl);
+        if (!response.ok) {
+            throw new Error(`download failed: ${response.status}`);
+        }
+        const blob = await response.blob();
+        const base64 = await blobToBase64(blob);
+
+        const written = await Filesystem.writeFile({
+            path: 'update.apk',
+            data: base64,
+            directory: Directory.Cache,
+        });
+
+        await installApk(written.uri.replace('file://', ''));
     } catch (e) {
         updateError.value = t('profile.updateError');
+    } finally {
+        downloadingUpdate.value = false;
     }
+}
+
+function blobToBase64(blob) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(String(reader.result).split(',')[1]);
+        reader.onerror = () => reject(reader.error);
+        reader.readAsDataURL(blob);
+    });
 }
 
 const nameInput = ref(user.value?.name || '');
@@ -173,8 +201,11 @@ function handleLogout() {
 
     <div v-if="updateInfo" class="card update-card">
       <p class="update-title">{{ t('profile.updateAvailable', { version: updateInfo.latestVersion }) }}</p>
+      <p v-if="downloadingUpdate" class="update-hint">{{ t('profile.updateDownloading') }}</p>
       <p v-if="updateError" class="error">{{ updateError }}</p>
-      <button class="update-btn" @click="openUpdate">{{ t('profile.updateButton') }}</button>
+      <button class="update-btn" :disabled="downloadingUpdate" @click="openUpdate">
+        {{ downloadingUpdate ? t('profile.updateDownloadingBtn') : t('profile.updateButton') }}
+      </button>
     </div>
 
     <div class="card">
@@ -303,6 +334,11 @@ function handleLogout() {
     font-weight: 600;
     font-size: 0.95rem;
 }
+.update-hint {
+    margin: 0 0 0.7rem;
+    font-size: 0.8rem;
+    opacity: 0.85;
+}
 .update-btn {
     width: 100%;
     padding: 0.6rem;
@@ -312,6 +348,10 @@ function handleLogout() {
     color: var(--primary-dark);
     font-weight: 700;
     cursor: pointer;
+}
+.update-btn:disabled {
+    opacity: 0.6;
+    cursor: default;
 }
 h2 {
     margin: 0 0 0.9rem;
