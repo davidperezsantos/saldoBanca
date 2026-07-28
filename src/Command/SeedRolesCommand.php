@@ -73,6 +73,11 @@ class SeedRolesCommand extends Command
                 'isSystem' => false,
                 'permissions' => [
                     'dashboard' => ['view'],
+                    // A diferencia de super_admin, "admin" no puede gestionar roles (solo usuarios)
+                    // ni ver/crear otros usuarios con un rol de sistema — eso lo filtra
+                    // User::hasSystemRole() en Controller/Admin/UserController y
+                    // Controller/Api/Admin/UserController, no este catálogo de permisos.
+                    'administration' => ['users' => ['view', 'create', 'edit', 'delete', 'status']],
                     'clients' => ['view', 'create', 'edit', 'details', 'status', 'balance'],
                     'businesses' => ['edit'],
                     'payout_accounts' => ['view', 'create', 'edit', 'delete'],
@@ -94,6 +99,10 @@ class SeedRolesCommand extends Command
                 'isSystem' => false,
                 'permissions' => [
                     'dashboard' => ['view'],
+                    // Soporte puede ver la lista de usuarios staff y activar/desactivar cuentas
+                    // (útil para desbloquear a alguien), pero no crear/editar/borrar usuarios ni
+                    // tocar roles.
+                    'administration' => ['users' => ['view', 'status']],
                     'clients' => ['view', 'details', 'status', 'balance'],
                     'payout_accounts' => ['view'],
                     'authorized' => ['view', 'details', 'status', 'verify'],

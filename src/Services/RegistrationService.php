@@ -52,7 +52,7 @@ class RegistrationService
         $user->setPhone($phone);
         $user->setPassword($this->passwordHasher->hashPassword($user, $password));
         $user->setIsActive(true);
-        $user->setRole($this->roleSeedService->ensureRoleExists('cliente'));
+        $user->setAssignedRoles([$this->roleSeedService->ensureRoleExists('cliente')]);
 
         $this->entityManager->persist($user);
 
@@ -134,7 +134,7 @@ class RegistrationService
         $user->setPhone($phone);
         $user->setPassword($this->passwordHasher->hashPassword($user, $password));
         $user->setIsActive(true);
-        $user->setRole($this->roleSeedService->ensureRoleExists('emprendedor'));
+        $user->setAssignedRoles([$this->roleSeedService->ensureRoleExists('emprendedor')]);
 
         $this->entityManager->persist($user);
 

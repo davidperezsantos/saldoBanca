@@ -73,7 +73,7 @@ class CreateUserCommand extends Command
         $user->setUsername($username);
         $user->setName($name);
         $user->setPassword($this->passwordHasher->hashPassword($user, $password));
-        $user->setRole($role);
+        $user->setAssignedRoles($role ? [$role] : []);
         $user->setIsActive(true);
 
         $this->entityManager->persist($user);

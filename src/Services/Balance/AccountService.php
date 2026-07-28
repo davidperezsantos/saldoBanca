@@ -108,7 +108,7 @@ class AccountService extends BaseService
             $user->setPhone($dto->phone ?? '');
             $user->setPassword($this->passwordHasher->hashPassword($user, $password));
             $user->setIsActive(true);
-            $user->setRole($this->roleSeedService->ensureRoleExists('cliente'));
+            $user->setAssignedRoles([$this->roleSeedService->ensureRoleExists('cliente')]);
 
             $this->persist($user);
             $account->setUser($user);

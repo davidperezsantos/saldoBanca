@@ -29,8 +29,20 @@ class RestrictPanelLoginListener
             return;
         }
 
-        $role = $user->getRole();
-        if ($role && !$role->isAllowPanelLogin()) {
+        $roles = $user->getAssignedRoles();
+        if ($roles->isEmpty()) {
+            return;
+        }
+
+        $hasPanelRole = false;
+        foreach ($roles as $role) {
+            if ($role->isAllowPanelLogin()) {
+                $hasPanelRole = true;
+                break;
+            }
+        }
+
+        if (!$hasPanelRole) {
             throw new CustomUserMessageAuthenticationException('Esta cuenta no tiene acceso al panel de administración.');
         }
     }

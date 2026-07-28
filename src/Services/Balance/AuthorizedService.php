@@ -102,7 +102,7 @@ class AuthorizedService extends BaseService
         $user->setPhone($dto->userPhone ?? '');
         $user->setPassword($this->passwordHasher->hashPassword($user, $password));
         $user->setIsActive(true);
-        $user->setRole($this->roleSeedService->ensureRoleExists('cliente'));
+        $user->setAssignedRoles([$this->roleSeedService->ensureRoleExists('cliente')]);
 
         $this->persist($user);
 

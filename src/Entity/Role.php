@@ -129,6 +129,21 @@ class Role extends BaseEntity
     }
 
     /**
+     * Resumen liviano (id/name/label) para exponer en respuestas JSON de la API — login, cambio
+     * de rol activo, y el listado de usuarios staff — sin filtrar permisos ni metadata interna.
+     *
+     * @return array{id: string, name: string, label: string}
+     */
+    public function toSummaryArray(): array
+    {
+        return [
+            'id' => (string) $this->getId(),
+            'name' => $this->name,
+            'label' => $this->label,
+        ];
+    }
+
+    /**
      * Aplana los permisos anidados al mismo formato de clave que usa PermissionVoter
      * ("modulo:accion" o "modulo.submodulo:accion") — para exponerle al frontend (SPA Vue)
      * la lista exacta de acciones que puede hacer el usuario, y así ocultar botones de

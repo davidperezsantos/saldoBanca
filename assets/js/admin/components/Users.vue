@@ -20,12 +20,14 @@
                     <Column field="username" :header="$t('users.username')" />
                     <Column field="email" :header="$t('users.email')" />
                     <Column field="name" :header="$t('users.name')" />
-                    <Column field="role" :header="$t('users.role')">
+                    <Column field="roles" :header="$t('users.role')">
                         <template #body="{ data }">
-                            <span v-if="data.role"
-                                class="px-2 py-1 text-xs font-medium bg-indigo-100 text-indigo-800 rounded-full">
-                                {{ data.role.label }}
-                            </span>
+                            <div v-if="data.roles && data.roles.length" class="flex flex-wrap gap-1">
+                                <span v-for="role in data.roles" :key="role.id"
+                                    class="px-2 py-1 text-xs font-medium bg-indigo-100 text-indigo-800 rounded-full">
+                                    {{ role.label }}
+                                </span>
+                            </div>
                             <span v-else class="text-gray-400">—</span>
                         </template>
                     </Column>
@@ -82,8 +84,8 @@
                     </div>
                     <div class="form-group">
                         <label class="form-label">{{ $t('users.role') }}</label>
-                        <Select v-model="form.roleId" :options="roles" optionLabel="label" optionValue="id"
-                            class="w-full" showClear :placeholder="$t('users.noRole')" />
+                        <MultiSelect v-model="form.roleIds" :options="roles" optionLabel="label" optionValue="id"
+                            display="chip" class="w-full" :placeholder="$t('users.noRole')" />
                     </div>
                     <div class="flex items-center">
                         <input type="checkbox" v-model="form.isActive" id="userActive"
@@ -112,7 +114,7 @@ import DataTable from 'primevue/datatable';
 import Column from 'primevue/column';
 import Button from 'primevue/button';
 import InputText from 'primevue/inputtext';
-import Select from 'primevue/select';
+import MultiSelect from 'primevue/multiselect';
 import Dialog from 'primevue/dialog';
 import ConfirmDialog from 'primevue/confirmdialog';
 import Toast from 'primevue/toast';
@@ -137,7 +139,7 @@ const saving = ref(false);
 const showModal = ref(false);
 const editingId = ref(null);
 
-const emptyForm = () => ({ username: '', email: '', name: '', password: '', roleId: null, isActive: true });
+const emptyForm = () => ({ username: '', email: '', name: '', password: '', roleIds: [], isActive: true });
 const form = ref(emptyForm());
 
 const filteredUsers = computed(() => {
@@ -163,7 +165,7 @@ const editUser = (user) => {
         email: user.email || '',
         name: user.name || '',
         password: '',
-        roleId: user.role ? user.role.id : null,
+        roleIds: user.roles ? user.roles.map(r => r.id) : [],
         isActive: user.isActive,
     };
     showModal.value = true;
@@ -188,7 +190,7 @@ const saveUser = () => {
     const body = {
         email: form.value.email,
         name: form.value.name,
-        role_id: form.value.roleId || null,
+        role_ids: form.value.roleIds,
         is_active: form.value.isActive,
     };
     if (form.value.password) body.password = form.value.password;

@@ -5,6 +5,7 @@ namespace App\EventListener;
 use App\Security\Attribute\RequireScope;
 use App\Security\ScopeAuthorizationService;
 use Symfony\Component\HttpKernel\Event\ControllerEvent;
+use Symfony\Component\Security\Core\Exception\AccessDeniedException;
 
 /**
  * Aplica #[RequireScope] antes de ejecutar cualquier controlador de /api/v1. Fail-closed a
@@ -60,6 +61,19 @@ class RequireScopeListener
                 $reflection->getDeclaringClass()->getName(),
                 $reflection->getName()
             ));
+        }
+
+        // Los endpoints /api/v1/admin/* son para staff (sesión JWT self-service) exclusivamente
+        // — un cliente OAuth2 de negocio (client_credentials) nunca debe poder llamarlos, sin
+        // importar qué scopes tenga guardados. No alcanza con que el scope pedido no esté en
+        // config/packages/league_oauth2_server.yaml: si el cliente pide un token sin "scope"
+        // explícito, el bundle de League le devuelve TODOS sus scopes guardados sin validarlos
+        // contra ese catálogo (ver ScopeRepository::setupScopes() en el vendor), así que un
+        // scope admin asignado por error a un cliente igual terminaría en un token válido. Este
+        // chequeo es la única barrera real — se hace acá, una sola vez, para que ningún
+        // controlador nuevo bajo Api/Admin/ pueda "olvidarse" de repetirlo.
+        if (str_starts_with($path, '/api/v1/admin/') && $this->scopeAuthorizationService->getSelfServiceUser() === null) {
+            throw new AccessDeniedException('Los endpoints de administración no son accesibles con credenciales de cliente OAuth2.');
         }
 
         $this->scopeAuthorizationService->requireAll($attributes[0]->newInstance()->scopes);

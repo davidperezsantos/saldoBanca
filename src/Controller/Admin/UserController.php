@@ -28,15 +28,13 @@ class UserController extends BaseController
         // El rol "de sistema" (isSystem, hoy solo super_admin) queda oculto y no asignable para
         // cualquiera que no sea a su vez de ese rol — un admin/soporte con permiso de gestión de
         // usuarios no debe poder ver ni crear otros super_admin.
-        $viewerIsSystem = $this->getUser()?->getRole()?->isSystem() ?? false;
+        $viewerIsSystem = $this->getUser()?->hasSystemRole() ?? false;
 
         $users = $this->entityManager->getRepository(User::class)->findAll();
 
         $usersData = [];
         foreach ($users as $user) {
-            $role = $user->getRole();
-
-            if (!$viewerIsSystem && $role?->isSystem()) {
+            if (!$viewerIsSystem && $user->hasSystemRole()) {
                 continue;
             }
 
@@ -47,11 +45,11 @@ class UserController extends BaseController
                 'name' => $user->getName(),
                 'isActive' => $user->isActive(),
                 'lastLoginAt' => $user->getLastLoginAt() ? $user->getLastLoginAt()->format('Y-m-d H:i:s') : null,
-                'role' => $role ? [
+                'roles' => array_map(fn($role) => [
                     'id' => $role->getId()->toRfc4122(),
                     'name' => $role->getName(),
                     'label' => $role->getLabel(),
-                ] : null,
+                ], $user->getAssignedRoles()->toArray()),
             ];
         }
 
@@ -83,7 +81,7 @@ class UserController extends BaseController
         $email = $data['email'] ?? '';
         $name = $data['name'] ?? '';
         $password = $data['password'] ?? '';
-        $roleId = $data['role_id'] ?? null;
+        $roleIds = $data['role_ids'] ?? [];
         $isActive = $data['is_active'] ?? true;
 
         if (empty($email) || empty($password)) {
@@ -95,13 +93,13 @@ class UserController extends BaseController
             return $this->json(['error' => 'Ya existe un usuario con ese email'], 400);
         }
 
-        $role = null;
-        if ($roleId) {
-            $role = $this->entityManager->getRepository(Role::class)->find($roleId);
-        }
+        $roles = $roleIds
+            ? $this->entityManager->getRepository(Role::class)->findBy(['id' => $roleIds])
+            : [];
 
-        $viewerIsSystem = $this->getUser()?->getRole()?->isSystem() ?? false;
-        if (!$viewerIsSystem && $role?->isSystem()) {
+        $viewerIsSystem = $this->getUser()?->hasSystemRole() ?? false;
+        $requestsSystemRole = count(array_filter($roles, fn(Role $role) => $role->isSystem())) > 0;
+        if (!$viewerIsSystem && $requestsSystemRole) {
             return $this->json(['error' => 'No podés asignar ese rol'], 403);
         }
 
@@ -110,7 +108,7 @@ class UserController extends BaseController
         $user->setName($name);
         $user->setUsername($this->usernameGenerator->generate($name));
         $user->setPassword($passwordHasher->hashPassword($user, $password));
-        $user->setRole($role);
+        $user->setAssignedRoles($roles);
         $user->setIsActive($isActive);
 
         $this->entityManager->persist($user);
@@ -154,15 +152,18 @@ class UserController extends BaseController
             $user->setPassword($passwordHasher->hashPassword($user, $data['password']));
         }
 
-        if (isset($data['role_id'])) {
-            $role = $data['role_id'] ? $this->entityManager->getRepository(Role::class)->find($data['role_id']) : null;
+        if (isset($data['role_ids'])) {
+            $roles = $data['role_ids']
+                ? $this->entityManager->getRepository(Role::class)->findBy(['id' => $data['role_ids']])
+                : [];
 
-            $viewerIsSystem = $this->getUser()?->getRole()?->isSystem() ?? false;
-            if (!$viewerIsSystem && $role?->isSystem()) {
+            $viewerIsSystem = $this->getUser()?->hasSystemRole() ?? false;
+            $requestsSystemRole = count(array_filter($roles, fn(Role $role) => $role->isSystem())) > 0;
+            if (!$viewerIsSystem && $requestsSystemRole) {
                 return $this->json(['error' => 'No podés asignar ese rol'], 403);
             }
 
-            $user->setRole($role);
+            $user->setAssignedRoles($roles);
         }
 
         if (isset($data['is_active'])) {

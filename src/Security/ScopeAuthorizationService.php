@@ -3,6 +3,7 @@
 namespace App\Security;
 
 use App\Entity\Balance\Account;
+use App\Entity\Role;
 use App\Entity\User;
 use League\Bundle\OAuth2ServerBundle\Security\Authentication\Token\OAuth2Token;
 use Symfony\Bundle\SecurityBundle\Security;
@@ -88,8 +89,63 @@ class ScopeAuthorizationService
         'history.read',
     ];
 
+    /**
+     * Traduce los permisos "administration.users:*" al scope equivalente que usa mobile/ para
+     * que el staff (super_admin/admin/support) gestione otros Users desde la app — a diferencia
+     * de PERMISSION_TO_SCOPES, estos scopes no son sobre "mi propio recurso" así que no pasan por
+     * el filtro SELF_SERVICE_SAFE_SCOPES (ese filtro existe para evitar IDOR sobre la cuenta
+     * propia, no aplica acá: la ownership de un User staff la resuelve StaffUserService con la
+     * regla de isSystem, no con selfServiceOwnsAccount()).
+     *
+     * @var array<string, list<string>>
+     */
+    private const ADMIN_PERMISSION_TO_SCOPES = [
+        'dashboard:view' => ['dashboard.read'],
+        'administration.users:view' => ['users.read'],
+        'administration.users:create' => ['users.create'],
+        'administration.users:edit' => ['users.update'],
+        'administration.users:delete' => ['users.delete'],
+        'administration.users:status' => ['users.status'],
+        'administration.roles:view' => ['roles.read'],
+        'administration.roles:create' => ['roles.create'],
+        'administration.roles:edit' => ['roles.update'],
+        'administration.roles:delete' => ['roles.delete'],
+        'oauth_clients:view' => ['oauth_clients.read'],
+        'oauth_clients:create' => ['oauth_clients.create'],
+        'oauth_clients:edit' => ['oauth_clients.update'],
+        'oauth_clients:delete' => ['oauth_clients.delete'],
+        'oauth_clients:status' => ['oauth_clients.status'],
+        // Prefijo "_admin" a propósito: "clients:view"/"authorized:view"/etc. son las mismas
+        // claves de permiso que ya traduce PERMISSION_TO_SCOPES para el rol "cliente" (su propia
+        // cuenta) — nombrarlos distinto evita que un scope de "todo el sistema" se confunda con
+        // el de "mi propio recurso" en el cliente (mobile ya los trata distinto, pero un nombre
+        // compartido sería un accidente esperando pasar).
+        'clients:view' => ['accounts_admin.read'],
+        'clients:create' => ['accounts_admin.create'],
+        'clients:edit' => ['accounts_admin.update'],
+        'clients:status' => ['accounts_admin.status'],
+        'clients:balance' => ['accounts_admin.balance'],
+        'businesses:edit' => ['accounts_admin.approve_business'],
+        'authorized:view' => ['authorized_admin.read'],
+        'authorized:create' => ['authorized_admin.create'],
+        'authorized:edit' => ['authorized_admin.update'],
+        'authorized:delete' => ['authorized_admin.delete'],
+        'authorized:status' => ['authorized_admin.status'],
+        'authorized:verify' => ['authorized_admin.verify'],
+        'exchange.providers:view' => ['exchange_providers_admin.read'],
+        'exchange.providers:create' => ['exchange_providers_admin.create'],
+        'exchange.providers:edit' => ['exchange_providers_admin.update'],
+        'exchange.rates:view' => ['exchange_rates_admin.read'],
+        'exchange.rates:fetch' => ['exchange_rates_admin.fetch'],
+        'currencies:view' => ['currencies_admin.read'],
+        'currencies:create' => ['currencies_admin.create'],
+        'currencies:edit' => ['currencies_admin.update'],
+        'currencies:status' => ['currencies_admin.status'],
+    ];
+
     public function __construct(
         private Security $security,
+        private ActiveRoleContext $activeRoleContext,
     ) {
     }
 
@@ -105,37 +161,94 @@ class ScopeAuthorizationService
 
         $selfServiceUser = $this->getSelfServiceUser();
         if ($selfServiceUser !== null) {
-            return $this->getScopesForUser($selfServiceUser);
+            return $this->getScopesForUser($selfServiceUser, $this->resolveActiveRole($selfServiceUser));
         }
 
         return [];
     }
 
     /**
-     * Scopes self-service de $user según los permisos de su Role — independiente del token de
-     * seguridad actual, para poder llamarse también desde AuthController::login() (donde todavía
-     * no hay un token autenticado contra el firewall /api).
+     * De los roles asignados a $user, cuál está "activo" para el request actual. Con 0 o 1 rol no
+     * hay ambigüedad. Con 2+ depende del claim "activeRoleId" del JWT (ver JWTActiveRoleListener)
+     * — si no matchea ningún rol realmente asignado (token viejo tras revocar el rol, o el cliente
+     * nunca lo mandó) se devuelve null a propósito: getScopesForUser() lo trata como "sin permisos
+     * de rol", fail-closed, en vez de adivinar cuál usar.
+     */
+    private function resolveActiveRole(User $user): ?Role
+    {
+        $assignedRoles = $user->getAssignedRoles();
+
+        if ($assignedRoles->count() <= 1) {
+            return $assignedRoles->first() ?: null;
+        }
+
+        $roleId = $this->activeRoleContext->getRoleId();
+        if ($roleId === null) {
+            return null;
+        }
+
+        foreach ($assignedRoles as $role) {
+            if ((string) $role->getId() === $roleId) {
+                return $role;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Scopes de $user para la sesión con $activeRole activo — independiente del token de
+     * seguridad actual, para poder llamarse también desde AuthController::login()/
+     * ProfileController::switchActiveRole() (donde todavía no hay un token autenticado contra el
+     * firewall /api, se está por emitir uno recién).
      *
      * @return list<string>
      */
-    public function getScopesForUser(User $user): array
+    public function getScopesForUser(User $user, ?Role $activeRole): array
     {
-        $scopes = [];
-        $role = $user->getRole();
-        if ($role !== null) {
-            foreach ($role->getFlatPermissions() as $permission) {
-                foreach (self::PERMISSION_TO_SCOPES[$permission] ?? [] as $scope) {
-                    $scopes[$scope] = true;
+        $granted = [];
+
+        if ($activeRole !== null) {
+            $flatPermissions = $activeRole->getFlatPermissions();
+
+            // Los scopes "de mi propio recurso" (accounts.read, balance.read, etc.) solo se
+            // otorgan si el ROL ACTIVO es de los que nunca entran al panel (cliente/emprendedor,
+            // allowPanelLogin=false) Y el usuario es dueño de una Account. No alcanza con mirar
+            // solo la Account: un mismo User puede tener roles ["cliente", "admin"] — admin
+            // también tiene permisos "clients:view"/"recharges:view" (para gestionar cuentas
+            // AJENAS desde el panel), así que si solo mirásemos el nombre del permiso, entrar
+            // como admin heredaría por error los scopes de "mi propia cuenta" y mobile mostraría
+            // las pestañas de cliente (Recargas, Transferencias, etc.) estando en modo staff.
+            if (!$activeRole->isAllowPanelLogin() && $user->getAccount() !== null) {
+                $selfServiceScopes = [];
+                foreach ($flatPermissions as $permission) {
+                    foreach (self::PERMISSION_TO_SCOPES[$permission] ?? [] as $scope) {
+                        $selfServiceScopes[$scope] = true;
+                    }
+                }
+                $granted = array_intersect(array_keys($selfServiceScopes), self::SELF_SERVICE_SAFE_SCOPES);
+            }
+
+            // Espejo del guard de arriba, en sentido inverso: los scopes "de todo el sistema"
+            // (accounts_admin.read, authorized_admin.read, etc.) solo se otorgan si el rol activo
+            // es de staff (allowPanelLogin=true). "clients:view"/"authorized:view"/etc. son las
+            // MISMAS claves de permiso que ya tiene el rol "cliente" con otro sentido (ver arriba)
+            // — sin este guard, entrar con el rol "cliente" heredaría por error scopes para listar
+            // TODAS las cuentas del sistema, no solo la propia.
+            if ($activeRole->isAllowPanelLogin()) {
+                foreach ($flatPermissions as $permission) {
+                    foreach (self::ADMIN_PERMISSION_TO_SCOPES[$permission] ?? [] as $scope) {
+                        $granted[] = $scope;
+                    }
                 }
             }
         }
 
-        $granted = array_intersect(array_keys($scopes), self::SELF_SERVICE_SAFE_SCOPES);
         // Cambiar la propia contraseña no depende del Role ni expone datos de otra cuenta — se
-        // otorga siempre a cualquier usuario final, no solo a "cliente". No es un scope OAuth2
-        // real (no está en config/packages/league_oauth2_server.yaml a propósito): un cliente
-        // OAuth2 de negocio nunca puede tenerlo, porque el servidor OAuth2 solo emite scopes de
-        // ese catálogo.
+        // otorga siempre a cualquier usuario final, sin importar el rol activo. No es un scope
+        // OAuth2 real (no está en config/packages/league_oauth2_server.yaml a propósito): un
+        // cliente OAuth2 de negocio nunca puede tenerlo, porque el servidor OAuth2 solo emite
+        // scopes de ese catálogo.
         $granted[] = 'profile.update';
 
         return array_values(array_unique($granted));

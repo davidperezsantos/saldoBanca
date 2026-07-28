@@ -405,7 +405,7 @@
             email: app.user.email,
             roles: app.user.roles
         }|json_encode|raw : 'null' }};
-window.__PERMISSIONS__ = {{ app.user and app.user.role ? app.user.role.flatPermissions|json_encode|raw : '[]' }};
+window.__PERMISSIONS__ = {{ app.user ? app.user.flatPermissions|json_encode|raw : '[]' }};
 				</script>
 				{% block javascripts %}{% endblock %}
 			</body>

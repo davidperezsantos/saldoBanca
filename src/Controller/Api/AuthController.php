@@ -2,6 +2,7 @@
 
 namespace App\Controller\Api;
 
+use App\Entity\Role;
 use App\Http\ApiResponse;
 use App\Repository\UserRepository;
 use App\Security\ScopeAuthorizationService;
@@ -42,7 +43,10 @@ class AuthController extends AbstractController
     #[OA\Post(
         path: '/api/v1/login',
         summary: 'Iniciar sesión',
-        description: 'Autentica un usuario y devuelve un token JWT. Acepta username o email como identificador.',
+        description: 'Autentica un usuario y devuelve un token JWT. Acepta username o email como ' .
+            'identificador. Si el usuario tiene más de un Role asignado y no se manda roleId, no ' .
+            'devuelve token: responde requiresRoleSelection=true con la lista de roles para que el ' .
+            'cliente elija y reintente el login pasando roleId.',
         tags: ['Auth'],
     )]
     #[OA\RequestBody(
@@ -53,17 +57,19 @@ class AuthController extends AbstractController
                 new OA\Property(property: 'username', description: 'Nombre de usuario', type: 'string', example: 'juanperez'),
                 new OA\Property(property: 'email', description: 'Correo electrónico (alternativo si no se envía username)', type: 'string', example: 'juan@ejemplo.com'),
                 new OA\Property(property: 'password', description: 'Contraseña del usuario', type: 'string', example: 'miPassword123'),
+                new OA\Property(property: 'roleId', description: 'Rol activo a usar en esta sesión — requerido solo si el usuario tiene más de un rol asignado', type: 'string', example: 'a1b2c3d4-...'),
             ]
         )
     )]
     #[OA\Response(
         response: 200,
-        description: 'Login exitoso',
+        description: 'Login exitoso (o requiresRoleSelection=true si falta elegir rol)',
         content: new OA\JsonContent(
             properties: [
                 new OA\Property(property: 'success', type: 'boolean', example: true),
                 new OA\Property(property: 'message', type: 'string', example: 'Login successful'),
                 new OA\Property(property: 'data', properties: [
+                    new OA\Property(property: 'requiresRoleSelection', type: 'boolean', example: false),
                     new OA\Property(property: 'token', type: 'string', example: 'eyJhbGciOiJSUzI1NiJ9...'),
                     new OA\Property(property: 'user', properties: [
                         new OA\Property(property: 'id', type: 'string', example: 'a1b2c3d4-...'),
@@ -74,17 +80,19 @@ class AuthController extends AbstractController
                     ], type: 'object'),
                     new OA\Property(
                         property: 'scopes',
-                        description: 'Scopes habilitados para este usuario sobre su propia cuenta (según los permisos de su Role) — para que la app sepa qué mostrar.',
+                        description: 'Scopes habilitados para el rol activo de esta sesión — para que la app sepa qué mostrar.',
                         type: 'array',
                         items: new OA\Items(type: 'string', example: 'balance.read')
                     ),
+                    new OA\Property(property: 'activeRole', description: 'Rol activo de esta sesión', type: 'object'),
+                    new OA\Property(property: 'availableRoles', description: 'Todos los roles asignados al usuario', type: 'array', items: new OA\Items(type: 'object')),
                 ], type: 'object'),
             ]
         )
     )]
     #[OA\Response(response: 400, description: 'Username/email and password are required')]
     #[OA\Response(response: 401, description: 'Invalid credentials')]
-    #[OA\Response(response: 403, description: 'Account is disabled')]
+    #[OA\Response(response: 403, description: 'Account is disabled, o roleId no asignado a este usuario')]
     #[Route('/login', name: 'api_login', methods: ['POST'])]
     public function login(Request $request): JsonResponse
     {
@@ -96,6 +104,7 @@ class AuthController extends AbstractController
         $data = json_decode($request->getContent(), true);
         $username = $data['username'] ?? $data['email'] ?? '';
         $password = $data['password'] ?? '';
+        $roleId = $data['roleId'] ?? null;
 
         if (empty($username) || empty($password)) {
             return ApiResponse::error('Username/email and password are required', 400);
@@ -118,13 +127,46 @@ class AuthController extends AbstractController
             return ApiResponse::error('Invalid credentials', 401);
         }
 
+        $assignedRoles = $user->getAssignedRoles();
+
+        if ($assignedRoles->count() > 1 && $roleId === null) {
+            return ApiResponse::success([
+                'requiresRoleSelection' => true,
+                'user' => [
+                    'id' => $user->getId(),
+                    'username' => $user->getUsername(),
+                    'email' => $user->getEmail(),
+                    'name' => $user->getName(),
+                ],
+                'roles' => array_map(fn(Role $role) => $role->toSummaryArray(), $assignedRoles->toArray()),
+            ], 'Role selection required');
+        }
+
+        $activeRole = null;
+        if ($assignedRoles->count() <= 1) {
+            $activeRole = $assignedRoles->first() ?: null;
+        } else {
+            foreach ($assignedRoles as $role) {
+                if ((string) $role->getId() === (string) $roleId) {
+                    $activeRole = $role;
+                    break;
+                }
+            }
+            if ($activeRole === null) {
+                return ApiResponse::error('No tenés ese rol asignado', 403);
+            }
+        }
+
         $user->setLastLoginAt(new \DateTimeImmutable());
         $this->systemActor->actAsSystem('login');
         $this->entityManager->flush();
 
-        $token = $this->jwtManager->create($user);
+        $token = $this->jwtManager->createFromPayload($user, [
+            'activeRoleId' => $activeRole?->getId() ? (string) $activeRole->getId() : null,
+        ]);
 
         return ApiResponse::success([
+            'requiresRoleSelection' => false,
             'token' => $token,
             'user' => [
                 'id' => $user->getId(),
@@ -133,7 +175,9 @@ class AuthController extends AbstractController
                 'name' => $user->getName(),
                 'roles' => $user->getRoles(),
             ],
-            'scopes' => $this->scopeAuthorizationService->getScopesForUser($user),
+            'scopes' => $this->scopeAuthorizationService->getScopesForUser($user, $activeRole),
+            'activeRole' => $activeRole?->toSummaryArray(),
+            'availableRoles' => array_map(fn(Role $role) => $role->toSummaryArray(), $assignedRoles->toArray()),
         ], 'Login successful');
     }
 
@@ -210,7 +254,7 @@ class AuthController extends AbstractController
         $user->setIsActive(true);
         // Mismo rol "cliente" que /register/client — para que allowPanelLogin=false lo cubra
         // igual (ver RestrictPanelLoginListener), en vez de quedar sin Role y en un estado ambiguo.
-        $user->setRole($this->roleSeedService->ensureRoleExists('cliente'));
+        $user->setAssignedRoles([$this->roleSeedService->ensureRoleExists('cliente')]);
 
         $this->entityManager->persist($user);
         $this->systemActor->actAsSystem('autorregistro');

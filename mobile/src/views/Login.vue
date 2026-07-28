@@ -2,12 +2,13 @@
 import { ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { login } from '../api/auth';
-import { apiClient } from '../api/client';
+import { apiClient, getDefaultRoleId, setDefaultRoleId } from '../api/client';
 
 const { t } = useI18n();
 const emit = defineEmits(['logged-in']);
 
 const mode = ref('login');
+const roleOptions = ref([]);
 
 const username = ref('');
 const password = ref('');
@@ -23,13 +24,48 @@ async function handleSubmit() {
     error.value = '';
     loading.value = true;
     try {
-        await login(username.value, password.value);
-        emit('logged-in');
+        const result = await login(username.value, password.value);
+        if (result.requiresRoleSelection) {
+            await resolveRole(result.roles);
+        } else {
+            emit('logged-in');
+        }
     } catch (e) {
         error.value = e.response?.data?.message || t('login.error');
     } finally {
         loading.value = false;
     }
+}
+
+// Si el rol guardado como default en este dispositivo sigue entre los roles del usuario, entra
+// directo sin preguntar; si no (primera vez, o se borró la preferencia), muestra el selector.
+async function resolveRole(roles) {
+    const defaultRoleId = await getDefaultRoleId();
+    const matched = roles.find((r) => r.id === defaultRoleId);
+    if (matched) {
+        await completeLoginWithRole(matched.id);
+    } else {
+        roleOptions.value = roles;
+        mode.value = 'pickRole';
+    }
+}
+
+async function chooseRole(role) {
+    error.value = '';
+    loading.value = true;
+    try {
+        await setDefaultRoleId(role.id);
+        await completeLoginWithRole(role.id);
+    } catch (e) {
+        error.value = e.response?.data?.message || t('login.error');
+    } finally {
+        loading.value = false;
+    }
+}
+
+async function completeLoginWithRole(roleId) {
+    await login(username.value, password.value, roleId);
+    emit('logged-in');
 }
 
 function showReset() {
@@ -81,6 +117,21 @@ async function requestReset() {
                 <a href="#" class="link" @click.prevent="showReset">{{ t('login.forgotPassword') }}</a>
             </p>
         </form>
+
+        <div v-else-if="mode === 'pickRole'" class="role-pick">
+            <p class="reset-desc">{{ t('login.pickRoleDesc') }}</p>
+            <button
+                v-for="role in roleOptions"
+                :key="role.id"
+                type="button"
+                class="role-option"
+                :disabled="loading"
+                @click="chooseRole(role)"
+            >
+                {{ role.label }}
+            </button>
+            <p v-if="error" class="error">{{ error }}</p>
+        </div>
 
         <form v-else @submit.prevent="requestReset">
             <p class="reset-desc">{{ t('login.resetDesc') }}</p>
@@ -233,5 +284,28 @@ form {
     text-align: center;
     font-size: 0.72rem;
     color: #aaa;
+}
+
+.role-pick {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+.role-option {
+    padding: 0.7rem;
+    border: 1px solid #d0d3d8;
+    border-radius: 8px;
+    background: white;
+    color: var(--primary-dark);
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    text-align: center;
+}
+
+.role-option:disabled {
+    opacity: 0.6;
+    cursor: default;
 }
 </style>

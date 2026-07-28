@@ -1,18 +1,45 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, computed, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { hasScope } from '../api/permissions';
+import { hasScope, hasAnyScope } from '../api/permissions';
+import { roleVersion } from '../composables/role';
 
 const { t } = useI18n();
 
 const ALL_TABS = computed(() => [
     {
+        key: 'account',
         to: '/',
         label: t('nav.account'),
         scope: 'accounts.read',
         path: 'M12 12c2.7 0 4.9-2.2 4.9-4.9S14.7 2.2 12 2.2 7.1 4.4 7.1 7.1 9.3 12 12 12Zm0 2.4c-3.5 0-10.4 1.8-10.4 5.3v2.1h20.8v-2.1c0-3.5-6.9-5.3-10.4-5.3Z',
     },
     {
+        key: 'dashboard',
+        to: '/',
+        label: t('nav.dashboard'),
+        scope: 'dashboard.read',
+        path: 'M3 12l2-2 7-7 7 7 2 2M5 10v10a1 1 0 0 0 1 1h3m10-11v10a1 1 0 0 1-1 1h-3m-6 0a1 1 0 0 0 1-1v-4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v4a1 1 0 0 0 1 1m-6 0h6',
+        stroke: true,
+    },
+    {
+        key: 'administracion',
+        to: '/administracion',
+        label: t('nav.administration'),
+        scopes: ['users.read', 'roles.read', 'oauth_clients.read'],
+        path: 'M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3Zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3Zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5Zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5Z',
+        stroke: true,
+    },
+    {
+        key: 'soporte',
+        to: '/soporte',
+        label: t('nav.support'),
+        scopes: ['accounts_admin.read', 'authorized_admin.read', 'exchange_providers_admin.read', 'exchange_rates_admin.read', 'currencies_admin.read'],
+        path: 'M16 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0ZM12 14a7 7 0 0 0-7 7h14a7 7 0 0 0-7-7Z',
+        stroke: true,
+    },
+    {
+        key: 'recargas',
         to: '/recargas',
         label: t('nav.recharges'),
         scope: 'recharges.read',
@@ -20,6 +47,7 @@ const ALL_TABS = computed(() => [
         stroke: true,
     },
     {
+        key: 'transferencias',
         to: '/transferencias',
         label: t('nav.transfers'),
         scope: 'transfers.read',
@@ -27,6 +55,7 @@ const ALL_TABS = computed(() => [
         stroke: true,
     },
     {
+        key: 'facturas',
         to: '/facturas',
         label: t('nav.invoices'),
         scope: 'invoices.read',
@@ -34,6 +63,7 @@ const ALL_TABS = computed(() => [
         stroke: true,
     },
     {
+        key: 'historial',
         to: '/historial',
         label: t('nav.history'),
         scope: 'history.read',
@@ -44,22 +74,26 @@ const ALL_TABS = computed(() => [
 
 const tabs = ref([]);
 
-onMounted(async () => {
+async function load() {
     const visible = [];
     for (const tab of ALL_TABS.value) {
-        if (await hasScope(tab.scope)) {
+        const allowed = tab.scopes ? await hasAnyScope(tab.scopes) : await hasScope(tab.scope);
+        if (allowed) {
             visible.push(tab);
         }
     }
     tabs.value = visible;
-});
+}
+
+onMounted(load);
+watch(roleVersion, load);
 </script>
 
 <template>
-  <nav v-if="tabs.length > 1" class="bottom-nav">
+  <nav v-if="tabs.length > 0" class="bottom-nav">
     <router-link
       v-for="tab in tabs"
-      :key="tab.to"
+      :key="tab.key"
       :to="tab.to"
       class="tab"
       active-class="active"

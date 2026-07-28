@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { apiClient, setUser } from '../api/client';
+import { apiClient, setUser, getAvailableRoles, getActiveRole, getDefaultRoleId, setDefaultRoleId } from '../api/client';
 import { useUser, initials } from '../composables/user';
 import { useAccount, loadAccount } from '../composables/account';
 import { hasScope } from '../api/permissions';
@@ -14,12 +14,24 @@ const emit = defineEmits(['logged-out']);
 const { user } = useUser();
 const { account } = useAccount();
 const canSeeAuthorized = ref(false);
+const hasAccount = ref(false);
 
 const updateInfo = ref(null);
 const updateError = ref('');
 
+const availableRoles = ref([]);
+const activeRole = ref(null);
+const defaultRoleId = ref(null);
+const settingDefault = ref(false);
+
 onMounted(async () => {
     canSeeAuthorized.value = await hasScope('authorized.read');
+    hasAccount.value = await hasScope('accounts.read');
+
+    availableRoles.value = await getAvailableRoles();
+    activeRole.value = await getActiveRole();
+    defaultRoleId.value = await getDefaultRoleId();
+
     try {
         const info = await checkForUpdate();
         if (info.available) {
@@ -30,6 +42,17 @@ onMounted(async () => {
         // pantalla sigue funcionando normal, simplemente no muestra el aviso de actualización.
     }
 });
+
+async function makeActiveRoleDefault() {
+    if (!activeRole.value) return;
+    settingDefault.value = true;
+    try {
+        await setDefaultRoleId(activeRole.value.id);
+        defaultRoleId.value = activeRole.value.id;
+    } finally {
+        settingDefault.value = false;
+    }
+}
 
 async function openUpdate() {
     updateError.value = '';
@@ -173,7 +196,7 @@ function handleLogout() {
       </form>
     </div>
 
-    <div class="card">
+    <div v-if="hasAccount" class="card">
       <h2>{{ t('profile.pinTitle') }}</h2>
       <p class="hint">{{ t('profile.pinHint') }}</p>
       <p v-if="pinError" class="error">{{ pinError }}</p>
@@ -181,6 +204,20 @@ function handleLogout() {
       <button class="secondary-btn" :disabled="pinLoading" @click="requestNewPin">
         {{ pinLoading ? t('common.sending') : t('profile.pinButton') }}
       </button>
+    </div>
+
+    <div v-if="availableRoles.length > 1" class="card">
+      <h2>{{ t('profile.roleTitle') }}</h2>
+      <p class="hint">{{ t('profile.roleActive', { role: activeRole?.label }) }}</p>
+      <button
+        v-if="activeRole && activeRole.id !== defaultRoleId"
+        class="secondary-btn"
+        :disabled="settingDefault"
+        @click="makeActiveRoleDefault"
+      >
+        {{ settingDefault ? t('common.saving') : t('profile.roleMakeDefault') }}
+      </button>
+      <p v-else class="hint">{{ t('profile.roleIsDefault') }}</p>
     </div>
 
     <router-link v-if="canSeeAuthorized" to="/autorizados" class="card link-card">

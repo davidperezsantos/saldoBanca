@@ -8,6 +8,7 @@ use App\Security\Attribute\RequireScope;
 use App\Security\ScopeAuthorizationService;
 use App\Services\ProfileService;
 use Doctrine\ORM\EntityManagerInterface;
+use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use OpenApi\Attributes as OA;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -27,6 +28,7 @@ class ProfileController extends BaseController
         private UserPasswordHasherInterface $passwordHasher,
         private ScopeAuthorizationService $scopeAuthorizationService,
         private ProfileService $profileService,
+        private JWTTokenManagerInterface $jwtManager,
     ) {
     }
 
@@ -112,5 +114,64 @@ class ProfileController extends BaseController
         $this->entityManager->flush();
 
         return $this->success(null, 'Contraseña actualizada');
+    }
+
+    #[OA\Put(
+        path: '/api/v1/me/active-role',
+        summary: 'Cambiar el rol activo de la sesión',
+        description: 'Para usuarios con más de un Role asignado (ej. admin + cliente): reemite el ' .
+            'token con los scopes del rol elegido, sin pedir contraseña de nuevo. Cambia solo la ' .
+            'sesión actual — no toca ninguna preferencia persistida (eso lo decide el cliente).',
+        tags: ['Profile'],
+    )]
+    #[OA\RequestBody(
+        required: true,
+        content: new OA\JsonContent(
+            required: ['roleId'],
+            properties: [
+                new OA\Property(property: 'roleId', description: 'Id de uno de los roles asignados al usuario', type: 'string', example: 'a1b2c3d4-...'),
+            ]
+        )
+    )]
+    #[OA\Response(response: 200, description: 'Token reemitido con el nuevo rol activo')]
+    #[OA\Response(response: 400, description: 'roleId requerido, o esta acción no aplica a este tipo de credencial')]
+    #[OA\Response(response: 403, description: 'El usuario no tiene ese rol asignado')]
+    #[RequireScope('profile.update')]
+    #[Route('/me/active-role', name: 'api_profile_switch_active_role', methods: ['PUT'])]
+    public function switchActiveRole(Request $request): JsonResponse
+    {
+        $user = $this->scopeAuthorizationService->getSelfServiceUser();
+        if ($user === null) {
+            return $this->error('Esta acción no aplica a este tipo de credencial', 400);
+        }
+
+        $data = $this->getJsonContent($request);
+        $roleId = $data['roleId'] ?? null;
+        if (empty($roleId)) {
+            return $this->error('roleId is required', 400);
+        }
+
+        $activeRole = null;
+        foreach ($user->getAssignedRoles() as $role) {
+            if ((string) $role->getId() === (string) $roleId) {
+                $activeRole = $role;
+                break;
+            }
+        }
+        if ($activeRole === null) {
+            return $this->error('No tenés ese rol asignado', 403);
+        }
+
+        $token = $this->jwtManager->createFromPayload($user, ['activeRoleId' => (string) $activeRole->getId()]);
+
+        return $this->success([
+            'token' => $token,
+            'scopes' => $this->scopeAuthorizationService->getScopesForUser($user, $activeRole),
+            'activeRole' => $activeRole->toSummaryArray(),
+            'availableRoles' => array_map(
+                fn($role) => $role->toSummaryArray(),
+                $user->getAssignedRoles()->toArray()
+            ),
+        ], 'Rol activo actualizado');
     }
 }

@@ -22,24 +22,28 @@ class PermissionVoter extends Voter
             return false;
         }
 
-        $role = $user->getRole();
-        if (!$role) {
-            return false;
+        // Panel web (Twig): sin selector de "rol activo" como mobile — el permiso se concede si
+        // ALGUNO de los roles asignados lo tiene (unión), no requiere elegir cuál usar.
+        foreach ($user->getAssignedRoles() as $role) {
+            $permissions = $role->getPermissions();
+
+            if (str_contains($attribute, '.')) {
+                [$module, $rest] = explode('.', $attribute, 2);
+                [$submodule, $action] = explode(':', $rest, 2);
+
+                if (isset($permissions[$module][$submodule]) && in_array($action, $permissions[$module][$submodule], true)) {
+                    return true;
+                }
+                continue;
+            }
+
+            [$module, $action] = explode(':', $attribute, 2);
+
+            if (isset($permissions[$module]) && in_array($action, $permissions[$module], true)) {
+                return true;
+            }
         }
 
-        $permissions = $role->getPermissions();
-
-        if (str_contains($attribute, '.')) {
-            [$module, $rest] = explode('.', $attribute, 2);
-            [$submodule, $action] = explode(':', $rest, 2);
-
-            return isset($permissions[$module][$submodule])
-                && in_array($action, $permissions[$module][$submodule], true);
-        }
-
-        [$module, $action] = explode(':', $attribute, 2);
-
-        return isset($permissions[$module])
-            && in_array($action, $permissions[$module], true);
+        return false;
     }
 }

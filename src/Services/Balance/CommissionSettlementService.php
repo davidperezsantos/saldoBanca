@@ -309,14 +309,19 @@ class CommissionSettlementService extends BaseService
     public function assertUserHasPermission(string $username, string $action): void
     {
         $user = $this->userRepository->findByUsername($username);
-        if (!$user || !$user->getRole()) {
+        if (!$user || $user->getAssignedRoles()->isEmpty()) {
             throw new BusinessException('El usuario no tiene un rol asignado');
         }
 
-        $allowed = $user->getRole()->getPermissions()['commission_settlements'] ?? [];
-        if (!in_array($action, $allowed, true)) {
-            throw new BusinessException("El usuario no tiene el permiso commission_settlements:{$action}");
+        // Igual que PermissionVoter: unión de todos los roles asignados, no hay "rol activo" acá.
+        foreach ($user->getAssignedRoles() as $role) {
+            $allowed = $role->getPermissions()['commission_settlements'] ?? [];
+            if (in_array($action, $allowed, true)) {
+                return;
+            }
         }
+
+        throw new BusinessException("El usuario no tiene el permiso commission_settlements:{$action}");
     }
 
     private function getOrFail(string $id): CommissionSettlement

@@ -9,6 +9,7 @@ import { useUser, loadUser, resetUser, initials } from './composables/user';
 import { forceLogout, resetSession } from './composables/session';
 import Login from './views/Login.vue';
 import BottomNav from './components/BottomNav.vue';
+import RoleSwitcher from './components/RoleSwitcher.vue';
 import SessionExpiredModal from './components/SessionExpiredModal.vue';
 
 const router = useRouter();
@@ -51,10 +52,10 @@ async function handleLogout() {
     <div v-if="!checkingSession" class="app">
         <template v-if="isLoggedIn">
             <header class="topbar">
-                <div class="logo">
+                <router-link to="/" class="logo">
                     <div class="icon">G</div>
                     <h1>SaldoGrin</h1>
-                </div>
+                </router-link>
                 <router-link to="/perfil" class="avatar" :aria-label="t('profile.ariaLabel')">
                     {{ initials(user?.name) }}
                 </router-link>
@@ -63,6 +64,7 @@ async function handleLogout() {
                 <router-view @logged-out="handleLogout" />
             </main>
             <BottomNav />
+            <RoleSwitcher />
         </template>
         <div v-else class="centered">
             <Login @logged-in="onLoggedIn" />
@@ -141,6 +143,7 @@ body {
     justify-content: center;
     gap: 12px;
     margin-bottom: 32px;
+    text-decoration: none;
 }
 
 .logo .icon {
