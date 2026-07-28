@@ -141,6 +141,29 @@ class ScopeAuthorizationService
         'currencies:create' => ['currencies_admin.create'],
         'currencies:edit' => ['currencies_admin.update'],
         'currencies:status' => ['currencies_admin.status'],
+        'recharges:view' => ['recharges_admin.read'],
+        'transfers:view' => ['transfers_admin.read'],
+        'invoices:view' => ['invoices_admin.read'],
+        'history:view' => ['history_admin.read'],
+        'reconciliations:view' => ['reconciliations_admin.read'],
+        'reconciliations:details' => ['reconciliations_admin.read'],
+        'reconciliations:create' => ['reconciliations_admin.create'],
+        'reconciliations:send' => ['reconciliations_admin.send'],
+        'reconciliations:approve' => ['reconciliations_admin.approve'],
+        'reconciliations:settle' => ['reconciliations_admin.settle'],
+        // Sin sufijo "_admin": CommissionSettlementController ya vive en /api/v1 (no /admin/) y
+        // ya pide estos nombres de scope exactos — están pensados para integraciones externas
+        // además de mobile, y ya están en config/packages/league_oauth2_server.yaml.
+        // request_pin va bundleado con "view" con el mismo criterio que clients:balance ->
+        // accounts.request_pin más arriba: pedir el PIN no es sensible por sí solo, las acciones
+        // que sí lo son ya piden su propio scope + PIN verificado.
+        'commission_settlements:view' => ['commission_settlements.read', 'commission_settlements.request_pin'],
+        'commission_settlements:details' => ['commission_settlements.read'],
+        'commission_settlements:create' => ['commission_settlements.create'],
+        'commission_settlements:approve' => ['commission_settlements.approve'],
+        'commission_settlements:assign_account' => ['commission_settlements.assign_account'],
+        'commission_settlements:settle' => ['commission_settlements.settle'],
+        'commission_settlements:close' => ['commission_settlements.close'],
     ];
 
     public function __construct(

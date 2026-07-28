@@ -11,6 +11,12 @@ const canAuthorized = ref(false);
 const canExchangeProviders = ref(false);
 const canExchangeRates = ref(false);
 const canCurrencies = ref(false);
+const canRecharges = ref(false);
+const canTransfers = ref(false);
+const canInvoices = ref(false);
+const canHistory = ref(false);
+const canReconciliations = ref(false);
+const canCommissionSettlements = ref(false);
 
 async function load() {
     canAccounts.value = await hasScope('accounts_admin.read');
@@ -18,6 +24,12 @@ async function load() {
     canExchangeProviders.value = await hasScope('exchange_providers_admin.read');
     canExchangeRates.value = await hasScope('exchange_rates_admin.read');
     canCurrencies.value = await hasScope('currencies_admin.read');
+    canRecharges.value = await hasScope('recharges_admin.read');
+    canTransfers.value = await hasScope('transfers_admin.read');
+    canInvoices.value = await hasScope('invoices_admin.read');
+    canHistory.value = await hasScope('history_admin.read');
+    canReconciliations.value = await hasScope('reconciliations_admin.read');
+    canCommissionSettlements.value = await hasScope('commission_settlements.read');
 }
 
 onMounted(load);
@@ -61,8 +73,51 @@ watch(roleVersion, load);
           </svg>
           <span>{{ t('admin.soporte.currencies') }}</span>
         </router-link>
+        <router-link v-if="canRecharges" to="/recargas-admin" class="dash-card">
+          <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2v20m0-20 5 5m-5-5-5 5M4 20h16" />
+          </svg>
+          <span>{{ t('admin.soporte.recharges') }}</span>
+        </router-link>
+        <router-link v-if="canTransfers" to="/transferencias-admin" class="dash-card">
+          <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M7 7h13m0 0-4-4m4 4-4 4M17 17H4m0 0 4 4m-4-4 4-4" />
+          </svg>
+          <span>{{ t('admin.soporte.transfers') }}</span>
+        </router-link>
+        <router-link v-if="canInvoices" to="/facturas-admin" class="dash-card">
+          <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6 2h9l5 5v15H6V2Zm9 0v5h5M9 12h6M9 16h6M9 8h2" />
+          </svg>
+          <span>{{ t('admin.soporte.invoices') }}</span>
+        </router-link>
+        <router-link v-if="canHistory" to="/historial-admin" class="dash-card">
+          <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20Zm0-16v6l4 2" />
+          </svg>
+          <span>{{ t('admin.soporte.history') }}</span>
+        </router-link>
+        <router-link v-if="canReconciliations" to="/reconciliaciones-admin" class="dash-card">
+          <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 12l2 2 4-4M7 3h10a2 2 0 0 1 2 2v14l-4-2-3 2-3-2-4 2V5a2 2 0 0 1 2-2Z" />
+          </svg>
+          <span>{{ t('admin.soporte.reconciliations') }}</span>
+        </router-link>
+        <router-link v-if="canReconciliations" to="/reportes-conciliacion-admin" class="dash-card">
+          <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 19h16M7 19V9m5 10V5m5 14v-7" />
+          </svg>
+          <span>{{ t('admin.soporte.reconciliationReport') }}</span>
+        </router-link>
+        <router-link v-if="canCommissionSettlements" to="/conciliacion-comision-admin" class="dash-card">
+          <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="9" />
+            <path d="M9.5 9.5c0-1 .9-1.8 2.5-1.8s2.5.8 2.5 1.8-1 1.5-2.5 1.5-2.5.6-2.5 1.7 1 1.8 2.5 1.8 2.5-.7 2.5-1.8M12 6.5v11" />
+          </svg>
+          <span>{{ t('admin.soporte.commissionSettlements') }}</span>
+        </router-link>
       </div>
-      <p v-if="!canAccounts && !canAuthorized && !canExchangeProviders && !canExchangeRates && !canCurrencies" class="empty">
+      <p v-if="!canAccounts && !canAuthorized && !canExchangeProviders && !canExchangeRates && !canCurrencies && !canRecharges && !canTransfers && !canInvoices && !canHistory && !canReconciliations && !canCommissionSettlements" class="empty">
         {{ t('admin.soporte.empty') }}
       </p>
     </div>

@@ -232,6 +232,10 @@ onMounted(async () => {
             class="secondary"
             :to="{ path: '/autorizados-admin', query: { accountId: item.id, accountLabel: item.businessName } }"
           >{{ t('admin.accounts.viewAuthorized') }}</router-link>
+          <router-link
+            class="secondary"
+            :to="{ path: '/historial-admin', query: { accountId: item.id, accountLabel: item.businessName } }"
+          >{{ t('admin.accounts.viewHistory') }}</router-link>
         </div>
 
         <form v-else class="edit-form" @submit.prevent="saveEdit(item.id)">

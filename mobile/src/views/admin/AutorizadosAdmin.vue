@@ -24,6 +24,11 @@ const router = useRouter();
 // accountLabel) o, si no, se elige con el buscador de abajo.
 const selectedAccount = ref(null);
 
+// Si se entró con accountId en la query (desde Cuentas.vue), "Cambiar cuenta" debe volver a
+// Cuentas.vue — no al buscador, que es para cuando no había una cuenta de origen (entrada
+// standalone desde Soporte.vue).
+const cameFromAccountsList = ref(false);
+
 const accountSearch = ref('');
 const accountResults = ref([]);
 const searchingAccounts = ref(false);
@@ -124,6 +129,10 @@ function selectAccount(acc) {
 }
 
 function changeAccount() {
+    if (cameFromAccountsList.value) {
+        router.push({ path: '/cuentas' });
+        return;
+    }
     selectedAccount.value = null;
     authorized.value = [];
     showCreateForm.value = false;
@@ -193,6 +202,7 @@ onMounted(async () => {
     canChangeStatus.value = await hasScope('authorized_admin.status');
 
     if (route.query.accountId) {
+        cameFromAccountsList.value = true;
         selectedAccount.value = {
             id: route.query.accountId,
             label: route.query.accountLabel || route.query.accountId,
