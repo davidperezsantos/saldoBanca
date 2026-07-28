@@ -228,6 +228,10 @@ onMounted(async () => {
             {{ balances[item.id] ? t('admin.accounts.hideBalance') : t('admin.accounts.viewBalance') }}
           </button>
           <button v-if="canUpdate" class="secondary" @click="startEdit(item)">{{ t('common.edit') }}</button>
+          <router-link
+            class="secondary"
+            :to="{ path: '/autorizados-admin', query: { accountId: item.id, accountLabel: item.businessName } }"
+          >{{ t('admin.accounts.viewAuthorized') }}</router-link>
         </div>
 
         <form v-else class="edit-form" @submit.prevent="saveEdit(item.id)">
@@ -446,6 +450,11 @@ h1 {
     font-size: 0.82rem;
     font-weight: 600;
     cursor: pointer;
+    text-decoration: none;
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 .actions button[type='submit'] {
     border: none;

@@ -322,7 +322,9 @@ class AccountService extends BaseService
         }
 
         if (isset($filters['search'])) {
-            $qb->andWhere('a.businessName LIKE :search OR a.documentNumber LIKE :search OR a.accountNumber LIKE :search')
+            // LIKE es sensible a mayúsculas en Postgres (a diferencia de MySQL) — sin LOWER() en
+            // los dos lados, buscar "pepe" no encontraba una cuenta registrada como "PEPE".
+            $qb->andWhere('LOWER(a.businessName) LIKE LOWER(:search) OR a.documentNumber LIKE :search OR a.accountNumber LIKE :search')
                ->setParameter('search', '%' . $filters['search'] . '%');
         }
 

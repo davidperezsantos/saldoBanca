@@ -1,7 +1,9 @@
 <script setup>
 import { ref, onMounted, reactive } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { useRoute, useRouter } from 'vue-router';
 import { hasScope } from '../../api/permissions';
+import { listAccounts } from '../../api/adminAccounts';
 import {
     listAuthorizedAdmin,
     createAuthorizedAdmin,
@@ -13,6 +15,20 @@ import { formatMoney } from '../../utils/currency';
 import documentTypes from '../../data/documentTypes.json';
 
 const { t } = useI18n();
+const route = useRoute();
+const router = useRouter();
+
+// La lista de autorizados siempre está acotada a UNA cuenta — sin esto había que teclear un
+// accountId (UUID) a mano para crear uno nuevo, y la lista mezclaba autorizados de todas las
+// cuentas del sistema. Se llega acá con la cuenta ya elegida desde Cuentas.vue (query accountId/
+// accountLabel) o, si no, se elige con el buscador de abajo.
+const selectedAccount = ref(null);
+
+const accountSearch = ref('');
+const accountResults = ref([]);
+const searchingAccounts = ref(false);
+const accountSearchDone = ref(false);
+const accountSearchError = ref('');
 
 const loading = ref(true);
 const error = ref('');
@@ -36,7 +52,6 @@ const createForm = ref(emptyForm());
 
 function emptyForm() {
     return {
-        accountId: '',
         userName: '',
         userEmail: '',
         userPhone: '',
@@ -58,7 +73,10 @@ async function submitCreate() {
     createError.value = '';
     createSaving.value = true;
     try {
-        const created = await createAuthorizedAdmin(createForm.value);
+        const created = await createAuthorizedAdmin({
+            ...createForm.value,
+            accountId: selectedAccount.value.id,
+        });
         createdCredentials.value = { username: created.username, password: created.password };
         createForm.value = emptyForm();
         await load();
@@ -70,10 +88,11 @@ async function submitCreate() {
 }
 
 async function load() {
+    if (!selectedAccount.value) return;
     loading.value = true;
     error.value = '';
     try {
-        authorized.value = await listAuthorizedAdmin();
+        authorized.value = await listAuthorizedAdmin({ accountId: selectedAccount.value.id });
     } catch (e) {
         error.value = e.response?.data?.message || t('admin.authorizedAdmin.error');
     } finally {
@@ -81,11 +100,40 @@ async function load() {
     }
 }
 
+async function searchAccounts() {
+    accountSearchError.value = '';
+    searchingAccounts.value = true;
+    accountSearchDone.value = false;
+    try {
+        accountResults.value = await listAccounts(accountSearch.value ? { search: accountSearch.value } : {});
+    } catch (e) {
+        accountSearchError.value = e.response?.data?.message || t('admin.accounts.error');
+    } finally {
+        searchingAccounts.value = false;
+        accountSearchDone.value = true;
+    }
+}
+
+function selectAccount(acc) {
+    selectedAccount.value = { id: acc.id, label: acc.businessName };
+    accountResults.value = [];
+    accountSearch.value = '';
+    accountSearchDone.value = false;
+    router.replace({ path: '/autorizados-admin', query: { accountId: acc.id, accountLabel: acc.businessName } });
+    load();
+}
+
+function changeAccount() {
+    selectedAccount.value = null;
+    authorized.value = [];
+    showCreateForm.value = false;
+    router.replace({ path: '/autorizados-admin' });
+}
+
 function startEdit(item) {
     editingId.value = item.id;
     saveError.value = '';
     forms[item.id] = {
-        accountId: item.accountId,
         userName: item.userName,
         userEmail: item.userEmail,
         userPhone: item.userPhone ?? '',
@@ -143,7 +191,16 @@ onMounted(async () => {
     canUpdate.value = await hasScope('authorized_admin.update');
     canDelete.value = await hasScope('authorized_admin.delete');
     canChangeStatus.value = await hasScope('authorized_admin.status');
-    await load();
+
+    if (route.query.accountId) {
+        selectedAccount.value = {
+            id: route.query.accountId,
+            label: route.query.accountLabel || route.query.accountId,
+        };
+        await load();
+    } else {
+        loading.value = false;
+    }
 });
 </script>
 
@@ -151,95 +208,116 @@ onMounted(async () => {
   <div class="card">
     <div class="header-row">
       <h1>{{ t('admin.authorizedAdmin.title') }}</h1>
-      <button v-if="canCreate" class="link-btn" @click="toggleCreateForm">
+      <button v-if="canCreate && selectedAccount" class="link-btn" @click="toggleCreateForm">
         {{ showCreateForm ? t('common.cancel') : t('admin.authorizedAdmin.newBtn') }}
       </button>
     </div>
     <p class="hint">{{ t('admin.authorizedAdmin.hint') }}</p>
 
-    <form v-if="showCreateForm" class="edit-form create-form" @submit.prevent="submitCreate">
-      <label>
-        {{ t('admin.authorizedAdmin.accountIdLabel') }}
-        <input v-model="createForm.accountId" type="text" required :placeholder="t('admin.authorizedAdmin.accountIdHint')" />
-      </label>
-      <label>
-        {{ t('admin.authorizedAdmin.nameLabel') }}
-        <input v-model="createForm.userName" type="text" required />
-      </label>
-      <label>
-        {{ t('admin.authorizedAdmin.emailLabel') }}
-        <input v-model="createForm.userEmail" type="email" required />
-      </label>
-      <label>
-        {{ t('admin.authorizedAdmin.phoneLabel') }}
-        <input v-model="createForm.userPhone" type="text" />
-      </label>
-      <label>
-        {{ t('admin.authorizedAdmin.docTypeLabel') }}
-        <select v-model="createForm.documentType">
-          <option v-for="d in documentTypes" :key="d.value" :value="d.value">{{ d.label }}</option>
-        </select>
-      </label>
-      <label>
-        {{ t('admin.authorizedAdmin.docNumberLabel') }}
-        <input v-model="createForm.documentNumber" type="text" required />
-      </label>
-      <p v-if="createError" class="error">{{ createError }}</p>
-      <button type="submit" :disabled="createSaving">
-        {{ createSaving ? t('common.saving') : t('common.save') }}
-      </button>
-    </form>
-
-    <div v-if="createdCredentials" class="credentials-box">
-      <p>{{ t('admin.authorizedAdmin.credentialsHint') }}</p>
-      <p><strong>{{ t('admin.authorizedAdmin.usernameLabel') }}:</strong> {{ createdCredentials.username }}</p>
-      <p><strong>{{ t('admin.authorizedAdmin.passwordLabel') }}:</strong> {{ createdCredentials.password }}</p>
+    <div v-if="!selectedAccount" class="account-picker">
+      <form class="search-row" @submit.prevent="searchAccounts">
+        <input v-model="accountSearch" type="text" :placeholder="t('admin.authorizedAdmin.searchAccountPlaceholder')" />
+        <button type="submit">{{ t('admin.accounts.searchBtn') }}</button>
+      </form>
+      <p v-if="searchingAccounts">{{ t('common.loading') }}</p>
+      <p v-else-if="accountSearchError" class="error">{{ accountSearchError }}</p>
+      <p v-else-if="accountSearchDone && !accountResults.length" class="empty">{{ t('admin.authorizedAdmin.noAccountsFound') }}</p>
+      <ul v-else-if="accountResults.length" class="account-results">
+        <li v-for="acc in accountResults" :key="acc.id">
+          <button type="button" class="account-result" @click="selectAccount(acc)">
+            <span>{{ acc.businessName }}</span>
+            <span class="account-result-sub">{{ acc.accountNumber }}</span>
+          </button>
+        </li>
+      </ul>
     </div>
 
-    <p v-if="loading">{{ t('common.loading') }}</p>
-    <p v-else-if="error" class="error">{{ error }}</p>
-    <p v-else-if="!authorized.length" class="empty">{{ t('admin.authorizedAdmin.empty') }}</p>
+    <template v-else>
+      <div class="selected-account">
+        <p class="selected-account-name">{{ selectedAccount.label }}</p>
+        <button type="button" class="link-btn" @click="changeAccount">{{ t('admin.authorizedAdmin.changeAccount') }}</button>
+      </div>
 
-    <ul v-else class="list">
-      <li v-for="item in authorized" :key="item.id" class="item">
-        <div class="item-row">
-          <p class="item-title">{{ item.userName }}</p>
-          <span class="badge" :class="item.status">{{ item.status === 'active' ? t('admin.authorizedAdmin.statusActive') : t('admin.authorizedAdmin.statusInactive') }}</span>
-        </div>
-        <p class="item-phone">{{ item.accountNumber }} · {{ formatMoney(item.saldoDisponible, item.moneda) }}</p>
-        <p class="item-phone">{{ item.userPhone || t('admin.authorizedAdmin.noPhone') }}</p>
+      <form v-if="showCreateForm" class="edit-form create-form" @submit.prevent="submitCreate">
+        <label>
+          {{ t('admin.authorizedAdmin.nameLabel') }}
+          <input v-model="createForm.userName" type="text" required />
+        </label>
+        <label>
+          {{ t('admin.authorizedAdmin.emailLabel') }}
+          <input v-model="createForm.userEmail" type="email" required />
+        </label>
+        <label>
+          {{ t('admin.authorizedAdmin.phoneLabel') }}
+          <input v-model="createForm.userPhone" type="text" />
+        </label>
+        <label>
+          {{ t('admin.authorizedAdmin.docTypeLabel') }}
+          <select v-model="createForm.documentType">
+            <option v-for="d in documentTypes" :key="d.value" :value="d.value">{{ d.label }}</option>
+          </select>
+        </label>
+        <label>
+          {{ t('admin.authorizedAdmin.docNumberLabel') }}
+          <input v-model="createForm.documentNumber" type="text" required />
+        </label>
+        <p v-if="createError" class="error">{{ createError }}</p>
+        <button type="submit" :disabled="createSaving">
+          {{ createSaving ? t('common.saving') : t('common.save') }}
+        </button>
+      </form>
 
-        <div v-if="editingId !== item.id" class="actions">
-          <button v-if="canUpdate" class="secondary" @click="startEdit(item)">{{ t('common.edit') }}</button>
-          <button v-if="canChangeStatus" class="secondary" :disabled="saving" @click="toggleStatus(item)">
-            {{ item.status === 'active' ? t('admin.authorizedAdmin.deactivate') : t('admin.authorizedAdmin.activate') }}
-          </button>
-          <button v-if="canDelete" class="secondary" :disabled="saving" @click="removeAuthorized(item)">
-            {{ t('common.delete') }}
-          </button>
-        </div>
+      <div v-if="createdCredentials" class="credentials-box">
+        <p>{{ t('admin.authorizedAdmin.credentialsHint') }}</p>
+        <p><strong>{{ t('admin.authorizedAdmin.usernameLabel') }}:</strong> {{ createdCredentials.username }}</p>
+        <p><strong>{{ t('admin.authorizedAdmin.passwordLabel') }}:</strong> {{ createdCredentials.password }}</p>
+      </div>
 
-        <form v-else class="edit-form" @submit.prevent="saveEdit(item.id)">
-          <label>
-            {{ t('admin.authorizedAdmin.nameLabel') }}
-            <input v-model="forms[item.id].userName" type="text" required />
-          </label>
-          <label>
-            {{ t('admin.authorizedAdmin.emailLabel') }}
-            <input v-model="forms[item.id].userEmail" type="email" required />
-          </label>
-          <label>
-            {{ t('admin.authorizedAdmin.phoneLabel') }}
-            <input v-model="forms[item.id].userPhone" type="text" />
-          </label>
-          <p v-if="saveError" class="error">{{ saveError }}</p>
-          <div class="actions">
-            <button type="button" class="secondary" @click="cancelEdit">{{ t('common.cancel') }}</button>
-            <button type="submit" :disabled="saving">{{ saving ? t('common.saving') : t('common.save') }}</button>
+      <p v-if="loading">{{ t('common.loading') }}</p>
+      <p v-else-if="error" class="error">{{ error }}</p>
+      <p v-else-if="!authorized.length" class="empty">{{ t('admin.authorizedAdmin.empty') }}</p>
+
+      <ul v-else class="list">
+        <li v-for="item in authorized" :key="item.id" class="item">
+          <div class="item-row">
+            <p class="item-title">{{ item.userName }}</p>
+            <span class="badge" :class="item.status">{{ item.status === 'active' ? t('admin.authorizedAdmin.statusActive') : t('admin.authorizedAdmin.statusInactive') }}</span>
           </div>
-        </form>
-      </li>
-    </ul>
+          <p class="item-phone">{{ item.accountNumber }} · {{ formatMoney(item.saldoDisponible, item.moneda) }}</p>
+          <p class="item-phone">{{ item.userPhone || t('admin.authorizedAdmin.noPhone') }}</p>
+
+          <div v-if="editingId !== item.id" class="actions">
+            <button v-if="canUpdate" class="secondary" @click="startEdit(item)">{{ t('common.edit') }}</button>
+            <button v-if="canChangeStatus" class="secondary" :disabled="saving" @click="toggleStatus(item)">
+              {{ item.status === 'active' ? t('admin.authorizedAdmin.deactivate') : t('admin.authorizedAdmin.activate') }}
+            </button>
+            <button v-if="canDelete" class="secondary" :disabled="saving" @click="removeAuthorized(item)">
+              {{ t('common.delete') }}
+            </button>
+          </div>
+
+          <form v-else class="edit-form" @submit.prevent="saveEdit(item.id)">
+            <label>
+              {{ t('admin.authorizedAdmin.nameLabel') }}
+              <input v-model="forms[item.id].userName" type="text" required />
+            </label>
+            <label>
+              {{ t('admin.authorizedAdmin.emailLabel') }}
+              <input v-model="forms[item.id].userEmail" type="email" required />
+            </label>
+            <label>
+              {{ t('admin.authorizedAdmin.phoneLabel') }}
+              <input v-model="forms[item.id].userPhone" type="text" />
+            </label>
+            <p v-if="saveError" class="error">{{ saveError }}</p>
+            <div class="actions">
+              <button type="button" class="secondary" @click="cancelEdit">{{ t('common.cancel') }}</button>
+              <button type="submit" :disabled="saving">{{ saving ? t('common.saving') : t('common.save') }}</button>
+            </div>
+          </form>
+        </li>
+      </ul>
+    </template>
   </div>
 </template>
 
@@ -279,6 +357,70 @@ h1 {
     margin: 0 0 0.5rem;
     font-size: 0.82rem;
     color: #777;
+}
+.search-row {
+    display: flex;
+    gap: 0.5rem;
+}
+.search-row input {
+    flex: 1;
+    padding: 0.5rem 0.6rem;
+    border: 1px solid #d0d3d8;
+    border-radius: 8px;
+    font-size: 0.9rem;
+}
+.search-row button {
+    padding: 0.5rem 0.9rem;
+    border: 1px solid #d0d3d8;
+    border-radius: 8px;
+    background: white;
+    color: #333;
+    font-weight: 600;
+    cursor: pointer;
+}
+.account-results {
+    list-style: none;
+    margin: 0.6rem 0 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+.account-result {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.65rem 0.75rem;
+    background: #f7f9fa;
+    border: none;
+    border-radius: 8px;
+    color: #333;
+    font-weight: 600;
+    font-size: 0.85rem;
+    cursor: pointer;
+    text-align: left;
+}
+.account-result-sub {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #888;
+}
+.selected-account {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.7rem 0.9rem;
+    background: #eefaf5;
+    border-radius: 8px;
+    margin-bottom: 0.3rem;
+}
+.selected-account-name {
+    margin: 0;
+    font-weight: 700;
+    color: var(--primary-dark);
 }
 .create-form {
     padding: 0.9rem;

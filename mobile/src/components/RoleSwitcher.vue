@@ -1,11 +1,13 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { useRouter } from 'vue-router';
 import { getAvailableRoles, getActiveRole } from '../api/client';
 import { switchActiveRole } from '../api/auth';
 import { bumpRoleVersion } from '../composables/role';
 
 const { t } = useI18n();
+const router = useRouter();
 
 const roles = ref([]);
 const activeRoleId = ref(null);
@@ -32,6 +34,10 @@ async function pick(role) {
         await switchActiveRole(role.id);
         await refresh();
         bumpRoleVersion();
+        // Cambiar de rol cambia qué vista corresponde a "/" (MiCuenta si es cliente, Dashboard si
+        // es staff) — si estabas en otra pantalla (ej. Facturas) se quedaba ahí mostrando datos
+        // del rol anterior en vez de llevarte a la vista de inicio del rol nuevo.
+        router.push('/');
     } catch (e) {
         error.value = e.response?.data?.message || t('roleSwitcher.error');
     } finally {
