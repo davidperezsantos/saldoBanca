@@ -4,9 +4,15 @@ namespace App\Controller\Api;
 
 use App\Controller\BaseController;
 use App\DTO\Balance\AccountDto;
+use App\Security\Attribute\RequireAnyScope;
 use App\Security\Attribute\RequireScope;
 use App\Security\ScopeAuthorizationService;
 use App\Services\Balance\AccountService;
+use App\Services\Balance\BalanceService;
+use App\Services\ExchangeRate\APIExchangeRate;
+use App\Services\RegistrationService;
+use App\Services\SystemCurrencyService;
+use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use OpenApi\Attributes as OA;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\Request;
@@ -22,13 +28,16 @@ class AccountController extends BaseController
         private ScopeAuthorizationService $scopeAuthorizationService,
         #[Autowire(service: 'limiter.pin_request')]
         private RateLimiterFactory $pinRequestLimiter,
+        private SystemCurrencyService $systemCurrencyService,
+        private BalanceService $balanceService,
+        private APIExchangeRate $apiExchangeRate,
     ) {
     }
 
     #[OA\Get(
         path: '/api/v1/accounts',
         summary: 'Listar cuentas',
-        description: 'Obtiene un listado paginado de cuentas con filtros opcionales.',
+        description: 'Un caller self-service (JWT sin scope admin) solo ve su propia cuenta. Un caller con scope accounts_admin.read ve todas las cuentas del sistema, con saldo convertido a su moneda.',
         tags: ['Accounts'],
     )]
     #[OA\Parameter(name: 'limit', in: 'query', description: 'Cantidad de registros por página', schema: new OA\Schema(type: 'integer', default: 20))]
@@ -60,14 +69,16 @@ class AccountController extends BaseController
             ]
         )
     )]
-    #[RequireScope('accounts.read')]
+    #[RequireAnyScope('accounts.read', 'accounts_admin.read')]
     #[Route('/accounts', name: 'api_account_list', methods: ['GET'])]
     public function list(Request $request): JsonResponse
     {
-        // Usuario final (JWT): solo puede ver SU propia cuenta, no el listado completo que sí
-        // ve un cliente OAuth2 de negocio — ver ScopeAuthorizationService::getSelfServiceUser().
+        $isAdmin = $this->scopeAuthorizationService->hasScope('accounts_admin.read');
         $selfServiceUser = $this->scopeAuthorizationService->getSelfServiceUser();
-        if ($selfServiceUser !== null) {
+
+        // Usuario final self-service (JWT sin scope admin): solo puede ver SU propia cuenta.
+        // Un cliente OAuth2 de negocio o un caller con accounts_admin.read ven el listado completo.
+        if ($selfServiceUser !== null && !$isAdmin) {
             $account = $selfServiceUser->getAccount();
             $accounts = $account !== null ? [$account] : [];
         } else {
@@ -75,34 +86,71 @@ class AccountController extends BaseController
                 'limit' => $request->query->getInt('limit', 20),
                 'offset' => $request->query->getInt('offset', 0),
             ];
-            if ($request->query->has('accountType')) {
-                $filters['accountType'] = $request->query->get('accountType');
-            }
-            if ($request->query->has('status')) {
-                $filters['status'] = $request->query->get('status');
-            }
-            if ($request->query->has('search')) {
-                $filters['search'] = $request->query->get('search');
+            foreach (['accountType', 'status', 'search'] as $key) {
+                if ($request->query->has($key)) {
+                    $filters[$key] = $request->query->get($key);
+                }
             }
 
             $accounts = $this->accountService->listAccounts($filters);
         }
-        $data = array_map(fn($a) => [
-            'id' => $a->getId(),
-            'accountNumber' => $a->getAccountNumber(),
-            'accountType' => $a->getAccountType(),
-            'businessName' => $a->getBusinessName(),
-            'documentType' => $a->getDocumentType(),
-            'documentNumber' => $a->getDocumentNumber(),
-            'email' => $a->getEmail(),
-            'phone' => $a->getPhone(),
-            'status' => $a->getStatus(),
-            'defaultCurrency' => $a->getDefaultCurrency(),
-            'maxPerTransfer' => $a->getMaxPerTransfer(),
-            'maxDaily' => $a->getMaxDaily(),
-            'maxMonthly' => $a->getMaxMonthly(),
-            'createdAt' => $a->getCreatedAt()?->format('Y-m-d H:i:s'),
-        ], $accounts);
+
+        if (!$isAdmin) {
+            $data = array_map(fn($a) => [
+                'id' => $a->getId(),
+                'accountNumber' => $a->getAccountNumber(),
+                'accountType' => $a->getAccountType(),
+                'businessName' => $a->getBusinessName(),
+                'documentType' => $a->getDocumentType(),
+                'documentNumber' => $a->getDocumentNumber(),
+                'email' => $a->getEmail(),
+                'phone' => $a->getPhone(),
+                'status' => $a->getStatus(),
+                'defaultCurrency' => $a->getDefaultCurrency(),
+                'maxPerTransfer' => $a->getMaxPerTransfer(),
+                'maxDaily' => $a->getMaxDaily(),
+                'maxMonthly' => $a->getMaxMonthly(),
+                'createdAt' => $a->getCreatedAt()?->format('Y-m-d H:i:s'),
+            ], $accounts);
+
+            return $this->success($data);
+        }
+
+        // Caller admin: enriquece con saldo convertido a la moneda de cada cuenta.
+        $baseCurrency = $this->systemCurrencyService->getBaseCurrency();
+        $data = array_map(function ($account) use ($baseCurrency) {
+            $balance = $this->balanceService->getBalance($account->getId()->toString(), $baseCurrency);
+            $available = $balance ? $balance->getAvailableBalance() : '0.00';
+            $displayCurrency = $account->getDefaultCurrency();
+
+            if ($displayCurrency !== $baseCurrency) {
+                $rate = $this->apiExchangeRate->getRate($displayCurrency);
+                if ($rate !== null) {
+                    $available = (string) round((float) bcmul($available, (string) $rate, 4), 2);
+                }
+            }
+
+            return [
+                'id' => $account->getId(),
+                'accountNumber' => $account->getAccountNumber(),
+                'accountType' => $account->getAccountType(),
+                'businessName' => $account->getBusinessName(),
+                'documentType' => $account->getDocumentType(),
+                'documentNumber' => $account->getDocumentNumber(),
+                'email' => $account->getEmail(),
+                'phone' => $account->getPhone(),
+                'status' => $account->getStatus(),
+                'defaultCurrency' => $displayCurrency,
+                'maxPerTransfer' => $account->getMaxPerTransfer(),
+                'maxDaily' => $account->getMaxDaily(),
+                'maxMonthly' => $account->getMaxMonthly(),
+                'creditLimit' => $account->getCreditLimit(),
+                'saldoDisponible' => $available,
+                'saldoBase' => $balance ? $balance->getAvailableBalance() : '0.00',
+                'baseCurrency' => $baseCurrency,
+                'createdAt' => $account->getCreatedAt()?->format('Y-m-d H:i:s'),
+            ];
+        }, $accounts);
 
         return $this->success($data);
     }
@@ -110,7 +158,7 @@ class AccountController extends BaseController
     #[OA\Post(
         path: '/api/v1/accounts',
         summary: 'Crear cuenta',
-        description: 'Crea una nueva cuenta bancaria. Requiere API Key.',
+        description: 'Crea una nueva cuenta bancaria.',
         tags: ['Accounts'],
     )]
     #[OA\RequestBody(
@@ -147,8 +195,8 @@ class AccountController extends BaseController
     )]
     #[OA\Response(response: 400, description: 'Error de validación')]
     #[OA\Response(response: 401, description: 'Token OAuth2 inválido o ausente')]
-    #[OA\Response(response: 403, description: 'Scope insuficiente (requiere "accounts")')]
-    #[RequireScope('accounts.create')]
+    #[OA\Response(response: 403, description: 'Scope insuficiente')]
+    #[RequireAnyScope('accounts.create', 'accounts_admin.create')]
     #[Route('/accounts', name: 'api_account_create', methods: ['POST'])]
     public function create(Request $request): JsonResponse
     {
@@ -160,6 +208,7 @@ class AccountController extends BaseController
                 'id' => $account->getId(),
                 'accountNumber' => $account->getAccountNumber(),
                 'businessName' => $account->getBusinessName(),
+                'status' => $account->getStatus(),
             ], 'Account created', 201);
         } catch (\Exception $e) {
             return $this->handleException($e);
@@ -263,7 +312,7 @@ class AccountController extends BaseController
     )]
     #[OA\Response(response: 200, description: 'Account updated')]
     #[OA\Response(response: 400, description: 'Error de validación')]
-    #[RequireScope('accounts.update')]
+    #[RequireAnyScope('accounts.update', 'accounts_admin.update')]
     #[Route('/accounts/{id}', name: 'api_account_update', methods: ['PUT'])]
     public function update(string $id, Request $request): JsonResponse
     {
@@ -300,7 +349,7 @@ class AccountController extends BaseController
     )]
     #[OA\Response(response: 200, description: 'Status updated')]
     #[OA\Response(response: 400, description: 'Error al cambiar estado')]
-    #[RequireScope('accounts.status')]
+    #[RequireAnyScope('accounts.status', 'accounts_admin.status')]
     #[Route('/accounts/{id}/status', name: 'api_account_status', methods: ['PUT'])]
     public function changeStatus(string $id, Request $request): JsonResponse
     {
@@ -315,6 +364,70 @@ class AccountController extends BaseController
                 'id' => $account->getId(),
                 'status' => $account->getStatus(),
             ], 'Account status updated');
+        } catch (\Exception $e) {
+            return $this->handleException($e);
+        }
+    }
+
+    #[OA\Get(path: '/api/v1/accounts/{id}/balance', summary: 'Saldo de una cuenta (admin)', tags: ['Accounts'])]
+    #[OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'string'))]
+    #[OA\Response(response: 200, description: 'Saldo de la cuenta')]
+    #[OA\Response(response: 404, description: 'Account not found')]
+    #[RequireScope('accounts_admin.balance')]
+    #[Route('/accounts/{id}/balance', name: 'api_account_balance', methods: ['GET'])]
+    public function balance(string $id): JsonResponse
+    {
+        $account = $this->accountService->getAccount($id);
+        if (!$account) {
+            return $this->error('Account not found', 404);
+        }
+
+        $baseCurrency = $this->systemCurrencyService->getBaseCurrency();
+        $balance = $this->balanceService->getBalance($id, $baseCurrency);
+
+        $available = $balance ? $balance->getAvailableBalance() : '0.00';
+        $pending = $balance ? $balance->getPendingBalance() : '0.00';
+        $reserved = $balance ? $balance->getReservedBalance() : '0.00';
+        $displayCurrency = $account->getDefaultCurrency();
+
+        if ($displayCurrency !== $baseCurrency) {
+            $rate = $this->apiExchangeRate->getRate($displayCurrency);
+            if ($rate !== null) {
+                $available = bcmul($available, (string) $rate, 2);
+                $pending = bcmul($pending, (string) $rate, 2);
+                $reserved = bcmul($reserved, (string) $rate, 2);
+            }
+        }
+
+        return $this->success([
+            'available' => $available,
+            'pending' => $pending,
+            'reserved' => $reserved,
+            'currency' => $displayCurrency,
+            'totalRecharged' => $balance ? $balance->getTotalRecharged() : '0.00',
+            'totalTransferred' => $balance ? $balance->getTotalTransferred() : '0.00',
+            'totalInvoiced' => $balance ? $balance->getTotalInvoiced() : '0.00',
+        ]);
+    }
+
+    #[OA\Post(path: '/api/v1/accounts/{id}/approve', summary: 'Aprobar negocio pendiente (admin)', tags: ['Accounts'])]
+    #[OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'string'))]
+    #[OA\Response(response: 200, description: 'Negocio aprobado')]
+    #[RequireScope('accounts_admin.approve_business')]
+    #[Route('/accounts/{id}/approve', name: 'api_account_approve', methods: ['POST'])]
+    public function approveBusiness(string $id, Request $request, RegistrationService $registrationService, JWTTokenManagerInterface $jwtManager): JsonResponse
+    {
+        try {
+            $user = $registrationService->approveBusiness($id, $this->getJsonContent($request));
+
+            return $this->success([
+                'user' => [
+                    'id' => $user->getId(),
+                    'username' => $user->getUsername(),
+                    'email' => $user->getEmail(),
+                    'name' => $user->getName(),
+                ],
+            ], 'Business approved successfully');
         } catch (\Exception $e) {
             return $this->handleException($e);
         }

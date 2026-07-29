@@ -4,9 +4,11 @@ import { useI18n } from 'vue-i18n';
 import { hasScope } from '../../api/permissions';
 import { listAccounts, createAccount, updateAccount, changeAccountStatus, getAccountBalance } from '../../api/adminAccounts';
 import { formatMoney } from '../../utils/currency';
+import { useActiveCurrencies, loadActiveCurrencies } from '../../composables/currencies';
 import documentTypes from '../../data/documentTypes.json';
 
 const { t } = useI18n();
+const { activeCurrencies } = useActiveCurrencies();
 
 const loading = ref(true);
 const error = ref('');
@@ -140,6 +142,9 @@ onMounted(async () => {
     canChangeStatus.value = await hasScope('accounts_admin.status');
     canViewBalance.value = await hasScope('accounts_admin.balance');
     await load();
+    if (canCreate.value || canUpdate.value) {
+        loadActiveCurrencies();
+    }
 });
 </script>
 
@@ -191,7 +196,9 @@ onMounted(async () => {
       <div class="row">
         <label>
           {{ t('admin.accounts.currencyLabel') }}
-          <input v-model="createForm.defaultCurrency" type="text" maxlength="3" />
+          <select v-model="createForm.defaultCurrency">
+            <option v-for="c in activeCurrencies" :key="c.code" :value="c.code">{{ c.code }} - {{ c.name }}</option>
+          </select>
         </label>
         <label>
           {{ t('admin.accounts.creditLimitLabel') }}
@@ -254,7 +261,9 @@ onMounted(async () => {
           <div class="row">
             <label>
               {{ t('admin.accounts.currencyLabel') }}
-              <input v-model="forms[item.id].defaultCurrency" type="text" maxlength="3" />
+              <select v-model="forms[item.id].defaultCurrency">
+                <option v-for="c in activeCurrencies" :key="c.code" :value="c.code">{{ c.code }} - {{ c.name }}</option>
+              </select>
             </label>
             <label>
               {{ t('admin.accounts.creditLimitLabel') }}

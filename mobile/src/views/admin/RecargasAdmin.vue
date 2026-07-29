@@ -1,9 +1,14 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, reactive, computed, onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { listRechargesAdmin } from '../../api/adminRecharges';
+import { listRechargesAdmin, createRecharge, completeRecharge, cancelRecharge, failRecharge } from '../../api/adminRecharges';
+import { convertToBase } from '../../api/adminExchange';
 import { listAccounts } from '../../api/adminAccounts';
+import { hasScope } from '../../api/permissions';
+import { useActiveCurrencies, loadActiveCurrencies } from '../../composables/currencies';
 import { currencySymbol } from '../../utils/currency';
+
+const { activeCurrencies } = useActiveCurrencies();
 
 const { t } = useI18n();
 
@@ -17,6 +22,27 @@ const accountResults = ref([]);
 const searchingAccounts = ref(false);
 const selectedAccount = ref(null);
 
+const canCreate = ref(false);
+const canComplete = ref(false);
+const canCancel = ref(false);
+const canFail = ref(false);
+
+const showCreateForm = ref(false);
+const createSaving = ref(false);
+const createError = ref('');
+const createForm = reactive(emptyCreateForm());
+const targetSearch = ref('');
+const targetResults = ref([]);
+const searchingTarget = ref(false);
+const selectedTarget = ref(null);
+
+const actionId = ref(null);
+const actionError = ref('');
+
+const converting = ref(false);
+const convertError = ref('');
+const convertResult = ref(null);
+
 const STATUS_LABELS = computed(() => ({
     pending: t('recharges.statusPending'),
     completed: t('recharges.statusCompleted'),
@@ -26,6 +52,25 @@ const STATUS_LABELS = computed(() => ({
 
 function hasConversion(r) {
     return r.originalCurrency && r.originalCurrency !== r.currency;
+}
+
+function emptyCreateForm() {
+    return { amount: '', currency: 'USD', paymentMethod: '', referenceNumber: '', notes: '' };
+}
+
+async function doConvert() {
+    convertError.value = '';
+    converting.value = true;
+    try {
+        const result = await convertToBase(createForm.amount, createForm.currency);
+        convertResult.value = result;
+        createForm.amount = result.convertedAmount;
+        createForm.currency = result.baseCurrency;
+    } catch (e) {
+        convertError.value = e.response?.data?.message || t('admin.convert.error');
+    } finally {
+        converting.value = false;
+    }
 }
 
 async function load() {
@@ -68,13 +113,180 @@ function clearAccount() {
     load();
 }
 
-onMounted(load);
+function toggleCreateForm() {
+    showCreateForm.value = !showCreateForm.value;
+    createError.value = '';
+    convertError.value = '';
+    convertResult.value = null;
+    if (!showCreateForm.value) {
+        Object.assign(createForm, emptyCreateForm());
+        selectedTarget.value = null;
+    }
+}
+
+async function searchTarget() {
+    if (!targetSearch.value) {
+        targetResults.value = [];
+        return;
+    }
+    searchingTarget.value = true;
+    try {
+        targetResults.value = await listAccounts({ search: targetSearch.value });
+    } finally {
+        searchingTarget.value = false;
+    }
+}
+
+function selectTarget(acc) {
+    selectedTarget.value = { id: acc.id, label: acc.businessName, number: acc.accountNumber };
+    targetResults.value = [];
+    targetSearch.value = '';
+}
+
+async function submitCreate() {
+    createError.value = '';
+    if (!selectedTarget.value) {
+        createError.value = t('admin.recharges.createError');
+        return;
+    }
+    createSaving.value = true;
+    try {
+        await createRecharge({
+            accountNumber: selectedTarget.value.number,
+            amount: createForm.amount,
+            currency: createForm.currency,
+            paymentMethod: createForm.paymentMethod || null,
+            referenceNumber: createForm.referenceNumber || null,
+            notes: createForm.notes || null,
+        });
+        showCreateForm.value = false;
+        Object.assign(createForm, emptyCreateForm());
+        selectedTarget.value = null;
+        convertResult.value = null;
+        await load();
+    } catch (e) {
+        createError.value = e.response?.data?.message || t('admin.recharges.createError');
+    } finally {
+        createSaving.value = false;
+    }
+}
+
+async function doComplete(r) {
+    actionError.value = '';
+    actionId.value = r.id;
+    try {
+        await completeRecharge(r.id);
+        await load();
+    } catch (e) {
+        actionError.value = e.response?.data?.message || t('admin.recharges.actionError');
+    } finally {
+        actionId.value = null;
+    }
+}
+
+async function doCancel(r) {
+    actionError.value = '';
+    actionId.value = r.id;
+    try {
+        await cancelRecharge(r.id);
+        await load();
+    } catch (e) {
+        actionError.value = e.response?.data?.message || t('admin.recharges.actionError');
+    } finally {
+        actionId.value = null;
+    }
+}
+
+async function doFail(r) {
+    actionError.value = '';
+    actionId.value = r.id;
+    try {
+        await failRecharge(r.id, 'Marcado como fallida por staff');
+        await load();
+    } catch (e) {
+        actionError.value = e.response?.data?.message || t('admin.recharges.actionError');
+    } finally {
+        actionId.value = null;
+    }
+}
+
+onMounted(async () => {
+    canCreate.value = await hasScope('recharges_admin.create');
+    canComplete.value = await hasScope('recharges_admin.complete');
+    canCancel.value = await hasScope('recharges_admin.cancel');
+    canFail.value = await hasScope('recharges_admin.fail');
+    await load();
+    if (canCreate.value) {
+        loadActiveCurrencies();
+    }
+});
 </script>
 
 <template>
   <div class="card">
-    <h1>{{ t('admin.recharges.title') }}</h1>
+    <div class="header-row">
+      <h1>{{ t('admin.recharges.title') }}</h1>
+      <button v-if="canCreate" class="link-btn" @click="toggleCreateForm">
+        {{ showCreateForm ? t('common.cancel') : t('admin.recharges.newBtn') }}
+      </button>
+    </div>
     <p class="hint">{{ t('admin.recharges.hint') }}</p>
+
+    <form v-if="showCreateForm" class="edit-form create-form" @submit.prevent="submitCreate">
+      <div v-if="selectedTarget" class="selected-account">
+        <p class="selected-account-name">{{ selectedTarget.label }} ({{ selectedTarget.number }})</p>
+        <button type="button" class="link-btn" @click="selectedTarget = null">{{ t('common.cancel') }}</button>
+      </div>
+      <template v-else>
+        <label>
+          {{ t('admin.recharges.accountLabel') }}
+          <input v-model="targetSearch" type="text" :placeholder="t('admin.recharges.accountPlaceholder')" @keyup.enter.prevent="searchTarget" />
+        </label>
+        <button type="button" class="secondary" @click="searchTarget">{{ t('admin.accounts.searchBtn') }}</button>
+        <p v-if="searchingTarget">{{ t('common.loading') }}</p>
+        <ul v-else-if="targetResults.length" class="account-results">
+          <li v-for="acc in targetResults" :key="acc.id">
+            <button type="button" class="account-result" @click="selectTarget(acc)">
+              <span>{{ acc.businessName }}</span>
+              <span class="account-result-sub">{{ acc.accountNumber }}</span>
+            </button>
+          </li>
+        </ul>
+      </template>
+      <label>
+        {{ t('admin.recharges.amountLabel') }}
+        <input v-model="createForm.amount" type="number" step="0.01" min="0.01" required />
+      </label>
+      <label>
+        {{ t('admin.recharges.currencyLabel') }}
+        <select v-model="createForm.currency" required>
+          <option v-for="c in activeCurrencies" :key="c.code" :value="c.code">{{ c.code }} - {{ c.name }}</option>
+        </select>
+      </label>
+      <button type="button" class="secondary" :disabled="!createForm.amount || !createForm.currency || converting" @click="doConvert">
+        {{ converting ? t('common.loading') : t('admin.convert.btn') }}
+      </button>
+      <p v-if="convertError" class="error">{{ convertError }}</p>
+      <p v-if="convertResult" class="convert-hint">
+        {{ t('admin.convert.result', { originalAmount: convertResult.originalAmount, originalCurrency: convertResult.originalCurrency, convertedAmount: convertResult.convertedAmount, baseCurrency: convertResult.baseCurrency }) }}
+      </p>
+      <label>
+        {{ t('admin.recharges.paymentMethodLabel') }}
+        <input v-model="createForm.paymentMethod" type="text" />
+      </label>
+      <label>
+        {{ t('admin.recharges.referenceNumberLabel') }}
+        <input v-model="createForm.referenceNumber" type="text" />
+      </label>
+      <label>
+        {{ t('admin.recharges.notesLabel') }}
+        <input v-model="createForm.notes" type="text" />
+      </label>
+      <p v-if="createError" class="error">{{ createError }}</p>
+      <button type="submit" :disabled="createSaving">
+        {{ createSaving ? t('common.saving') : t('common.save') }}
+      </button>
+    </form>
 
     <div class="filters">
       <select v-model="status" @change="load">
@@ -101,6 +313,7 @@ onMounted(load);
       </li>
     </ul>
 
+    <p v-if="actionError" class="error">{{ actionError }}</p>
     <p v-if="loading">{{ t('common.loading') }}</p>
     <p v-else-if="error" class="error">{{ error }}</p>
     <p v-else-if="!recharges.length" class="empty">{{ t('recharges.empty') }}</p>
@@ -115,6 +328,17 @@ onMounted(load);
         </div>
         <p class="item-phone">{{ r.accountName }} · {{ r.accountNumber }}</p>
         <p class="item-phone">{{ r.createdAt }}</p>
+        <div v-if="r.status === 'pending' && (canComplete || canCancel || canFail)" class="actions">
+          <button v-if="canComplete" class="secondary" :disabled="actionId === r.id" @click="doComplete(r)">
+            {{ t('admin.recharges.complete') }}
+          </button>
+          <button v-if="canCancel" class="secondary" :disabled="actionId === r.id" @click="doCancel(r)">
+            {{ t('common.cancel') }}
+          </button>
+          <button v-if="canFail" class="secondary" :disabled="actionId === r.id" @click="doFail(r)">
+            {{ t('admin.recharges.fail') }}
+          </button>
+        </div>
       </li>
     </ul>
   </div>
@@ -135,6 +359,72 @@ h1 {
     font-size: 1.3rem;
     font-weight: 700;
     color: var(--primary-dark);
+}
+.header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+.create-form {
+    padding: 0.9rem;
+    background: #f7f9fa;
+    border-radius: 8px;
+    margin-bottom: 0.5rem;
+}
+.edit-form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+.edit-form label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    font-size: 0.8rem;
+    color: #333;
+}
+.edit-form input,
+.edit-form select {
+    padding: 0.5rem 0.6rem;
+    border: 1px solid #d0d3d8;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    background: white;
+}
+.create-form button[type='submit'] {
+    padding: 0.6rem;
+    border: none;
+    border-radius: 8px;
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    color: white;
+    font-weight: 600;
+    cursor: pointer;
+}
+.create-form button:disabled {
+    opacity: 0.6;
+}
+.actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.6rem;
+}
+.actions button,
+.secondary {
+    flex: 1;
+    min-width: 90px;
+    padding: 0.5rem;
+    border: 1px solid #d0d3d8;
+    border-radius: 8px;
+    background: white;
+    color: #333;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+.actions button:disabled {
+    opacity: 0.6;
 }
 .hint {
     margin: 0 0 0.3rem;
@@ -233,6 +523,14 @@ h1 {
 .error {
     color: #c0392b;
     font-size: 0.85rem;
+}
+.convert-hint {
+    margin: 0;
+    font-size: 0.8rem;
+    color: #1a56b0;
+    background: #e6f0fd;
+    padding: 0.5rem 0.7rem;
+    border-radius: 8px;
 }
 .list {
     list-style: none;

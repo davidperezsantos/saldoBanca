@@ -33,14 +33,14 @@ class CommissionSettlementController extends BaseController
     }
 
     #[OA\Get(
-        path: '/api/v1/commission-settlements',
+        path: '/api/v1/admin/commission-settlements',
         summary: 'Listar liquidaciones de comisión',
         tags: ['CommissionSettlements'],
     )]
     #[OA\Parameter(name: 'status', in: 'query', schema: new OA\Schema(type: 'string'))]
     #[OA\Parameter(name: 'currency', in: 'query', schema: new OA\Schema(type: 'string'))]
     #[RequireScope('commission_settlements.read')]
-    #[Route('/commission-settlements', name: 'api_commission_settlement_list', methods: ['GET'])]
+    #[Route('/admin/commission-settlements', name: 'api_commission_settlement_list', methods: ['GET'])]
     public function list(Request $request): JsonResponse
     {
         $filters = ['limit' => $request->query->getInt('limit', 50)];
@@ -57,14 +57,14 @@ class CommissionSettlementController extends BaseController
     }
 
     #[OA\Get(
-        path: '/api/v1/commission-settlements/available',
+        path: '/api/v1/admin/commission-settlements/available',
         summary: 'Comisión disponible en una moneda',
         description: 'Convierte al vuelo la comisión ganada en cualquier moneda a la moneda pedida, usando la tasa vigente.',
         tags: ['CommissionSettlements'],
     )]
     #[OA\Parameter(name: 'currency', in: 'query', required: true, schema: new OA\Schema(type: 'string'))]
     #[RequireScope('commission_settlements.read')]
-    #[Route('/commission-settlements/available', name: 'api_commission_settlement_available', methods: ['GET'])]
+    #[Route('/admin/commission-settlements/available', name: 'api_commission_settlement_available', methods: ['GET'])]
     public function available(Request $request): JsonResponse
     {
         $currency = $request->query->get('currency');
@@ -79,7 +79,7 @@ class CommissionSettlementController extends BaseController
     }
 
     #[OA\Post(
-        path: '/api/v1/commission-settlements',
+        path: '/api/v1/admin/commission-settlements',
         summary: 'Crear liquidación de comisión',
         tags: ['CommissionSettlements'],
     )]
@@ -97,7 +97,7 @@ class CommissionSettlementController extends BaseController
     )]
     #[OA\Response(response: 409, description: 'El monto supera la comisión disponible')]
     #[RequireScope('commission_settlements.create')]
-    #[Route('/commission-settlements', name: 'api_commission_settlement_create', methods: ['POST'])]
+    #[Route('/admin/commission-settlements', name: 'api_commission_settlement_create', methods: ['POST'])]
     public function create(Request $request): JsonResponse
     {
         try {
@@ -122,13 +122,13 @@ class CommissionSettlementController extends BaseController
     }
 
     #[OA\Get(
-        path: '/api/v1/commission-settlements/{id}',
+        path: '/api/v1/admin/commission-settlements/{id}',
         summary: 'Detalle de una liquidación de comisión',
         tags: ['CommissionSettlements'],
     )]
     #[OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'string'))]
     #[RequireScope('commission_settlements.read')]
-    #[Route('/commission-settlements/{id}', name: 'api_commission_settlement_show', methods: ['GET'])]
+    #[Route('/admin/commission-settlements/{id}', name: 'api_commission_settlement_show', methods: ['GET'])]
     public function show(string $id): JsonResponse
     {
         $settlement = $this->settlementService->get($id);
@@ -140,7 +140,7 @@ class CommissionSettlementController extends BaseController
     }
 
     #[OA\Post(
-        path: '/api/v1/commission-settlements/{id}/request-pin',
+        path: '/api/v1/admin/commission-settlements/{id}/request-pin',
         summary: 'Solicitar código de verificación',
         description: 'Envía un PIN de un solo uso por WhatsApp al teléfono del usuario indicado — requerido antes de approve/assign-account/settle/close.',
         tags: ['CommissionSettlements'],
@@ -150,7 +150,7 @@ class CommissionSettlementController extends BaseController
         new OA\Property(property: 'username', type: 'string'),
     ]))]
     #[RequireScope('commission_settlements.request_pin')]
-    #[Route('/commission-settlements/{id}/request-pin', name: 'api_commission_settlement_request_pin', methods: ['POST'])]
+    #[Route('/admin/commission-settlements/{id}/request-pin', name: 'api_commission_settlement_request_pin', methods: ['POST'])]
     public function requestPin(string $id, Request $request): JsonResponse
     {
         $limiter = $this->pinRequestLimiter->create($request->getClientIp());
@@ -173,7 +173,7 @@ class CommissionSettlementController extends BaseController
     }
 
     #[OA\Post(
-        path: '/api/v1/commission-settlements/{id}/verify-pin',
+        path: '/api/v1/admin/commission-settlements/{id}/verify-pin',
         summary: 'Verificar código de verificación',
         tags: ['CommissionSettlements'],
     )]
@@ -183,7 +183,7 @@ class CommissionSettlementController extends BaseController
         new OA\Property(property: 'pin', type: 'string', example: '482913'),
     ]))]
     #[RequireScope('commission_settlements.request_pin')]
-    #[Route('/commission-settlements/{id}/verify-pin', name: 'api_commission_settlement_verify_pin', methods: ['POST'])]
+    #[Route('/admin/commission-settlements/{id}/verify-pin', name: 'api_commission_settlement_verify_pin', methods: ['POST'])]
     public function verifyPin(string $id, Request $request): JsonResponse
     {
         try {
@@ -201,7 +201,7 @@ class CommissionSettlementController extends BaseController
     }
 
     #[OA\Put(
-        path: '/api/v1/commission-settlements/{id}/approve',
+        path: '/api/v1/admin/commission-settlements/{id}/approve',
         summary: 'Aprobar (Administrador)',
         description: 'Requiere PIN verificado por performedBy dentro de los últimos 15 minutos.',
         tags: ['CommissionSettlements'],
@@ -211,7 +211,7 @@ class CommissionSettlementController extends BaseController
         new OA\Property(property: 'performedBy', type: 'string'),
     ]))]
     #[RequireScope('commission_settlements.approve')]
-    #[Route('/commission-settlements/{id}/approve', name: 'api_commission_settlement_approve', methods: ['PUT'])]
+    #[Route('/admin/commission-settlements/{id}/approve', name: 'api_commission_settlement_approve', methods: ['PUT'])]
     public function approve(string $id, Request $request): JsonResponse
     {
         try {
@@ -233,7 +233,7 @@ class CommissionSettlementController extends BaseController
     }
 
     #[OA\Put(
-        path: '/api/v1/commission-settlements/{id}/assign-account',
+        path: '/api/v1/admin/commission-settlements/{id}/assign-account',
         summary: 'Asignar cuenta de pago (Super Admin)',
         description: 'Requiere PIN verificado por performedBy dentro de los últimos 15 minutos.',
         tags: ['CommissionSettlements'],
@@ -246,7 +246,7 @@ class CommissionSettlementController extends BaseController
         new OA\Property(property: 'payoutAccountHolder', type: 'string'),
     ]))]
     #[RequireScope('commission_settlements.assign_account')]
-    #[Route('/commission-settlements/{id}/assign-account', name: 'api_commission_settlement_assign_account', methods: ['PUT'])]
+    #[Route('/admin/commission-settlements/{id}/assign-account', name: 'api_commission_settlement_assign_account', methods: ['PUT'])]
     public function assignAccount(string $id, Request $request): JsonResponse
     {
         try {
@@ -274,7 +274,7 @@ class CommissionSettlementController extends BaseController
     }
 
     #[OA\Put(
-        path: '/api/v1/commission-settlements/{id}/settle',
+        path: '/api/v1/admin/commission-settlements/{id}/settle',
         summary: 'Liquidar pago (Administrador)',
         description: 'Requiere PIN verificado por performedBy dentro de los últimos 15 minutos.',
         tags: ['CommissionSettlements'],
@@ -286,7 +286,7 @@ class CommissionSettlementController extends BaseController
         new OA\Property(property: 'settlementReference', type: 'string'),
     ]))]
     #[RequireScope('commission_settlements.settle')]
-    #[Route('/commission-settlements/{id}/settle', name: 'api_commission_settlement_settle', methods: ['PUT'])]
+    #[Route('/admin/commission-settlements/{id}/settle', name: 'api_commission_settlement_settle', methods: ['PUT'])]
     public function settle(string $id, Request $request): JsonResponse
     {
         try {
@@ -313,7 +313,7 @@ class CommissionSettlementController extends BaseController
     }
 
     #[OA\Put(
-        path: '/api/v1/commission-settlements/{id}/close',
+        path: '/api/v1/admin/commission-settlements/{id}/close',
         summary: 'Cerrar (Super Admin)',
         description: 'Requiere PIN verificado por performedBy dentro de los últimos 15 minutos.',
         tags: ['CommissionSettlements'],
@@ -323,7 +323,7 @@ class CommissionSettlementController extends BaseController
         new OA\Property(property: 'performedBy', type: 'string'),
     ]))]
     #[RequireScope('commission_settlements.close')]
-    #[Route('/commission-settlements/{id}/close', name: 'api_commission_settlement_close', methods: ['PUT'])]
+    #[Route('/admin/commission-settlements/{id}/close', name: 'api_commission_settlement_close', methods: ['PUT'])]
     public function close(string $id, Request $request): JsonResponse
     {
         try {

@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Controller\Api\Admin;
+namespace App\Controller\Api;
 
 use App\Controller\BaseController;
 use App\Entity\Balance\BusinessReconciliation;
@@ -21,7 +21,7 @@ use Symfony\Component\Routing\Attribute\Route;
  * CSRF: acá la autorización es el scope OAuth2 (reconciliations_admin.*), no un token CSRF de
  * formulario.
  */
-#[OA\Tag(name: 'Admin Reconciliations', description: 'Conciliaciones de negocio (requiere scope reconciliations_admin.*)')]
+#[OA\Tag(name: 'Reconciliations', description: 'Conciliaciones de negocio (requiere scope reconciliations_admin.*)')]
 class BusinessReconciliationController extends BaseController
 {
     public function __construct(
@@ -30,7 +30,7 @@ class BusinessReconciliationController extends BaseController
     ) {
     }
 
-    #[OA\Get(path: '/api/v1/admin/reconciliations/preview', summary: 'Previsualizar una conciliación', tags: ['Admin Reconciliations'])]
+    #[OA\Get(path: '/api/v1/admin/reconciliations/preview', summary: 'Previsualizar una conciliación', tags: ['Reconciliations'])]
     #[OA\Parameter(name: 'businessAccountId', in: 'query', required: true, schema: new OA\Schema(type: 'string'))]
     #[OA\Parameter(name: 'periodStart', in: 'query', required: true, schema: new OA\Schema(type: 'string', format: 'date'))]
     #[OA\Parameter(name: 'periodEnd', in: 'query', required: true, schema: new OA\Schema(type: 'string', format: 'date'))]
@@ -67,7 +67,7 @@ class BusinessReconciliationController extends BaseController
         }
     }
 
-    #[OA\Post(path: '/api/v1/admin/reconciliations', summary: 'Crear una conciliación', tags: ['Admin Reconciliations'])]
+    #[OA\Post(path: '/api/v1/admin/reconciliations', summary: 'Crear una conciliación', tags: ['Reconciliations'])]
     #[RequireScope('reconciliations_admin.create')]
     #[Route('/admin/reconciliations', name: 'api_admin_reconciliation_create', methods: ['POST'])]
     public function create(Request $request): JsonResponse
@@ -95,7 +95,7 @@ class BusinessReconciliationController extends BaseController
         }
     }
 
-    #[OA\Get(path: '/api/v1/admin/reconciliations', summary: 'Listar conciliaciones de negocio', tags: ['Admin Reconciliations'])]
+    #[OA\Get(path: '/api/v1/admin/reconciliations', summary: 'Listar conciliaciones de negocio', tags: ['Reconciliations'])]
     #[OA\Parameter(name: 'businessAccountId', in: 'query', schema: new OA\Schema(type: 'string'))]
     #[OA\Parameter(name: 'status', in: 'query', schema: new OA\Schema(type: 'string'))]
     #[OA\Parameter(name: 'limit', in: 'query', schema: new OA\Schema(type: 'integer', default: 50))]
@@ -116,7 +116,7 @@ class BusinessReconciliationController extends BaseController
         return $this->success(array_map(fn(BusinessReconciliation $r) => $this->serialize($r), $reconciliations));
     }
 
-    #[OA\Get(path: '/api/v1/admin/reconciliations/{id}', summary: 'Detalle de una conciliación', tags: ['Admin Reconciliations'])]
+    #[OA\Get(path: '/api/v1/admin/reconciliations/{id}', summary: 'Detalle de una conciliación', tags: ['Reconciliations'])]
     #[RequireScope('reconciliations_admin.read')]
     #[Route('/admin/reconciliations/{id}', name: 'api_admin_reconciliation_show', methods: ['GET'])]
     public function show(string $id): JsonResponse
@@ -141,7 +141,7 @@ class BusinessReconciliationController extends BaseController
         return $this->success($data);
     }
 
-    #[OA\Post(path: '/api/v1/admin/reconciliations/{id}/send', summary: 'Enviar conciliación al negocio', tags: ['Admin Reconciliations'])]
+    #[OA\Post(path: '/api/v1/admin/reconciliations/{id}/send', summary: 'Enviar conciliación al negocio', tags: ['Reconciliations'])]
     #[RequireScope('reconciliations_admin.send')]
     #[Route('/admin/reconciliations/{id}/send', name: 'api_admin_reconciliation_send', methods: ['POST'])]
     public function send(string $id): JsonResponse
@@ -154,7 +154,7 @@ class BusinessReconciliationController extends BaseController
         }
     }
 
-    #[OA\Put(path: '/api/v1/admin/reconciliations/{id}/approve', summary: 'Aprobar conciliación (lado admin)', tags: ['Admin Reconciliations'])]
+    #[OA\Put(path: '/api/v1/admin/reconciliations/{id}/approve', summary: 'Aprobar conciliación (lado admin)', tags: ['Reconciliations'])]
     #[RequireScope('reconciliations_admin.approve')]
     #[Route('/admin/reconciliations/{id}/approve', name: 'api_admin_reconciliation_approve', methods: ['PUT'])]
     public function approve(string $id): JsonResponse
@@ -167,7 +167,7 @@ class BusinessReconciliationController extends BaseController
         }
     }
 
-    #[OA\Put(path: '/api/v1/admin/reconciliations/{id}/reject', summary: 'Rechazar conciliación', tags: ['Admin Reconciliations'])]
+    #[OA\Put(path: '/api/v1/admin/reconciliations/{id}/reject', summary: 'Rechazar conciliación', tags: ['Reconciliations'])]
     #[RequireScope('reconciliations_admin.approve')]
     #[Route('/admin/reconciliations/{id}/reject', name: 'api_admin_reconciliation_reject', methods: ['PUT'])]
     public function reject(string $id, Request $request): JsonResponse
@@ -185,7 +185,7 @@ class BusinessReconciliationController extends BaseController
         }
     }
 
-    #[OA\Put(path: '/api/v1/admin/reconciliations/{id}/settle', summary: 'Liquidar conciliación', tags: ['Admin Reconciliations'])]
+    #[OA\Put(path: '/api/v1/admin/reconciliations/{id}/settle', summary: 'Liquidar conciliación', tags: ['Reconciliations'])]
     #[RequireScope('reconciliations_admin.settle')]
     #[Route('/admin/reconciliations/{id}/settle', name: 'api_admin_reconciliation_settle', methods: ['PUT'])]
     public function settle(string $id, Request $request): JsonResponse

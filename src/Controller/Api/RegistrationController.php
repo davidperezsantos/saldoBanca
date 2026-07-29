@@ -17,8 +17,7 @@ class RegistrationController extends AbstractController
     public function __construct(
         private RegistrationService $registrationService,
         private JWTTokenManagerInterface $jwtManager,
-    ) {
-    }
+    ) {}
 
     #[OA\Post(
         path: '/api/v1/register/client',

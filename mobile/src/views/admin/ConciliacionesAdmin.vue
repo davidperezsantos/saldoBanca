@@ -169,7 +169,14 @@ const actionBusy = ref(false);
 const actionError = ref('');
 const rejectReason = ref('');
 const showRejectForm = ref(false);
-const settleForm = reactive({ settlementMethod: '', settlementReference: '', settlementNotes: '' });
+const SETTLEMENT_METHODS = ['efectivo', 'transferencia'];
+const settleForm = reactive({
+    settlementMethod: '',
+    settlementReference: '',
+    settlementSecondaryMethod: '',
+    settlementSecondaryReference: '',
+    settlementNotes: '',
+});
 
 async function openDetail(id) {
     if (selectedId.value === id) {
@@ -182,6 +189,11 @@ async function openDetail(id) {
     detailError.value = '';
     actionError.value = '';
     showRejectForm.value = false;
+    settleForm.settlementMethod = '';
+    settleForm.settlementReference = '';
+    settleForm.settlementSecondaryMethod = '';
+    settleForm.settlementSecondaryReference = '';
+    settleForm.settlementNotes = '';
     detailLoading.value = true;
     try {
         detail.value = await getReconciliation(id);
@@ -303,8 +315,22 @@ onMounted(async () => {
         <p>{{ t('admin.reconciliations.previewTotal') }}: {{ preview.total }} {{ currencySymbol(preview.currency) }}</p>
         <p>{{ t('admin.reconciliations.previewTax') }}: {{ preview.taxAmount }} ({{ preview.taxPercent }}%)</p>
         <p>{{ t('admin.reconciliations.previewNet') }}: {{ preview.netAmount }} {{ currencySymbol(preview.currency) }}</p>
+        <p v-if="!preview.invoices.length" class="error">{{ t('admin.reconciliations.noInvoicesError') }}</p>
+
+        <div v-if="preview.payoutSplitPreview" class="payout-split-box">
+          <p class="payout-split-title">{{ t('admin.reconciliations.payoutSplitTitle') }}</p>
+          <p v-if="preview.payoutSplitPreview.error" class="error">{{ preview.payoutSplitPreview.error }}</p>
+          <template v-else>
+            <p>{{ t('admin.reconciliations.payoutSplitBase') }}: {{ preview.payoutSplitPreview.baseAmount }} {{ preview.payoutSplitPreview.baseCurrency }} ({{ preview.payoutSplitPreview.basePercent }}%)</p>
+            <p v-if="preview.payoutSplitPreview.secondaryAmount">
+              {{ t('admin.reconciliations.payoutSplitSecondary') }}: {{ preview.payoutSplitPreview.secondaryAmount }} {{ preview.payoutSplitPreview.secondaryCurrency }} ({{ preview.payoutSplitPreview.secondaryPercent }}%)
+            </p>
+            <p v-if="preview.payoutSplitPreview.exchangeRate">{{ t('admin.reconciliations.payoutSplitRate') }}: {{ preview.payoutSplitPreview.exchangeRate }}</p>
+          </template>
+        </div>
+
         <p v-if="createError" class="error">{{ createError }}</p>
-        <button type="button" class="submit-btn" :disabled="creating" @click="confirmCreate">
+        <button type="button" class="submit-btn" :disabled="creating || !preview.invoices.length" @click="confirmCreate">
           {{ creating ? t('common.saving') : t('admin.reconciliations.confirmCreateBtn') }}
         </button>
       </div>
@@ -382,12 +408,30 @@ onMounted(async () => {
             <form v-if="canSettle && detail.status === 'approved_admin'" class="settle-form" @submit.prevent="doSettle">
               <label>
                 {{ t('admin.reconciliations.settlementMethod') }}
-                <input v-model="settleForm.settlementMethod" type="text" required />
+                <select v-model="settleForm.settlementMethod" required>
+                  <option value="" disabled>{{ t('admin.reconciliations.settlementMethod') }}</option>
+                  <option v-for="m in SETTLEMENT_METHODS" :key="m" :value="m">{{ t(`admin.reconciliations.method_${m}`) }}</option>
+                </select>
               </label>
-              <label>
+              <label v-if="settleForm.settlementMethod === 'transferencia'">
                 {{ t('admin.reconciliations.settlementReference') }}
-                <input v-model="settleForm.settlementReference" type="text" />
+                <input v-model="settleForm.settlementReference" type="text" required />
               </label>
+
+              <template v-if="detail.settlementBaseAmount">
+                <label>
+                  {{ t('admin.reconciliations.settlementSecondaryMethod') }}
+                  <select v-model="settleForm.settlementSecondaryMethod" required>
+                    <option value="" disabled>{{ t('admin.reconciliations.settlementSecondaryMethod') }}</option>
+                    <option v-for="m in SETTLEMENT_METHODS" :key="m" :value="m">{{ t(`admin.reconciliations.method_${m}`) }}</option>
+                  </select>
+                </label>
+                <label v-if="settleForm.settlementSecondaryMethod === 'transferencia'">
+                  {{ t('admin.reconciliations.settlementSecondaryReference') }}
+                  <input v-model="settleForm.settlementSecondaryReference" type="text" required />
+                </label>
+              </template>
+
               <label>
                 {{ t('admin.reconciliations.settlementNotes') }}
                 <input v-model="settleForm.settlementNotes" type="text" />
@@ -537,11 +581,13 @@ h1 {
     color: #555;
 }
 .row input,
-.settle-form input {
+.settle-form input,
+.settle-form select {
     padding: 0.5rem 0.6rem;
     border: 1px solid #d0d3d8;
     border-radius: 8px;
     font-size: 0.9rem;
+    background: white;
 }
 .secondary-btn {
     align-self: flex-start;
@@ -578,6 +624,23 @@ h1 {
 }
 .preview-box p {
     margin: 0;
+}
+.payout-split-box {
+    margin-top: 0.4rem;
+    padding: 0.6rem 0.75rem;
+    background: #e6f0fd;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+.payout-split-box p {
+    margin: 0;
+    font-size: 0.82rem;
+    color: #1a56b0;
+}
+.payout-split-title {
+    font-weight: 600;
 }
 .empty {
     color: #888;

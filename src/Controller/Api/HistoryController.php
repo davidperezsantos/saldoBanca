@@ -3,7 +3,7 @@
 namespace App\Controller\Api;
 
 use App\Controller\BaseController;
-use App\Security\Attribute\RequireScope;
+use App\Security\Attribute\RequireAnyScope;
 use App\Security\ScopeAuthorizationService;
 use App\Services\Balance\BalanceService;
 use OpenApi\Attributes as OA;
@@ -57,7 +57,7 @@ class HistoryController extends BaseController
         )
     )]
     #[OA\Response(response: 400, description: 'accountId is required')]
-    #[RequireScope('history.read')]
+    #[RequireAnyScope('history.read', 'history_admin.read')]
     #[Route('/history', name: 'api_history_list', methods: ['GET'])]
     public function list(Request $request): JsonResponse
     {
@@ -66,8 +66,9 @@ class HistoryController extends BaseController
             if (!$accountId) {
                 return $this->error('accountId is required', 400);
             }
+            $isAdmin = $this->scopeAuthorizationService->hasScope('history_admin.read');
             $selfServiceUser = $this->scopeAuthorizationService->getSelfServiceUser();
-            if ($selfServiceUser !== null && (string) $selfServiceUser->getAccount()?->getId() !== $accountId) {
+            if (!$isAdmin && $selfServiceUser !== null && (string) $selfServiceUser->getAccount()?->getId() !== $accountId) {
                 return $this->error('No podés consultar el historial de esta cuenta', 403);
             }
             $filters = [];

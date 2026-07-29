@@ -227,6 +227,9 @@ export default {
         administracion: {
             title: 'Administration',
             hint: 'Manage users, roles and OAuth2 clients.',
+            reconciliations: 'Reconciliations',
+            reconciliationReport: 'Reconciliation Reports',
+            commissionSettlements: 'Commission Reconciliation',
             empty: 'Your active role has no modules enabled here.',
         },
         users: {

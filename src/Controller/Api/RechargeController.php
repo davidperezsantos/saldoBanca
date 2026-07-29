@@ -3,7 +3,7 @@
 namespace App\Controller\Api;
 
 use App\Controller\BaseController;
-use App\Security\Attribute\RequireScope;
+use App\Security\Attribute\RequireAnyScope;
 use App\Security\ScopeAuthorizationService;
 use App\Services\Balance\RechargeService;
 use OpenApi\Attributes as OA;
@@ -55,7 +55,7 @@ class RechargeController extends BaseController
             ]
         )
     )]
-    #[RequireScope('recharges.read')]
+    #[RequireAnyScope('recharges.read', 'recharges_admin.read')]
     #[Route('/recharges', name: 'api_recharge_list', methods: ['GET'])]
     public function list(Request $request): JsonResponse
     {
@@ -63,8 +63,9 @@ class RechargeController extends BaseController
             'limit' => $request->query->getInt('limit', 20),
             'offset' => $request->query->getInt('offset', 0),
         ];
+        $isAdmin = $this->scopeAuthorizationService->hasScope('recharges_admin.read');
         $selfServiceUser = $this->scopeAuthorizationService->getSelfServiceUser();
-        if ($selfServiceUser !== null) {
+        if ($selfServiceUser !== null && !$isAdmin) {
             // Usuario final (JWT): solo sus propias recargas, ignorando cualquier accountId que
             // venga en la query — mismo criterio que AccountController::list().
             $filters['accountId'] = (string) $selfServiceUser->getAccount()?->getId();
@@ -84,6 +85,7 @@ class RechargeController extends BaseController
             'receiptNumber' => $r->getReceiptNumber(),
             'accountId' => $r->getAccount()->getId(),
             'accountNumber' => $r->getAccount()->getAccountNumber(),
+            'accountName' => $r->getAccount()->getBusinessName(),
             'amount' => $r->getAmount(),
             'currency' => $r->getCurrency(),
             'originalAmount' => $r->getOriginalAmount(),
@@ -138,7 +140,7 @@ class RechargeController extends BaseController
     #[OA\Response(response: 400, description: 'Error de validación')]
     #[OA\Response(response: 401, description: 'Token OAuth2 inválido o ausente')]
     #[OA\Response(response: 403, description: 'Scope insuficiente (requiere "recharges")')]
-    #[RequireScope('recharges.create')]
+    #[RequireAnyScope('recharges.create', 'recharges_admin.create')]
     #[Route('/recharges', name: 'api_recharge_create', methods: ['POST'])]
     public function create(Request $request): JsonResponse
     {
@@ -185,7 +187,7 @@ class RechargeController extends BaseController
         )
     )]
     #[OA\Response(response: 404, description: 'Recharge not found')]
-    #[RequireScope('recharges.read')]
+    #[RequireAnyScope('recharges.read', 'recharges_admin.read')]
     #[Route('/recharges/{id}', name: 'api_recharge_show', methods: ['GET'])]
     public function show(string $id): JsonResponse
     {
@@ -194,7 +196,9 @@ class RechargeController extends BaseController
             if (!$recharge) {
                 return $this->error('Recharge not found', 404);
             }
-            if (!$this->scopeAuthorizationService->selfServiceOwnsAccount($recharge->getAccount())) {
+            if (!$this->scopeAuthorizationService->hasScope('recharges_admin.read')
+                && !$this->scopeAuthorizationService->selfServiceOwnsAccount($recharge->getAccount())
+            ) {
                 return $this->error('Recharge not found', 404);
             }
             return $this->success([
@@ -228,7 +232,7 @@ class RechargeController extends BaseController
     #[OA\Parameter(name: 'id', in: 'path', description: 'ID de la recarga', required: true, schema: new OA\Schema(type: 'string'))]
     #[OA\Response(response: 200, description: 'Recharge completed')]
     #[OA\Response(response: 400, description: 'Error al completar recarga')]
-    #[RequireScope('recharges.complete')]
+    #[RequireAnyScope('recharges.complete', 'recharges_admin.complete')]
     #[Route('/recharges/{id}/complete', name: 'api_recharge_complete', methods: ['PUT'])]
     public function complete(string $id): JsonResponse
     {
@@ -252,7 +256,7 @@ class RechargeController extends BaseController
     #[OA\Parameter(name: 'id', in: 'path', description: 'ID de la recarga', required: true, schema: new OA\Schema(type: 'string'))]
     #[OA\Response(response: 200, description: 'Recharge cancelled')]
     #[OA\Response(response: 400, description: 'Error al cancelar recarga')]
-    #[RequireScope('recharges.cancel')]
+    #[RequireAnyScope('recharges.cancel', 'recharges_admin.cancel')]
     #[Route('/recharges/{id}/cancel', name: 'api_recharge_cancel', methods: ['PUT'])]
     public function cancel(string $id): JsonResponse
     {
@@ -284,7 +288,7 @@ class RechargeController extends BaseController
     )]
     #[OA\Response(response: 200, description: 'Recharge marked as failed')]
     #[OA\Response(response: 400, description: 'Error al marcar recarga como fallida')]
-    #[RequireScope('recharges.fail')]
+    #[RequireAnyScope('recharges.fail', 'recharges_admin.fail')]
     #[Route('/recharges/{id}/fail', name: 'api_recharge_fail', methods: ['PUT'])]
     public function fail(string $id, Request $request): JsonResponse
     {

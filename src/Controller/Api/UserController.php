@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Controller\Api\Admin;
+namespace App\Controller\Api;
 
 use App\Controller\BaseController;
 use App\DTO\Admin\CreateStaffUserDto;

@@ -19,7 +19,7 @@ class PaymentGatewayController extends BaseController
     }
 
     #[OA\Get(
-        path: '/api/v1/payment-gateways',
+        path: '/api/v1/admin/payment-gateways',
         summary: 'Listar pasarelas de pago',
         description: 'Obtiene el listado de pasarelas de pago disponibles.',
         tags: ['Payment Gateways'],
@@ -45,7 +45,7 @@ class PaymentGatewayController extends BaseController
         )
     )]
     #[RequireScope('payment_gateways.read')]
-    #[Route('/payment-gateways', name: 'api_payment_gateway_list', methods: ['GET'])]
+    #[Route('/admin/payment-gateways', name: 'api_payment_gateway_list', methods: ['GET'])]
     public function list(): JsonResponse
     {
         $gateways = $this->entityManager->getRepository(PaymentGateway::class)->findAll();

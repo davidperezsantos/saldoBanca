@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Controller\Api\Admin;
+namespace App\Controller\Api;
 
 use App\Controller\BaseController;
 use App\Security\Attribute\RequireScope;
@@ -15,7 +15,7 @@ use Symfony\Component\Routing\Attribute\Route;
  * Controller/Admin/ReconciliationReportController (panel Twig). No incluye `page()` ni `pdf()`:
  * la exportación a PDF se queda en el panel por ahora.
  */
-#[OA\Tag(name: 'Admin Reconciliation Report', description: 'Reporte de conciliaciones (requiere scope reconciliations_admin.read)')]
+#[OA\Tag(name: 'Reconciliation Reports', description: 'Reporte de conciliaciones (requiere scope reconciliations_admin.read)')]
 class ReconciliationReportController extends BaseController
 {
     public function __construct(
@@ -23,7 +23,7 @@ class ReconciliationReportController extends BaseController
     ) {
     }
 
-    #[OA\Get(path: '/api/v1/admin/reports/reconciliations', summary: 'Reporte de conciliaciones', tags: ['Admin Reconciliation Report'])]
+    #[OA\Get(path: '/api/v1/admin/reports/reconciliations', summary: 'Reporte de conciliaciones', tags: ['Reconciliation Reports'])]
     #[OA\Parameter(name: 'periodStart', in: 'query', required: true, schema: new OA\Schema(type: 'string', format: 'date'))]
     #[OA\Parameter(name: 'periodEnd', in: 'query', required: true, schema: new OA\Schema(type: 'string', format: 'date'))]
     #[OA\Parameter(name: 'status', in: 'query', schema: new OA\Schema(type: 'string'))]

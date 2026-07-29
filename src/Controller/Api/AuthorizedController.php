@@ -4,9 +4,13 @@ namespace App\Controller\Api;
 
 use App\Controller\BaseController;
 use App\DTO\Balance\AuthorizedDto;
+use App\Security\Attribute\RequireAnyScope;
 use App\Security\Attribute\RequireScope;
 use App\Security\ScopeAuthorizationService;
 use App\Services\Balance\AuthorizedService;
+use App\Services\Balance\BalanceService;
+use App\Services\ExchangeRate\APIExchangeRate;
+use App\Services\SystemCurrencyService;
 use OpenApi\Attributes as OA;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\Request;
@@ -22,13 +26,16 @@ class AuthorizedController extends BaseController
         private ScopeAuthorizationService $scopeAuthorizationService,
         #[Autowire(service: 'limiter.pin_request')]
         private RateLimiterFactory $pinRequestLimiter,
+        private BalanceService $balanceService,
+        private SystemCurrencyService $systemCurrencyService,
+        private APIExchangeRate $apiExchangeRate,
     ) {
     }
 
     #[OA\Get(
         path: '/api/v1/authorized',
         summary: 'Listar usuarios autorizados',
-        description: 'Obtiene los usuarios autorizados para operar en cuentas.',
+        description: 'Un caller self-service (JWT sin scope admin) solo ve los autorizados de su propia cuenta. Un caller con scope authorized_admin.read ve los de todas las cuentas, con saldo convertido.',
         tags: ['Authorized'],
     )]
     #[OA\Parameter(name: 'accountId', in: 'query', description: 'Filtrar por ID de cuenta', schema: new OA\Schema(type: 'string'))]
@@ -59,13 +66,17 @@ class AuthorizedController extends BaseController
             ]
         )
     )]
-    #[RequireScope('authorized.read')]
+    #[RequireAnyScope('authorized.read', 'authorized_admin.read')]
     #[Route('/authorized', name: 'api_authorized_list', methods: ['GET'])]
     public function list(Request $request): JsonResponse
     {
-        $filters = [];
+        $isAdmin = $this->scopeAuthorizationService->hasScope('authorized_admin.read');
         $selfServiceUser = $this->scopeAuthorizationService->getSelfServiceUser();
-        if ($selfServiceUser !== null) {
+
+        $filters = [
+            'limit' => $request->query->getInt('limit', 50),
+        ];
+        if ($selfServiceUser !== null && !$isAdmin) {
             // Usuario final (JWT): solo los autorizados de SU propia cuenta.
             $filters['accountId'] = (string) $selfServiceUser->getAccount()?->getId();
         } elseif ($request->query->has('accountId')) {
@@ -74,24 +85,65 @@ class AuthorizedController extends BaseController
         if ($request->query->has('status')) {
             $filters['status'] = $request->query->get('status');
         }
-        $filters['limit'] = $request->query->getInt('limit', 50);
 
-        $authorized = $this->authorizedService->listAuthorized($filters);
-        $data = array_map(fn($a) => [
-            'id' => $a->getId(),
-            'accountId' => $a->getAccount()->getId(),
-            'accountNumber' => $a->getAccount()->getAccountNumber(),
-            'userName' => $a->getUserName(),
-            'userEmail' => $a->getUserEmail(),
-            'userPhone' => $a->getUserPhone(),
-            'documentType' => $a->getDocumentType(),
-            'documentNumber' => $a->getDocumentNumber(),
-            'maxAmount' => $a->getMaxAmount(),
-            'dailyLimit' => $a->getDailyLimit(),
-            'monthlyLimit' => $a->getMonthlyLimit(),
-            'status' => $a->getStatus(),
-            'createdAt' => $a->getCreatedAt()?->format('Y-m-d H:i:s'),
-        ], $authorized);
+        $authorizedUsers = $this->authorizedService->listAuthorized($filters);
+
+        if (!$isAdmin) {
+            $data = array_map(fn($a) => [
+                'id' => $a->getId(),
+                'accountId' => $a->getAccount()->getId(),
+                'accountNumber' => $a->getAccount()->getAccountNumber(),
+                'userName' => $a->getUserName(),
+                'userEmail' => $a->getUserEmail(),
+                'userPhone' => $a->getUserPhone(),
+                'documentType' => $a->getDocumentType(),
+                'documentNumber' => $a->getDocumentNumber(),
+                'maxAmount' => $a->getMaxAmount(),
+                'dailyLimit' => $a->getDailyLimit(),
+                'monthlyLimit' => $a->getMonthlyLimit(),
+                'status' => $a->getStatus(),
+                'createdAt' => $a->getCreatedAt()?->format('Y-m-d H:i:s'),
+            ], $authorizedUsers);
+
+            return $this->success($data);
+        }
+
+        // Caller admin: enriquece con saldo de la cuenta dueña de cada autorizado.
+        $baseCurrency = $this->systemCurrencyService->getBaseCurrency();
+        $data = array_map(function ($authorized) use ($baseCurrency) {
+            $account = $authorized->getAccount();
+            $baseBalance = $this->balanceService->getBalance($account->getId()->toString(), $baseCurrency);
+            $displayCurrency = $account->getDefaultCurrency();
+            $available = $baseBalance ? $baseBalance->getAvailableBalance() : '0.00';
+
+            if ($displayCurrency !== $baseCurrency) {
+                $rate = $this->apiExchangeRate->getRate($displayCurrency);
+                if ($rate !== null) {
+                    $available = (string) round((float) bcmul($available, (string) $rate, 4), 2);
+                }
+            }
+
+            return [
+                'id' => $authorized->getId(),
+                'accountId' => $account->getId(),
+                'accountNumber' => $account->getAccountNumber(),
+                'saldoDisponible' => $available,
+                'moneda' => $displayCurrency,
+                'userName' => $authorized->getUserName(),
+                'userEmail' => $authorized->getUserEmail(),
+                'userPhone' => $authorized->getUserPhone(),
+                'documentType' => $authorized->getDocumentType(),
+                'documentNumber' => $authorized->getDocumentNumber(),
+                'maxAmount' => $authorized->getMaxAmount(),
+                'dailyLimit' => $authorized->getDailyLimit(),
+                'monthlyLimit' => $authorized->getMonthlyLimit(),
+                'usedToday' => $authorized->getUsedToday(),
+                'usedThisMonth' => $authorized->getUsedThisMonth(),
+                'status' => $authorized->getStatus(),
+                'lastUsedAt' => $authorized->getLastUsedAt()?->format('Y-m-d H:i:s'),
+                'createdAt' => $authorized->getCreatedAt()?->format('Y-m-d H:i:s'),
+            ];
+        }, $authorizedUsers);
 
         return $this->success($data);
     }
@@ -99,7 +151,7 @@ class AuthorizedController extends BaseController
     #[OA\Post(
         path: '/api/v1/authorized',
         summary: 'Crear usuario autorizado',
-        description: 'Registra un nuevo usuario autorizado para operar en una cuenta.',
+        description: 'Registra un nuevo usuario autorizado para operar en una cuenta. Un caller con scope authorized_admin.create puede crearlo en cualquier cuenta y recibe una contraseña generada para el nuevo usuario; un caller self-service solo puede crearlo sobre su propia cuenta.',
         tags: ['Authorized'],
     )]
     #[OA\RequestBody(
@@ -133,15 +185,16 @@ class AuthorizedController extends BaseController
     )]
     #[OA\Response(response: 400, description: 'Error de validación')]
     #[OA\Response(response: 401, description: 'Token OAuth2 inválido o ausente')]
-    #[OA\Response(response: 403, description: 'Scope insuficiente (requiere "authorized")')]
-    #[RequireScope('authorized.create')]
+    #[OA\Response(response: 403, description: 'Scope insuficiente')]
+    #[RequireAnyScope('authorized.create', 'authorized_admin.create')]
     #[Route('/authorized', name: 'api_authorized_create', methods: ['POST'])]
     public function create(Request $request): JsonResponse
     {
         try {
+            $isAdmin = $this->scopeAuthorizationService->hasScope('authorized_admin.create');
             $data = $this->getJsonContent($request);
             $selfServiceUser = $this->scopeAuthorizationService->getSelfServiceUser();
-            if ($selfServiceUser !== null) {
+            if ($selfServiceUser !== null && !$isAdmin) {
                 // Usuario final (JWT): el autorizado siempre se crea sobre SU PROPIA cuenta, sin
                 // importar qué accountId venga en el payload — si no, podría autorizar gente
                 // sobre la cuenta de otro cliente (IDOR), igual que ya se resolvió en
@@ -149,12 +202,22 @@ class AuthorizedController extends BaseController
                 $data['accountId'] = (string) $selfServiceUser->getAccount()?->getId();
             }
             $dto = AuthorizedDto::fromJson($data);
-            $authorized = $this->authorizedService->createAuthorized($dto);
-            return $this->success([
+
+            $password = $isAdmin ? bin2hex(random_bytes(8)) : null;
+            $authorized = $this->authorizedService->createAuthorized($dto, $password);
+
+            $result = [
                 'id' => $authorized->getId(),
                 'userName' => $authorized->getUserName(),
                 'status' => $authorized->getStatus(),
-            ], 'Authorized user created', 201);
+            ];
+            if ($isAdmin) {
+                $result['documentNumber'] = $authorized->getDocumentNumber();
+                $result['username'] = $authorized->getUser()?->getUsername();
+                $result['password'] = $password;
+            }
+
+            return $this->success($result, 'Authorized user created', 201);
         } catch (\Exception $e) {
             return $this->handleException($e);
         }
@@ -183,16 +246,17 @@ class AuthorizedController extends BaseController
     )]
     #[OA\Response(response: 200, description: 'Authorized user updated')]
     #[OA\Response(response: 400, description: 'Error de validación')]
-    #[RequireScope('authorized.update')]
+    #[RequireAnyScope('authorized.update', 'authorized_admin.update')]
     #[Route('/authorized/{id}', name: 'api_authorized_update', methods: ['PUT'])]
     public function update(string $id, Request $request): JsonResponse
     {
         try {
+            $isAdmin = $this->scopeAuthorizationService->hasScope('authorized_admin.update');
             $existing = $this->authorizedService->getAuthorized($id);
             if (!$existing) {
                 return $this->error('Authorized user not found', 404);
             }
-            if (!$this->scopeAuthorizationService->selfServiceOwnsAccount($existing->getAccount())) {
+            if (!$isAdmin && !$this->scopeAuthorizationService->selfServiceOwnsAccount($existing->getAccount())) {
                 return $this->error('Authorized user not found', 404);
             }
 
@@ -226,16 +290,17 @@ class AuthorizedController extends BaseController
     )]
     #[OA\Response(response: 200, description: 'Status updated')]
     #[OA\Response(response: 400, description: 'Error al cambiar estado')]
-    #[RequireScope('authorized.status')]
+    #[RequireAnyScope('authorized.status', 'authorized_admin.status')]
     #[Route('/authorized/{id}/status', name: 'api_authorized_status', methods: ['PUT'])]
     public function toggleStatus(string $id, Request $request): JsonResponse
     {
         try {
+            $isAdmin = $this->scopeAuthorizationService->hasScope('authorized_admin.status');
             $existing = $this->authorizedService->getAuthorized($id);
             if (!$existing) {
                 return $this->error('Authorized user not found', 404);
             }
-            if (!$this->scopeAuthorizationService->selfServiceOwnsAccount($existing->getAccount())) {
+            if (!$isAdmin && !$this->scopeAuthorizationService->selfServiceOwnsAccount($existing->getAccount())) {
                 return $this->error('Authorized user not found', 404);
             }
 
@@ -252,12 +317,12 @@ class AuthorizedController extends BaseController
     }
 
     #[OA\Get(
-        path: '/api/v1/authorized/{doc}/verify',
+        path: '/api/v1/authorized/{documentNumber}/verify',
         summary: 'Verificar usuario autorizado por documento',
         description: 'Busca y verifica un usuario autorizado por su número de documento.',
         tags: ['Authorized'],
     )]
-    #[OA\Parameter(name: 'doc', in: 'path', description: 'Número de documento', required: true, schema: new OA\Schema(type: 'string'))]
+    #[OA\Parameter(name: 'documentNumber', in: 'path', description: 'Número de documento', required: true, schema: new OA\Schema(type: 'string'))]
     #[OA\Response(
         response: 200,
         description: 'Usuario autorizado encontrado',
@@ -274,18 +339,19 @@ class AuthorizedController extends BaseController
         )
     )]
     #[OA\Response(response: 404, description: 'Authorized user not found')]
-    #[RequireScope('authorized.read')]
-    #[Route('/authorized/{doc}/verify', name: 'api_authorized_verify', methods: ['GET'])]
-    public function verify(string $doc): JsonResponse
+    #[RequireAnyScope('authorized.read', 'authorized_admin.verify')]
+    #[Route('/authorized/{documentNumber}/verify', name: 'api_authorized_verify', methods: ['GET'])]
+    public function verify(string $documentNumber): JsonResponse
     {
         try {
-            $authorized = $this->authorizedService->verifyAuthorized($doc);
+            $authorized = $this->authorizedService->verifyAuthorized($documentNumber);
             if (!$authorized) {
                 return $this->error('Authorized user not found', 404);
             }
             return $this->success([
                 'id' => $authorized->getId(),
                 'userName' => $authorized->getUserName(),
+                'documentNumber' => $authorized->getDocumentNumber(),
                 'status' => $authorized->getStatus(),
                 'accountNumber' => $authorized->getAccount()->getAccountNumber(),
             ]);
@@ -434,7 +500,7 @@ class AuthorizedController extends BaseController
     #[OA\Parameter(name: 'id', in: 'path', description: 'ID del usuario autorizado', required: true, schema: new OA\Schema(type: 'string'))]
     #[OA\Response(response: 200, description: 'Authorized user deleted')]
     #[OA\Response(response: 400, description: 'Error al eliminar')]
-    #[RequireScope('authorized.delete')]
+    #[RequireAnyScope('authorized.delete', 'authorized_admin.delete')]
     #[Route('/authorized/{id}', name: 'api_authorized_delete', methods: ['DELETE'])]
     public function delete(string $id): JsonResponse
     {
@@ -455,7 +521,7 @@ class AuthorizedController extends BaseController
     #[OA\Parameter(name: 'id', in: 'path', description: 'ID del usuario autorizado', required: true, schema: new OA\Schema(type: 'string'))]
     #[OA\Response(response: 200, description: 'Enlace de restablecimiento enviado')]
     #[OA\Response(response: 400, description: 'Error al enviar el enlace')]
-    #[RequireScope('authorized.reset_password')]
+    #[RequireAnyScope('authorized.reset_password', 'authorized_admin.update')]
     #[Route('/authorized/{id}/reset-password', name: 'api_authorized_reset_password', methods: ['POST'])]
     public function resetPassword(string $id): JsonResponse
     {

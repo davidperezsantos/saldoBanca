@@ -1,9 +1,14 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, reactive, computed, onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { listInvoicesAdmin } from '../../api/adminInvoices';
+import { listInvoicesAdmin, createInvoice, cancelInvoice, refundInvoice } from '../../api/adminInvoices';
+import { convertToBase } from '../../api/adminExchange';
 import { listAccounts } from '../../api/adminAccounts';
+import { hasScope } from '../../api/permissions';
+import { useActiveCurrencies, loadActiveCurrencies } from '../../composables/currencies';
 import { currencySymbol } from '../../utils/currency';
+
+const { activeCurrencies } = useActiveCurrencies();
 
 const { t } = useI18n();
 
@@ -17,12 +22,62 @@ const accountResults = ref([]);
 const searchingAccounts = ref(false);
 const selectedAccount = ref(null);
 
+const canCreate = ref(false);
+const canCancel = ref(false);
+const canRefund = ref(false);
+
+const showCreateForm = ref(false);
+const createSaving = ref(false);
+const createError = ref('');
+const createForm = reactive(emptyCreateForm());
+const targetSearch = ref('');
+const targetResults = ref([]);
+const searchingTarget = ref(false);
+const selectedTarget = ref(null);
+
+const actionId = ref(null);
+const actionError = ref('');
+
+const converting = ref(false);
+const convertError = ref('');
+const convertResult = ref(null);
+
 const STATUS_LABELS = computed(() => ({
     pending: t('invoices.statusPending'),
     paid: t('invoices.statusPaid'),
     cancelled: t('invoices.statusCancelled'),
     refunded: t('invoices.statusRefunded'),
 }));
+
+function emptyCreateForm() {
+    return {
+        invoiceNumber: '',
+        invoiceDate: new Date().toISOString().slice(0, 10),
+        amount: '',
+        totalAmount: '',
+        currency: 'USD',
+        customerName: '',
+        notes: '',
+    };
+}
+
+async function doConvert() {
+    convertError.value = '';
+    converting.value = true;
+    try {
+        const result = await convertToBase(createForm.amount, createForm.currency);
+        convertResult.value = result;
+        createForm.originalAmount = result.originalAmount;
+        createForm.originalCurrency = result.originalCurrency;
+        createForm.amount = result.convertedAmount;
+        createForm.totalAmount = result.convertedAmount;
+        createForm.currency = result.baseCurrency;
+    } catch (e) {
+        convertError.value = e.response?.data?.message || t('admin.convert.error');
+    } finally {
+        converting.value = false;
+    }
+}
 
 async function load() {
     loading.value = true;
@@ -64,13 +119,178 @@ function clearAccount() {
     load();
 }
 
-onMounted(load);
+function toggleCreateForm() {
+    showCreateForm.value = !showCreateForm.value;
+    createError.value = '';
+    convertError.value = '';
+    convertResult.value = null;
+    if (!showCreateForm.value) {
+        Object.assign(createForm, emptyCreateForm());
+        selectedTarget.value = null;
+    }
+}
+
+async function searchTarget() {
+    if (!targetSearch.value) {
+        targetResults.value = [];
+        return;
+    }
+    searchingTarget.value = true;
+    try {
+        targetResults.value = await listAccounts({ search: targetSearch.value });
+    } finally {
+        searchingTarget.value = false;
+    }
+}
+
+function selectTarget(acc) {
+    selectedTarget.value = { id: acc.id, label: acc.businessName, number: acc.accountNumber };
+    targetResults.value = [];
+    targetSearch.value = '';
+}
+
+async function submitCreate() {
+    createError.value = '';
+    if (!selectedTarget.value) {
+        createError.value = t('admin.invoices.createError');
+        return;
+    }
+    createSaving.value = true;
+    try {
+        await createInvoice({
+            accountId: selectedTarget.value.id,
+            invoiceNumber: createForm.invoiceNumber,
+            invoiceDate: createForm.invoiceDate,
+            amount: createForm.amount,
+            totalAmount: createForm.totalAmount || createForm.amount,
+            currency: createForm.currency,
+            customerName: createForm.customerName || null,
+            notes: createForm.notes || null,
+            originalAmount: createForm.originalAmount || null,
+            originalCurrency: createForm.originalCurrency || null,
+        });
+        showCreateForm.value = false;
+        Object.assign(createForm, emptyCreateForm());
+        selectedTarget.value = null;
+        convertResult.value = null;
+        await load();
+    } catch (e) {
+        createError.value = e.response?.data?.message || t('admin.invoices.createError');
+    } finally {
+        createSaving.value = false;
+    }
+}
+
+async function doCancel(i) {
+    actionError.value = '';
+    actionId.value = i.id;
+    try {
+        await cancelInvoice(i.id);
+        await load();
+    } catch (e) {
+        actionError.value = e.response?.data?.message || t('admin.invoices.actionError');
+    } finally {
+        actionId.value = null;
+    }
+}
+
+async function doRefund(i) {
+    actionError.value = '';
+    actionId.value = i.id;
+    try {
+        await refundInvoice(i.id);
+        await load();
+    } catch (e) {
+        actionError.value = e.response?.data?.message || t('admin.invoices.actionError');
+    } finally {
+        actionId.value = null;
+    }
+}
+
+onMounted(async () => {
+    canCreate.value = await hasScope('invoices_admin.create');
+    canCancel.value = await hasScope('invoices_admin.cancel');
+    canRefund.value = await hasScope('invoices_admin.refund');
+    await load();
+    if (canCreate.value) {
+        loadActiveCurrencies();
+    }
+});
 </script>
 
 <template>
   <div class="card">
-    <h1>{{ t('admin.invoices.title') }}</h1>
+    <div class="header-row">
+      <h1>{{ t('admin.invoices.title') }}</h1>
+      <button v-if="canCreate" class="link-btn" @click="toggleCreateForm">
+        {{ showCreateForm ? t('common.cancel') : t('admin.invoices.newBtn') }}
+      </button>
+    </div>
     <p class="hint">{{ t('admin.invoices.hint') }}</p>
+
+    <form v-if="showCreateForm" class="edit-form create-form" @submit.prevent="submitCreate">
+      <div v-if="selectedTarget" class="selected-account">
+        <p class="selected-account-name">{{ selectedTarget.label }} ({{ selectedTarget.number }})</p>
+        <button type="button" class="link-btn" @click="selectedTarget = null">{{ t('common.cancel') }}</button>
+      </div>
+      <template v-else>
+        <label>
+          {{ t('admin.invoices.accountLabel') }}
+          <input v-model="targetSearch" type="text" :placeholder="t('admin.invoices.accountPlaceholder')" @keyup.enter.prevent="searchTarget" />
+        </label>
+        <button type="button" class="secondary" @click="searchTarget">{{ t('admin.accounts.searchBtn') }}</button>
+        <p v-if="searchingTarget">{{ t('common.loading') }}</p>
+        <ul v-else-if="targetResults.length" class="account-results">
+          <li v-for="acc in targetResults" :key="acc.id">
+            <button type="button" class="account-result" @click="selectTarget(acc)">
+              <span>{{ acc.businessName }}</span>
+              <span class="account-result-sub">{{ acc.accountNumber }}</span>
+            </button>
+          </li>
+        </ul>
+      </template>
+      <label>
+        {{ t('admin.invoices.invoiceNumberLabel') }}
+        <input v-model="createForm.invoiceNumber" type="text" required />
+      </label>
+      <label>
+        {{ t('admin.invoices.invoiceDateLabel') }}
+        <input v-model="createForm.invoiceDate" type="date" required />
+      </label>
+      <label>
+        {{ t('admin.invoices.amountLabel') }}
+        <input v-model="createForm.amount" type="number" step="0.01" min="0.01" required />
+      </label>
+      <label>
+        {{ t('admin.invoices.totalAmountLabel') }}
+        <input v-model="createForm.totalAmount" type="number" step="0.01" min="0.01" />
+      </label>
+      <label>
+        {{ t('admin.invoices.currencyLabel') }}
+        <select v-model="createForm.currency" required>
+          <option v-for="c in activeCurrencies" :key="c.code" :value="c.code">{{ c.code }} - {{ c.name }}</option>
+        </select>
+      </label>
+      <button type="button" class="secondary" :disabled="!createForm.amount || !createForm.currency || converting" @click="doConvert">
+        {{ converting ? t('common.loading') : t('admin.convert.btn') }}
+      </button>
+      <p v-if="convertError" class="error">{{ convertError }}</p>
+      <p v-if="convertResult" class="convert-hint">
+        {{ t('admin.convert.result', { originalAmount: convertResult.originalAmount, originalCurrency: convertResult.originalCurrency, convertedAmount: convertResult.convertedAmount, baseCurrency: convertResult.baseCurrency }) }}
+      </p>
+      <label>
+        {{ t('admin.invoices.customerNameLabel') }}
+        <input v-model="createForm.customerName" type="text" />
+      </label>
+      <label>
+        {{ t('admin.invoices.notesLabel') }}
+        <input v-model="createForm.notes" type="text" />
+      </label>
+      <p v-if="createError" class="error">{{ createError }}</p>
+      <button type="submit" :disabled="createSaving">
+        {{ createSaving ? t('common.saving') : t('common.save') }}
+      </button>
+    </form>
 
     <div class="filters">
       <select v-model="status" @change="load">
@@ -97,6 +317,7 @@ onMounted(load);
       </li>
     </ul>
 
+    <p v-if="actionError" class="error">{{ actionError }}</p>
     <p v-if="loading">{{ t('common.loading') }}</p>
     <p v-else-if="error" class="error">{{ error }}</p>
     <p v-else-if="!invoices.length" class="empty">{{ t('invoices.empty') }}</p>
@@ -108,6 +329,14 @@ onMounted(load);
         </div>
         <p class="item-phone">{{ i.accountName }} · {{ i.invoiceNumber }}</p>
         <p class="item-phone">{{ i.invoiceDate }}</p>
+        <div v-if="(i.status === 'pending' && canCancel) || (i.status === 'paid' && canRefund)" class="actions">
+          <button v-if="i.status === 'pending' && canCancel" class="secondary" :disabled="actionId === i.id" @click="doCancel(i)">
+            {{ t('common.cancel') }}
+          </button>
+          <button v-if="i.status === 'paid' && canRefund" class="secondary" :disabled="actionId === i.id" @click="doRefund(i)">
+            {{ t('admin.invoices.refund') }}
+          </button>
+        </div>
       </li>
     </ul>
   </div>
@@ -128,6 +357,72 @@ h1 {
     font-size: 1.3rem;
     font-weight: 700;
     color: var(--primary-dark);
+}
+.header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+.create-form {
+    padding: 0.9rem;
+    background: #f7f9fa;
+    border-radius: 8px;
+    margin-bottom: 0.5rem;
+}
+.edit-form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+.edit-form label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    font-size: 0.8rem;
+    color: #333;
+}
+.edit-form input,
+.edit-form select {
+    padding: 0.5rem 0.6rem;
+    border: 1px solid #d0d3d8;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    background: white;
+}
+.create-form button[type='submit'] {
+    padding: 0.6rem;
+    border: none;
+    border-radius: 8px;
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    color: white;
+    font-weight: 600;
+    cursor: pointer;
+}
+.create-form button:disabled {
+    opacity: 0.6;
+}
+.actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.6rem;
+}
+.actions button,
+.secondary {
+    flex: 1;
+    min-width: 90px;
+    padding: 0.5rem;
+    border: 1px solid #d0d3d8;
+    border-radius: 8px;
+    background: white;
+    color: #333;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+.actions button:disabled {
+    opacity: 0.6;
 }
 .hint {
     margin: 0 0 0.3rem;
@@ -226,6 +521,14 @@ h1 {
 .error {
     color: #c0392b;
     font-size: 0.85rem;
+}
+.convert-hint {
+    margin: 0;
+    font-size: 0.8rem;
+    color: #1a56b0;
+    background: #e6f0fd;
+    padding: 0.5rem 0.7rem;
+    border-radius: 8px;
 }
 .list {
     list-style: none;

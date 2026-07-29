@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Controller\Api\Admin;
+namespace App\Controller\Api;
 
 use App\Controller\BaseController;
 use App\Entity\Role;
@@ -17,7 +17,7 @@ use Symfony\Component\Routing\Attribute\Route;
  * (panel Twig, sesión de cookie, inalcanzable desde JWT). Misma lógica de negocio (incluido
  * convertToNested), sin capa de Service nueva — su par Twig tampoco la tiene.
  */
-#[OA\Tag(name: 'Admin Roles', description: 'Gestión de roles y permisos (requiere scope roles.*)')]
+#[OA\Tag(name: 'Roles', description: 'Gestión de roles y permisos (requiere scope roles.*)')]
 class RoleController extends BaseController
 {
     public function __construct(
@@ -30,7 +30,7 @@ class RoleController extends BaseController
         path: '/api/v1/admin/roles',
         summary: 'Listar roles y catálogo de permisos',
         description: 'Devuelve los roles con sus permisos aplanados y el catálogo completo de permisos asignables (para armar el picker).',
-        tags: ['Admin Roles'],
+        tags: ['Roles'],
     )]
     #[OA\Response(response: 200, description: 'Roles + catálogo de permisos')]
     #[RequireScope('roles.read')]
@@ -60,7 +60,7 @@ class RoleController extends BaseController
     #[OA\Post(
         path: '/api/v1/admin/roles',
         summary: 'Crear rol',
-        tags: ['Admin Roles'],
+        tags: ['Roles'],
     )]
     #[OA\RequestBody(
         required: true,
@@ -103,7 +103,7 @@ class RoleController extends BaseController
     #[OA\Put(
         path: '/api/v1/admin/roles/{id}',
         summary: 'Actualizar rol',
-        tags: ['Admin Roles'],
+        tags: ['Roles'],
     )]
     #[OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'string'))]
     #[OA\Response(response: 200, description: 'Rol actualizado')]
@@ -134,7 +134,7 @@ class RoleController extends BaseController
     #[OA\Delete(
         path: '/api/v1/admin/roles/{id}',
         summary: 'Eliminar rol',
-        tags: ['Admin Roles'],
+        tags: ['Roles'],
     )]
     #[OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'string'))]
     #[OA\Response(response: 200, description: 'Rol eliminado')]

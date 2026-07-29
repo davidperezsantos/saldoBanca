@@ -4,7 +4,7 @@ namespace App\Controller\Api;
 
 use App\Controller\BaseController;
 use App\DTO\Balance\InvoiceDto;
-use App\Security\Attribute\RequireScope;
+use App\Security\Attribute\RequireAnyScope;
 use App\Security\ScopeAuthorizationService;
 use App\Services\Balance\InvoiceService;
 use OpenApi\Attributes as OA;
@@ -57,7 +57,7 @@ class InvoiceController extends BaseController
             ]
         )
     )]
-    #[RequireScope('invoices.read')]
+    #[RequireAnyScope('invoices.read', 'invoices_admin.read')]
     #[Route('/invoices', name: 'api_invoice_list', methods: ['GET'])]
     public function list(Request $request): JsonResponse
     {
@@ -65,8 +65,9 @@ class InvoiceController extends BaseController
             'limit' => $request->query->getInt('limit', 20),
             'offset' => $request->query->getInt('offset', 0),
         ];
+        $isAdmin = $this->scopeAuthorizationService->hasScope('invoices_admin.read');
         $selfServiceUser = $this->scopeAuthorizationService->getSelfServiceUser();
-        if ($selfServiceUser !== null) {
+        if ($selfServiceUser !== null && !$isAdmin) {
             $filters['accountId'] = (string) $selfServiceUser->getAccount()?->getId();
         } elseif ($request->query->has('accountId')) {
             $filters['accountId'] = $request->query->get('accountId');
@@ -122,7 +123,7 @@ class InvoiceController extends BaseController
     #[OA\Response(response: 400, description: 'Error de validación')]
     #[OA\Response(response: 401, description: 'Token OAuth2 inválido o ausente')]
     #[OA\Response(response: 403, description: 'Scope insuficiente (requiere "invoices")')]
-    #[RequireScope('invoices.create')]
+    #[RequireAnyScope('invoices.create', 'invoices_admin.create')]
     #[Route('/invoices/payment', name: 'api_invoice_payment', methods: ['POST'])]
     public function create(Request $request): JsonResponse
     {
@@ -163,7 +164,7 @@ class InvoiceController extends BaseController
         )
     )]
     #[OA\Response(response: 404, description: 'Invoice not found')]
-    #[RequireScope('invoices.read')]
+    #[RequireAnyScope('invoices.read', 'invoices_admin.read')]
     #[Route('/invoices/{number}', name: 'api_invoice_show', methods: ['GET'])]
     public function show(string $number, Request $request): JsonResponse
     {
@@ -178,8 +179,9 @@ class InvoiceController extends BaseController
             if (!$accountId) {
                 return $this->error('accountId is required (invoiceNumber is not globally unique)', 422);
             }
+            $isAdmin = $this->scopeAuthorizationService->hasScope('invoices_admin.read');
             $selfServiceUser = $this->scopeAuthorizationService->getSelfServiceUser();
-            if ($selfServiceUser !== null && (string) $selfServiceUser->getAccount()?->getId() !== $accountId) {
+            if (!$isAdmin && $selfServiceUser !== null && (string) $selfServiceUser->getAccount()?->getId() !== $accountId) {
                 return $this->error('No podés consultar facturas de esta cuenta', 403);
             }
 
@@ -212,7 +214,7 @@ class InvoiceController extends BaseController
     )]
     #[OA\Response(response: 200, description: 'Invoice paid')]
     #[OA\Response(response: 400, description: 'Error al pagar factura, PIN inválido, etc.')]
-    #[RequireScope('invoices.pay')]
+    #[RequireAnyScope('invoices.pay', 'invoices_admin.pay')]
     #[Route('/invoices/{id}/pay', name: 'api_invoice_pay', methods: ['PUT'])]
     public function pay(string $id, Request $request): JsonResponse
     {
@@ -227,7 +229,9 @@ class InvoiceController extends BaseController
             if (!$existing) {
                 return $this->error('Invoice not found', 404);
             }
-            if (!$this->scopeAuthorizationService->selfServiceOwnsAccount($existing->getAccount())) {
+            if (!$this->scopeAuthorizationService->hasScope('invoices_admin.pay')
+                && !$this->scopeAuthorizationService->selfServiceOwnsAccount($existing->getAccount())
+            ) {
                 return $this->error('Invoice not found', 404);
             }
 
@@ -251,7 +255,7 @@ class InvoiceController extends BaseController
     #[OA\Parameter(name: 'id', in: 'path', description: 'ID de la factura', required: true, schema: new OA\Schema(type: 'string'))]
     #[OA\Response(response: 200, description: 'Invoice cancelled')]
     #[OA\Response(response: 400, description: 'Error al cancelar factura')]
-    #[RequireScope('invoices.cancel')]
+    #[RequireAnyScope('invoices.cancel', 'invoices_admin.cancel')]
     #[Route('/invoices/{id}/cancel', name: 'api_invoice_cancel', methods: ['PUT'])]
     public function cancel(string $id): JsonResponse
     {
@@ -275,7 +279,7 @@ class InvoiceController extends BaseController
     #[OA\Parameter(name: 'id', in: 'path', description: 'ID de la factura', required: true, schema: new OA\Schema(type: 'string'))]
     #[OA\Response(response: 200, description: 'Invoice refunded')]
     #[OA\Response(response: 400, description: 'Error al reembolsar factura')]
-    #[RequireScope('invoices.refund')]
+    #[RequireAnyScope('invoices.refund', 'invoices_admin.refund')]
     #[Route('/invoices/{id}/refund', name: 'api_invoice_refund', methods: ['PUT'])]
     public function refund(string $id): JsonResponse
     {
@@ -313,13 +317,14 @@ class InvoiceController extends BaseController
             ]
         )
     )]
-    #[RequireScope('invoices.read')]
+    #[RequireAnyScope('invoices.read', 'invoices_admin.read')]
     #[Route('/invoices/summary/{accountId}', name: 'api_invoice_summary', methods: ['GET'])]
     public function summary(string $accountId): JsonResponse
     {
         try {
             $selfServiceUser = $this->scopeAuthorizationService->getSelfServiceUser();
-            if ($selfServiceUser !== null
+            if (!$this->scopeAuthorizationService->hasScope('invoices_admin.read')
+                && $selfServiceUser !== null
                 && (string) $selfServiceUser->getAccount()?->getId() !== $accountId
             ) {
                 return $this->error('No podés consultar el resumen de esta cuenta', 403);

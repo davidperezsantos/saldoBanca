@@ -2,6 +2,7 @@
 
 namespace App\EventListener;
 
+use App\Security\Attribute\RequireAnyScope;
 use App\Security\Attribute\RequireScope;
 use App\Security\ScopeAuthorizationService;
 use Symfony\Component\HttpKernel\Event\ControllerEvent;
@@ -54,10 +55,11 @@ class RequireScopeListener
             return;
         }
 
-        $attributes = $reflection->getAttributes(RequireScope::class);
-        if (empty($attributes)) {
+        $anyAttributes = $reflection->getAttributes(RequireAnyScope::class);
+        $allAttributes = $reflection->getAttributes(RequireScope::class);
+        if (empty($anyAttributes) && empty($allAttributes)) {
             throw new \RuntimeException(sprintf(
-                'API endpoint %s::%s is missing #[RequireScope] — refusing to serve it unprotected.',
+                'API endpoint %s::%s is missing #[RequireScope]/#[RequireAnyScope] — refusing to serve it unprotected.',
                 $reflection->getDeclaringClass()->getName(),
                 $reflection->getName()
             ));
@@ -76,6 +78,10 @@ class RequireScopeListener
             throw new AccessDeniedException('Los endpoints de administración no son accesibles con credenciales de cliente OAuth2.');
         }
 
-        $this->scopeAuthorizationService->requireAll($attributes[0]->newInstance()->scopes);
+        if (!empty($anyAttributes)) {
+            $this->scopeAuthorizationService->requireAny($anyAttributes[0]->newInstance()->scopes);
+        } else {
+            $this->scopeAuthorizationService->requireAll($allAttributes[0]->newInstance()->scopes);
+        }
     }
 }

@@ -6,6 +6,7 @@ import { useUser } from '../../composables/user';
 import {
     listCommissionSettlements,
     createCommissionSettlement,
+    getAvailableCommission,
     getCommissionSettlement,
     requestCommissionSettlementPin,
     verifyCommissionSettlementPin,
@@ -14,10 +15,14 @@ import {
     settleCommissionSettlement,
     closeCommissionSettlement,
 } from '../../api/adminCommissionSettlements';
+import { useActiveCurrencies, loadActiveCurrencies } from '../../composables/currencies';
 import { currencySymbol } from '../../utils/currency';
 
 const { t } = useI18n();
 const { user } = useUser();
+const { activeCurrencies } = useActiveCurrencies();
+
+const SETTLEMENT_METHODS = ['efectivo', 'transferencia'];
 
 const canCreate = ref(false);
 const canApprove = ref(false);
@@ -59,6 +64,8 @@ const showCreateForm = ref(false);
 const createForm = reactive({ amount: '', currency: 'USD', notes: '' });
 const createSaving = ref(false);
 const createError = ref('');
+const available = ref(null);
+const loadingAvailable = ref(false);
 
 function toggleCreateForm() {
     showCreateForm.value = !showCreateForm.value;
@@ -66,10 +73,34 @@ function toggleCreateForm() {
     createForm.currency = 'USD';
     createForm.notes = '';
     createError.value = '';
+    available.value = null;
+    if (showCreateForm.value) {
+        loadActiveCurrencies();
+        loadAvailable();
+    }
+}
+
+async function loadAvailable() {
+    if (!createForm.currency) {
+        available.value = null;
+        return;
+    }
+    loadingAvailable.value = true;
+    try {
+        available.value = await getAvailableCommission(createForm.currency);
+    } catch (e) {
+        available.value = null;
+    } finally {
+        loadingAvailable.value = false;
+    }
 }
 
 async function submitCreate() {
     createError.value = '';
+    if (available.value && Number(createForm.amount) > Number(available.value.available)) {
+        createError.value = t('admin.commissionSettlements.amountExceedsAvailable');
+        return;
+    }
     createSaving.value = true;
     try {
         await createCommissionSettlement({ ...createForm, createdBy: user.value?.username });
@@ -211,6 +242,7 @@ onMounted(async () => {
     canSettle.value = await hasScope('commission_settlements.settle');
     canClose.value = await hasScope('commission_settlements.close');
     await load();
+    loadActiveCurrencies();
 });
 </script>
 
@@ -232,9 +264,15 @@ onMounted(async () => {
         </label>
         <label>
           {{ t('admin.commissionSettlements.currencyLabel') }}
-          <input v-model="createForm.currency" type="text" maxlength="3" required />
+          <select v-model="createForm.currency" required @change="loadAvailable">
+            <option v-for="c in activeCurrencies" :key="c.code" :value="c.code">{{ c.code }} - {{ c.name }}</option>
+          </select>
         </label>
       </div>
+      <p v-if="loadingAvailable" class="hint">{{ t('common.loading') }}</p>
+      <p v-else-if="available" class="available-hint">
+        {{ t('admin.commissionSettlements.availableLabel') }}: {{ available.available }} {{ currencySymbol(available.currency) }}
+      </p>
       <label>
         {{ t('admin.commissionSettlements.notesLabel') }}
         <input v-model="createForm.notes" type="text" />
@@ -250,7 +288,10 @@ onMounted(async () => {
         <option value="">{{ t('admin.recharges.allStatuses') }}</option>
         <option v-for="(label, key) in STATUS_LABELS" :key="key" :value="key">{{ label }}</option>
       </select>
-      <input v-model="currency" type="text" maxlength="3" :placeholder="t('admin.commissionSettlements.currencyLabel')" @change="load" />
+      <select v-model="currency" @change="load">
+        <option value="">{{ t('admin.commissionSettlements.allCurrencies') }}</option>
+        <option v-for="c in activeCurrencies" :key="c.code" :value="c.code">{{ c.code }}</option>
+      </select>
     </div>
 
     <p v-if="loading">{{ t('common.loading') }}</p>
@@ -299,15 +340,18 @@ onMounted(async () => {
               </div>
 
               <form v-if="pinVerified && canAssignAccount && detail.status === 'approved_admin'" class="assign-form" @submit.prevent="doAssignAccount">
-                <input v-model="assignForm.payoutBankName" type="text" :placeholder="t('admin.commissionSettlements.bankNamePlaceholder')" required />
                 <input v-model="assignForm.payoutAccountNumber" type="text" :placeholder="t('admin.commissionSettlements.accountNumberPlaceholder')" required />
-                <input v-model="assignForm.payoutAccountHolder" type="text" :placeholder="t('admin.commissionSettlements.accountHolderPlaceholder')" required />
+                <input v-model="assignForm.payoutBankName" type="text" :placeholder="t('admin.commissionSettlements.bankNamePlaceholder')" />
+                <input v-model="assignForm.payoutAccountHolder" type="text" :placeholder="t('admin.commissionSettlements.accountHolderPlaceholder')" />
                 <button type="submit" :disabled="actionBusy">{{ t('admin.commissionSettlements.assignAccountBtn') }}</button>
               </form>
 
               <form v-if="pinVerified && canSettle && detail.status === 'pending_settlement'" class="assign-form" @submit.prevent="doSettle">
-                <input v-model="settleForm.settlementMethod" type="text" :placeholder="t('admin.reconciliations.settlementMethod')" required />
-                <input v-model="settleForm.settlementReference" type="text" :placeholder="t('admin.reconciliations.settlementReference')" />
+                <select v-model="settleForm.settlementMethod" required>
+                  <option value="" disabled>{{ t('admin.reconciliations.settlementMethod') }}</option>
+                  <option v-for="m in SETTLEMENT_METHODS" :key="m" :value="m">{{ t(`admin.reconciliations.method_${m}`) }}</option>
+                </select>
+                <input v-if="settleForm.settlementMethod === 'transferencia'" v-model="settleForm.settlementReference" type="text" :placeholder="t('admin.reconciliations.settlementReference')" required />
                 <button type="submit" :disabled="actionBusy">{{ t('admin.commissionSettlements.settleBtn') }}</button>
               </form>
             </template>
@@ -377,11 +421,13 @@ h1 {
     color: #555;
 }
 .row input,
+.row select,
 .create-form input {
     padding: 0.5rem 0.6rem;
     border: 1px solid #d0d3d8;
     border-radius: 8px;
     font-size: 0.9rem;
+    background: white;
 }
 .submit-btn {
     padding: 0.6rem;
@@ -529,11 +575,19 @@ h1 {
     flex-direction: column;
     gap: 0.5rem;
 }
-.assign-form input {
+.assign-form input,
+.assign-form select {
     padding: 0.5rem 0.6rem;
     border: 1px solid #d0d3d8;
     border-radius: 8px;
     font-size: 0.85rem;
+    background: white;
+}
+.available-hint {
+    margin: 0;
+    font-size: 0.8rem;
+    color: #0f9d58;
+    font-weight: 600;
 }
 .assign-form button {
     padding: 0.5rem 0.9rem;

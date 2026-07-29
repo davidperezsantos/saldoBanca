@@ -19,18 +19,23 @@ export async function toggleExchangeProviderStatus(id, status) {
 }
 
 export async function listExchangeRates(providerId = null) {
-    const { data } = await apiClient.get('/admin/exchange-rates', {
+    const { data } = await apiClient.get('/exchange-rates', {
         params: providerId ? { providerId } : {},
     });
     return data.data;
 }
 
 export async function fetchExchangeRates() {
-    const { data } = await apiClient.post('/admin/exchange-rates/fetch');
+    const { data } = await apiClient.post('/exchange-rates/fetch');
     return data;
 }
 
 export async function createManualExchangeRate(payload) {
-    const { data } = await apiClient.post('/admin/exchange-rates/manual', payload);
+    const { data } = await apiClient.post('/exchange-rates/manual', payload);
     return data;
+}
+
+export async function convertToBase(amount, currency) {
+    const { data } = await apiClient.get('/exchange-rate/convert', { params: { amount, currency } });
+    return data.data;
 }

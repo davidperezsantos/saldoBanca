@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Controller\Api\Admin;
+namespace App\Controller\Api;
 
 use App\Controller\BaseController;
 use App\Security\Attribute\RequireScope;
@@ -19,7 +19,7 @@ use Symfony\Component\Routing\Attribute\Route;
  * Controller/Admin/OAuthClientController (panel Twig, sesión de cookie, inalcanzable desde JWT).
  * Misma lógica de negocio, sin capa de Service nueva — su par Twig tampoco la tiene.
  */
-#[OA\Tag(name: 'Admin OAuth Clients', description: 'Gestión de clientes OAuth2 (requiere scope oauth_clients.*)')]
+#[OA\Tag(name: 'OAuth Clients', description: 'Gestión de clientes OAuth2 (requiere scope oauth_clients.*)')]
 class OAuthClientController extends BaseController
 {
     public function __construct(
@@ -30,7 +30,7 @@ class OAuthClientController extends BaseController
     #[OA\Get(
         path: '/api/v1/admin/oauth-clients',
         summary: 'Listar clientes OAuth2',
-        tags: ['Admin OAuth Clients'],
+        tags: ['OAuth Clients'],
     )]
     #[OA\Response(response: 200, description: 'Lista de clientes OAuth2')]
     #[RequireScope('oauth_clients.read')]
@@ -58,7 +58,7 @@ class OAuthClientController extends BaseController
     #[OA\Get(
         path: '/api/v1/admin/oauth-clients/{identifier}/secret',
         summary: 'Revelar el secreto de un cliente OAuth2',
-        tags: ['Admin OAuth Clients'],
+        tags: ['OAuth Clients'],
     )]
     #[OA\Parameter(name: 'identifier', in: 'path', required: true, schema: new OA\Schema(type: 'string'))]
     #[OA\Response(response: 200, description: 'Secreto del cliente')]
@@ -78,7 +78,7 @@ class OAuthClientController extends BaseController
     #[OA\Post(
         path: '/api/v1/admin/oauth-clients',
         summary: 'Crear cliente OAuth2',
-        tags: ['Admin OAuth Clients'],
+        tags: ['OAuth Clients'],
     )]
     #[OA\RequestBody(
         required: true,
@@ -144,7 +144,7 @@ class OAuthClientController extends BaseController
     #[OA\Put(
         path: '/api/v1/admin/oauth-clients/{identifier}',
         summary: 'Actualizar cliente OAuth2',
-        tags: ['Admin OAuth Clients'],
+        tags: ['OAuth Clients'],
     )]
     #[OA\Parameter(name: 'identifier', in: 'path', required: true, schema: new OA\Schema(type: 'string'))]
     #[OA\Response(response: 200, description: 'Cliente actualizado')]
@@ -194,7 +194,7 @@ class OAuthClientController extends BaseController
     #[OA\Delete(
         path: '/api/v1/admin/oauth-clients/{identifier}',
         summary: 'Eliminar cliente OAuth2',
-        tags: ['Admin OAuth Clients'],
+        tags: ['OAuth Clients'],
     )]
     #[OA\Parameter(name: 'identifier', in: 'path', required: true, schema: new OA\Schema(type: 'string'))]
     #[OA\Response(response: 200, description: 'Cliente eliminado')]
@@ -216,7 +216,7 @@ class OAuthClientController extends BaseController
     #[OA\Put(
         path: '/api/v1/admin/oauth-clients/{identifier}/status',
         summary: 'Activar/desactivar cliente OAuth2',
-        tags: ['Admin OAuth Clients'],
+        tags: ['OAuth Clients'],
     )]
     #[OA\Parameter(name: 'identifier', in: 'path', required: true, schema: new OA\Schema(type: 'string'))]
     #[OA\RequestBody(

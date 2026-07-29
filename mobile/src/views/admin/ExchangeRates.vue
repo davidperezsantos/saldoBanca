@@ -3,8 +3,10 @@ import { ref, onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { hasScope } from '../../api/permissions';
 import { listExchangeRates, fetchExchangeRates, createManualExchangeRate } from '../../api/adminExchange';
+import { useActiveCurrencies, loadActiveCurrencies } from '../../composables/currencies';
 
 const { t } = useI18n();
+const { activeCurrencies } = useActiveCurrencies();
 
 const loading = ref(true);
 const error = ref('');
@@ -74,6 +76,9 @@ async function refreshRates() {
 onMounted(async () => {
     canFetch.value = await hasScope('exchange_rates_admin.fetch');
     await load();
+    if (canFetch.value) {
+        loadActiveCurrencies();
+    }
 });
 </script>
 
@@ -98,7 +103,9 @@ onMounted(async () => {
     <form v-if="showManualForm" class="edit-form create-form" @submit.prevent="submitManual">
       <label>
         {{ t('admin.exchangeRates.toCurrencyLabel') }}
-        <input v-model="manualForm.toCurrency" type="text" maxlength="3" required />
+        <select v-model="manualForm.toCurrency" required>
+          <option v-for="c in activeCurrencies" :key="c.code" :value="c.code">{{ c.code }} - {{ c.name }}</option>
+        </select>
       </label>
       <label>
         {{ t('admin.exchangeRates.rateLabel') }}
@@ -191,6 +198,26 @@ h1 {
 }
 .create-form button:disabled {
     opacity: 0.6;
+}
+.edit-form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+.edit-form label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    font-size: 0.8rem;
+    color: #333;
+}
+.edit-form input,
+.edit-form select {
+    padding: 0.5rem 0.6rem;
+    border: 1px solid #d0d3d8;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    background: white;
 }
 .checkbox-row {
     flex-direction: row !important;

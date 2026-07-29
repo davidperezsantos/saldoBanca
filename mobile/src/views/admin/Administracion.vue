@@ -9,11 +9,15 @@ const { t } = useI18n();
 const canUsers = ref(false);
 const canRoles = ref(false);
 const canOAuth = ref(false);
+const canReconciliations = ref(false);
+const canCommissionSettlements = ref(false);
 
 async function load() {
     canUsers.value = await hasScope('users.read');
     canRoles.value = await hasScope('roles.read');
     canOAuth.value = await hasScope('oauth_clients.read');
+    canReconciliations.value = await hasScope('reconciliations_admin.read');
+    canCommissionSettlements.value = await hasScope('commission_settlements.read');
 }
 
 onMounted(load);
@@ -45,8 +49,27 @@ watch(roleVersion, load);
           </svg>
           <span>{{ t('admin.dashboard.oauthClients') }}</span>
         </router-link>
+        <router-link v-if="canReconciliations" to="/reconciliaciones-admin" class="dash-card">
+          <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 12l2 2 4-4M7 3h10a2 2 0 0 1 2 2v14l-4-2-3 2-3-2-4 2V5a2 2 0 0 1 2-2Z" />
+          </svg>
+          <span>{{ t('admin.administracion.reconciliations') }}</span>
+        </router-link>
+        <router-link v-if="canReconciliations" to="/reportes-conciliacion-admin" class="dash-card">
+          <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 19h16M7 19V9m5 10V5m5 14v-7" />
+          </svg>
+          <span>{{ t('admin.administracion.reconciliationReport') }}</span>
+        </router-link>
+        <router-link v-if="canCommissionSettlements" to="/conciliacion-comision-admin" class="dash-card">
+          <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="9" />
+            <path d="M9.5 9.5c0-1 .9-1.8 2.5-1.8s2.5.8 2.5 1.8-1 1.5-2.5 1.5-2.5.6-2.5 1.7 1 1.8 2.5 1.8 2.5-.7 2.5-1.8M12 6.5v11" />
+          </svg>
+          <span>{{ t('admin.administracion.commissionSettlements') }}</span>
+        </router-link>
       </div>
-      <p v-if="!canUsers && !canRoles && !canOAuth" class="empty">{{ t('admin.administracion.empty') }}</p>
+      <p v-if="!canUsers && !canRoles && !canOAuth && !canReconciliations && !canCommissionSettlements" class="empty">{{ t('admin.administracion.empty') }}</p>
     </div>
   </div>
 </template>

@@ -4,6 +4,7 @@ namespace App\Controller\Api;
 
 use App\Controller\BaseController;
 use App\DTO\Balance\TransferDto;
+use App\Security\Attribute\RequireAnyScope;
 use App\Security\Attribute\RequireScope;
 use App\Security\ScopeAuthorizationService;
 use App\Services\Balance\TransferService;
@@ -55,7 +56,7 @@ class TransferController extends BaseController
             ]
         )
     )]
-    #[RequireScope('transfers.read')]
+    #[RequireAnyScope('transfers.read', 'transfers_admin.read')]
     #[Route('/transfers', name: 'api_transfer_list', methods: ['GET'])]
     public function list(Request $request): JsonResponse
     {
@@ -63,8 +64,9 @@ class TransferController extends BaseController
             'limit' => $request->query->getInt('limit', 20),
             'offset' => $request->query->getInt('offset', 0),
         ];
+        $isAdmin = $this->scopeAuthorizationService->hasScope('transfers_admin.read');
         $selfServiceUser = $this->scopeAuthorizationService->getSelfServiceUser();
-        if ($selfServiceUser !== null) {
+        if ($selfServiceUser !== null && !$isAdmin) {
             // Usuario final (JWT): solo las propias (como origen o destino, TransferService ya
             // cubre ambas) — ignora cualquier accountId que venga en la query.
             $filters['accountId'] = (string) $selfServiceUser->getAccount()?->getId();
@@ -137,14 +139,15 @@ class TransferController extends BaseController
     #[OA\Response(response: 400, description: 'Error de validación')]
     #[OA\Response(response: 401, description: 'Token OAuth2 inválido o ausente')]
     #[OA\Response(response: 403, description: 'Scope insuficiente (requiere "transfers")')]
-    #[RequireScope('transfers.create')]
+    #[RequireAnyScope('transfers.create', 'transfers_admin.create')]
     #[Route('/transfers', name: 'api_transfer_create', methods: ['POST'])]
     public function create(Request $request): JsonResponse
     {
         try {
             $data = $this->getJsonContent($request);
+            $isAdmin = $this->scopeAuthorizationService->hasScope('transfers_admin.create');
             $selfServiceUser = $this->scopeAuthorizationService->getSelfServiceUser();
-            if ($selfServiceUser !== null) {
+            if ($selfServiceUser !== null && !$isAdmin) {
                 // Usuario final (JWT): la cuenta origen siempre es la propia, sin importar qué
                 // mande el payload — si no, cualquiera podría transferir fondos de otra cuenta
                 // (IDOR) con solo cambiar el originAccountId.
@@ -196,7 +199,7 @@ class TransferController extends BaseController
         )
     )]
     #[OA\Response(response: 404, description: 'Transfer not found')]
-    #[RequireScope('transfers.read')]
+    #[RequireAnyScope('transfers.read', 'transfers_admin.read')]
     #[Route('/transfers/{id}', name: 'api_transfer_show', methods: ['GET'])]
     public function show(string $id): JsonResponse
     {
@@ -205,7 +208,8 @@ class TransferController extends BaseController
             if (!$transfer) {
                 return $this->error('Transfer not found', 404);
             }
-            if (!$this->scopeAuthorizationService->selfServiceOwnsAccount($transfer->getOriginAccount())
+            if (!$this->scopeAuthorizationService->hasScope('transfers_admin.read')
+                && !$this->scopeAuthorizationService->selfServiceOwnsAccount($transfer->getOriginAccount())
                 && !$this->scopeAuthorizationService->selfServiceOwnsAccount($transfer->getDestinationAccount())
             ) {
                 return $this->error('Transfer not found', 404);
@@ -244,7 +248,7 @@ class TransferController extends BaseController
     #[OA\Parameter(name: 'id', in: 'path', description: 'ID de la transferencia', required: true, schema: new OA\Schema(type: 'string'))]
     #[OA\Response(response: 200, description: 'Transfer processed')]
     #[OA\Response(response: 400, description: 'Error al procesar transferencia')]
-    #[RequireScope('transfers.process')]
+    #[RequireAnyScope('transfers.process', 'transfers_admin.process')]
     #[Route('/transfers/{id}/process', name: 'api_transfer_process', methods: ['PUT'])]
     public function process(string $id): JsonResponse
     {
@@ -268,7 +272,7 @@ class TransferController extends BaseController
     #[OA\Parameter(name: 'id', in: 'path', description: 'ID de la transferencia', required: true, schema: new OA\Schema(type: 'string'))]
     #[OA\Response(response: 200, description: 'Transfer cancelled')]
     #[OA\Response(response: 400, description: 'Error al cancelar transferencia')]
-    #[RequireScope('transfers.cancel')]
+    #[RequireAnyScope('transfers.cancel', 'transfers_admin.cancel')]
     #[Route('/transfers/{id}/cancel', name: 'api_transfer_cancel', methods: ['PUT'])]
     public function cancel(string $id): JsonResponse
     {

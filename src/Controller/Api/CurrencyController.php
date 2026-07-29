@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Controller\Api\Admin;
+namespace App\Controller\Api;
 
 use App\Controller\BaseController;
 use App\Entity\Balance\Currency;
@@ -14,7 +14,7 @@ use Symfony\Component\Routing\Attribute\Route;
 /**
  * Nomenclador de monedas desde mobile/ — espejo JSON de Controller/Admin/CurrencyController.
  */
-#[OA\Tag(name: 'Admin Currencies', description: 'Nomenclador de monedas (requiere scope currencies_admin.*)')]
+#[OA\Tag(name: 'Currencies', description: 'Nomenclador de monedas (requiere scope currencies_admin.*)')]
 class CurrencyController extends BaseController
 {
     public function __construct(
@@ -22,7 +22,7 @@ class CurrencyController extends BaseController
     ) {
     }
 
-    #[OA\Get(path: '/api/v1/admin/currencies', summary: 'Listar monedas', tags: ['Admin Currencies'])]
+    #[OA\Get(path: '/api/v1/admin/currencies', summary: 'Listar monedas', tags: ['Currencies'])]
     #[OA\Parameter(name: 'active', in: 'query', schema: new OA\Schema(type: 'boolean'))]
     #[OA\Response(response: 200, description: 'Lista de monedas')]
     #[RequireScope('currencies_admin.read')]
@@ -43,7 +43,7 @@ class CurrencyController extends BaseController
         ], $currencies));
     }
 
-    #[OA\Post(path: '/api/v1/admin/currencies', summary: 'Crear moneda', tags: ['Admin Currencies'])]
+    #[OA\Post(path: '/api/v1/admin/currencies', summary: 'Crear moneda', tags: ['Currencies'])]
     #[OA\Response(response: 201, description: 'Moneda creada')]
     #[OA\Response(response: 409, description: 'La moneda ya existe')]
     #[RequireScope('currencies_admin.create')]
@@ -78,7 +78,7 @@ class CurrencyController extends BaseController
         }
     }
 
-    #[OA\Put(path: '/api/v1/admin/currencies/{id}', summary: 'Actualizar moneda', tags: ['Admin Currencies'])]
+    #[OA\Put(path: '/api/v1/admin/currencies/{id}', summary: 'Actualizar moneda', tags: ['Currencies'])]
     #[OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'string'))]
     #[OA\Response(response: 200, description: 'Moneda actualizada')]
     #[RequireScope('currencies_admin.update')]
@@ -99,7 +99,7 @@ class CurrencyController extends BaseController
         return $this->success(null, 'Currency updated');
     }
 
-    #[OA\Put(path: '/api/v1/admin/currencies/{id}/status', summary: 'Cambiar estado de una moneda', tags: ['Admin Currencies'])]
+    #[OA\Put(path: '/api/v1/admin/currencies/{id}/status', summary: 'Cambiar estado de una moneda', tags: ['Currencies'])]
     #[OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'string'))]
     #[OA\Response(response: 200, description: 'Estado actualizado')]
     #[RequireScope('currencies_admin.status')]
